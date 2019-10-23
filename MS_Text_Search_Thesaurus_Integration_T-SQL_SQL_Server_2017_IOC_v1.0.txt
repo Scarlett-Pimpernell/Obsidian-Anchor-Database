@@ -51,7 +51,7 @@ Declare @Raw_Generic_Thesaurus_Table_Variable Table ([Data] nvarchar(4000), [Ord
 Insert Into @Raw_Generic_Thesaurus_Table_Variable
 Select
 	[Data],
-	Row_Number() Over (Order By (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus)) Asc) As [Order]
+	Row_Number() Over (Order By (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus)) Asc) As [Order] --I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one.
 		From dbo.Raw_Generic_Thesaurus
 
 Declare @Intermediate_Generic_Thesaurus_Table_Variable Table ([Word] Nvarchar(400), [Limited_Synonyms] Nvarchar(400));
