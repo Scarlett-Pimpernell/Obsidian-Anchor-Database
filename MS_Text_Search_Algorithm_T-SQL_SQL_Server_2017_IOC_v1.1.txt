@@ -26,11 +26,11 @@
 --Turning on the full text indexing feature may significantly speed up query execution time.
 
 --FUNCTIONALITY STILL TO BE INCLUDED IN THE ALGORITHM INCLUDES:
---Integrate A Client Enterprise Specific Phrase Inferencing Technique --> Estimated Release: 1st Nov 2020.
+--Integrate A Client Enterprise Specific Phrase Inferencing Technique --> Estimated Release: 1st Nov 2019.
 --Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: 8th Nov 2019.
---Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: 15th Nov 2020.
---Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: 22nd Nov 2020.
---Dimensional Boosting By User Segment Groups --> Estimated Release: 29th Nov 2020.
+--Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: 15th Nov 2019.
+--Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: 22nd Nov 2019.
+--Dimensional Boosting By User Segment Groups --> Estimated Release: 2nd Jan 2020.
 
 --TESTING:
 --Optimise Query For Compute Efficiency.
