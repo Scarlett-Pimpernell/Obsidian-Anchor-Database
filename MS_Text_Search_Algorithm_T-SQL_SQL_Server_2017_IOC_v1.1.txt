@@ -31,6 +31,7 @@
 --Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: 15th Nov 2019.
 --Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: 22nd Nov 2019.
 --Dimensional Boosting By User Segment Groups --> Estimated Release: 2nd Jan 2020.
+--Biomimicry Technique --> Estimated Release: 5th May 2020.
 
 --TESTING:
 --Optimise Query For Compute Efficiency.
