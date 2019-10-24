@@ -20,6 +20,7 @@ OVERVIEW:
 --Optimise indexes on referenced tables... I have not done this.
 
 --NOTA BENE:
+--The accompanying thesaurus databases have a number of duplicate rows in them. As a result you may want to spend more time sourcing a better thesaurus detabase.
 --This query may take a very long time to execute on low performance hardware, as it is carrying out a reasonably complex ETL on almost 350,000 rows of data.
 --If you are running the query in the cloud, consider keeping a close eye on the amount of compute resources you are using up.
 --In light of the above two points, please make sure that you are absolutely sure about where you are deploying this thesaurus database, before executing the query below... the total compute resource usage is likely to be rather high, and so may cost you a fair bit.
