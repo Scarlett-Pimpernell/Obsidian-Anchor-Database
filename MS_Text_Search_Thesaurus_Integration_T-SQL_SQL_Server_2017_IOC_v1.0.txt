@@ -52,7 +52,7 @@ Declare @Raw_Generic_Thesaurus_Table_Variable Table ([Data] nvarchar(4000), [Ord
 Insert Into @Raw_Generic_Thesaurus_Table_Variable
 Select
 	[Data],
-	Row_Number() Over (Order By (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus)) Asc) As [Order] --I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one.
+	Row_Number() Over (Order By (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus)) Asc) As [Order] --I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one. As I am using the Patindex function, this will only pick up the first occurence order for each duplicate row, and so some synonyms will be incorrect in the output Obsidian_Generic_Thesaurus table for now.
 		From dbo.Raw_Generic_Thesaurus
 
 Declare @Intermediate_Generic_Thesaurus_Table_Variable Table ([Word] Nvarchar(400), [Limited_Synonyms] Nvarchar(400));
