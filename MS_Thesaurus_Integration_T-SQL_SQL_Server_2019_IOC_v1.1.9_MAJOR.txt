@@ -1,0 +1,104 @@
+--HEADER:
+--MS Text Search Thesaurus Integration
+--T-SQL
+--SQL Server 2019
+--Initial Operating Capability
+--Version 1.1
+
+--OVERVIEW:
+--This query's input is one of either .dat flat file thesaurus's called th_en_GB_final or th_en_US_new.
+--Both .dat flat files can be extracted from accompanying files in the Github Obsidian repository.
+--This query's output is the creation of an unpivoted thesaurus table in a chosen SQL Server database.
+
+--PREPARATION:
+--If developing a UK or US English language solution,
+--simply copy the appropriate .dat file,
+--from the accompanying compressed thesaurus files in the Github Obsidian repositiory,
+--to a file location on the server's C: drive which your windows user account has permission to access.
+--For other thesaurus', you will have to source an appropriate language specific file,
+--and then code your own ETL technique which produces an output unpivoted data structure similar to dbo.Obsidian_Generic_Thesaurus in the ETL below.
+--Before executing this query on a database,
+--check to make sure that the database doesn't already have tables called either Raw_Generic_Thesaurus or Obsidian_Generic_Thesaurus.
+--If you are already using these database object names,
+--consider renaming the appropriate tables in this query before you execute it,
+--as well as the appropriate code block reference to the renamed table, in the MS_Text_Search_Algorithm from the accompanying Github Obsidian repository.
+
+--TESTING:
+--Optimise indexes on referenced tables... I have not done this.
+
+--NOTA BENE:
+--The accompanying thesaurus databases have a number of duplicate rows in them. As a result you may want to spend more time sourcing a better thesaurus detabase.
+--This query may take a very long time to execute on low performance hardware, as it is carrying out a reasonably complex ETL on almost 350,000 rows of data.
+--If you are running the query in the cloud, consider keeping a close eye on the amount of compute resources you are using up.
+--In light of the above two points, please make sure that you are absolutely sure about where you are deploying this thesaurus database, before executing the query below... the total compute resource usage is likely to be rather high, and so may cost you a fair bit.
+--If you are asking yourself why I haven't just provided the unpivoted thesaurus in a flat file... the reason is usage rights. I don't care to understand them, and I can't be bothered working out whether I am operating within them if I for example incorrectly label/accredit the new transformed thesaurus database.
+--Besides, I think it is a good learning practice for developers to make sure that they understand the end-to-end process for a given solution.
+
+
+Drop Table If Exists dbo.Raw_Generic_Thesaurus;
+Create Table dbo.Raw_Generic_Thesaurus ([Data] nvarchar(4000))
+
+Bulk Insert dbo.Raw_Generic_Thesaurus
+	FROM 'C:\Temp\th_en_GB_final.dat'
+		WITH
+			(Format = 'CSV',
+			Rowterminator = '0x0a',
+			Firstrow = 2,
+			Datafiletype = 'char');
+
+Declare @Raw_Clob_Thesaurus As Nvarchar(Max)
+Set @Raw_Clob_Thesaurus = 
+	(Select
+	*
+		From Openrowset
+		(Bulk 'C:\Temp\th_en_GB_final.dat',
+		Single_Clob)
+			AS [Data]);
+
+--I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one.
+Declare @Raw_Generic_Thesaurus_Table_Variable_1 Table ([Data] nvarchar(4000), [Duplication_Index] Int)
+Insert Into @Raw_Generic_Thesaurus_Table_Variable_1
+Select
+	[Data],
+	(Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))) - (Patindex('%'+[Data]+'%', Right(@Raw_Clob_Thesaurus, (Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))))) - 1) As [Duplication_Index]
+		From dbo.Raw_Generic_Thesaurus
+
+Declare @Raw_Generic_Thesaurus_Table_Variable_2 Table ([Data] nvarchar(4000), [Duplication_Index] Int, [Order] Int)
+Insert Into @Raw_Generic_Thesaurus_Table_Variable_2
+Select
+	[Data],
+	[Duplication_Index],
+	Row_Number() Over(Order By [Duplication_Index] Asc)	As [Order]	
+		From @Raw_Generic_Thesaurus_Table_Variable_1
+
+
+Declare @Intermediate_Generic_Thesaurus_Table_Variable Table ([Word] Nvarchar(400), [Limited_Synonyms] Nvarchar(400));
+Insert Into @Intermediate_Generic_Thesaurus_Table_Variable
+Select
+	Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(A.[Data], '|1', ''), '|2', ''), '|3', ''), '|4', ''), '|5', ''), '|6', ''), '|7', ''), '|8', ''), '|9', '') As [Word],
+	Case When (Select B.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 B Where (B.[Order] = (A.[Order] + 1)) And (B.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then (Select Replace(Replace(Replace(Replace(B.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 B Where (B.[Order] = (A.[Order] + 1)) And (B.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select C.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 C Where (C.[Order] = (A.[Order] + 2)) And (C.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(C.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 C Where (C.[Order] = (A.[Order] + 2)) And (C.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select D.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 D Where (D.[Order] = (A.[Order] + 3)) And (D.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(D.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 D Where (D.[Order] = (A.[Order] + 3)) And (D.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select E.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 E Where (E.[Order] = (A.[Order] + 4)) And (E.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(E.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 E Where (E.[Order] = (A.[Order] + 4)) And (E.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select F.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 F Where (F.[Order] = (A.[Order] + 5)) And (F.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(F.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 F Where (F.[Order] = (A.[Order] + 5)) And (F.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select G.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 G Where (G.[Order] = (A.[Order] + 6)) And (G.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(G.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 G Where (G.[Order] = (A.[Order] + 6)) And (G.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select H.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 H Where (H.[Order] = (A.[Order] + 7)) And (H.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(H.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 H Where (H.[Order] = (A.[Order] + 7)) And (H.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select I.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 I Where (I.[Order] = (A.[Order] + 8)) And (I.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(I.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 I Where (I.[Order] = (A.[Order] + 8)) And (I.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End +
+	Case When (Select J.[Data] From @Raw_Generic_Thesaurus_Table_Variable_2 J Where (J.[Order] = (A.[Order] + 9)) And (J.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Is Not Null Then '|' + (Select Replace(Replace(Replace(Replace(J.[Data], '(noun) ', ''), '(adj) ', ''), '(verb) ', ''), '(adv) ', '') From @Raw_Generic_Thesaurus_Table_Variable_2 J Where (J.[Order] = (A.[Order] + 9)) And (J.[Order] <= (A.[Order] + Right(A.[Data], 1)))) Else '' End
+	As [Limited_Synonyms] --In order to handle nulls correctly, it is necessary to use case statements as in the above code block. If not you will end up trying to join nulls onto strings, and this will simply result in a null value for a given table cell.
+		From @Raw_Generic_Thesaurus_Table_Variable_2 A
+			Where A.[Data] Like '%'+'|1' Or A.[Data] Like '%'+'|2' Or A.[Data] Like '%'+'|3' Or A.[Data] Like '%'+'|4' Or A.[Data] Like '%'+'|5' Or A.[Data] Like '%'+'|6' Or A.[Data] Like '%'+'|7' Or A.[Data] Like '%'+'|8' Or A.[Data] Like '%'+'|9'
+
+
+Drop Table If Exists dbo.Obsidian_Generic_Thesaurus;
+Create Table dbo.Obsidian_Generic_Thesaurus ([Word] Nvarchar(400), [Synonym] Nvarchar(400));
+
+Insert Into dbo.Obsidian_Generic_Thesaurus ([Word], [Synonym])
+Select
+    [Word], 
+    Value [Synonym]
+	From @Intermediate_Generic_Thesaurus_Table_Variable
+		Cross Apply String_Split([Limited_Synonyms], '|');
+
+Drop Table If Exists dbo.Raw_Generic_Thesaurus;
+Go

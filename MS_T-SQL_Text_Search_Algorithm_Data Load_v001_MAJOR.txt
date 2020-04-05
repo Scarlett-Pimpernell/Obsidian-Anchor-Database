@@ -1,0 +1,13 @@
+BULK INSERT Elements_Type_01
+	FROM 'C:\Temp\MS_T-SQL_Text_Search_Algorithm_Test_Data_01.csv'
+	WITH (FIRSTROW = 2,
+		FIELDTERMINATOR = ',',  --CSV field delimiter
+		ROWTERMINATOR = '\n',   --Use to shift the control to next row
+		TABLOCK)
+BULK INSERT Elements_Type_02
+	FROM 'C:\Temp\MS_T-SQL_Text_Search_Algorithm_Test_Data_02.csv'
+	WITH (FIRSTROW = 2,
+		FIELDTERMINATOR = ',',  --CSV field delimiter
+		ROWTERMINATOR = '\n',   --Use to shift the control to next row
+		TABLOCK)
+GO 
