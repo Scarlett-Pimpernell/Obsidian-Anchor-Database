@@ -1,0 +1,18 @@
+Drop Table If Exists dbo.Obsidian_Generic_Thesaurus;
+Create Table dbo.Obsidian_Generic_Thesaurus ([Word] Nvarchar(400), [Synonym] Nvarchar(400));
+
+Insert Into dbo.Obsidian_Generic_Thesaurus ([Word], [Synonym])
+Values
+    ('Michael', 'Mike'),
+	('Mike', 'Michael'),
+	('Loves', 'Likes'),
+	('Likes', 'Loves'),
+	('Using', 'Utilising'),
+	('Utilising', 'Using'),
+	('MooD', 'Model Oriented Object Development'),
+	('Model Oriented Object Development', 'MooD'),
+	('16', 'Sixteen'),
+	('Sixteen', '16'),
+	('Obsidian', 'Black Precious Stone'),
+	('Black Precious Stone', 'Obsidian')
+;
