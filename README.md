@@ -3,8 +3,10 @@ Intelligent Enterprise Architecture - Human Interaction Interface, Search Engine
 
 I have finally picked up the coding hobby again, found some suitable hardware to work with, and now intend to code non-stop for the forseeable future.
 
-Current Development Focus Is On the Core Search Engine Algorithm.
+Current Development Focus Is On the Core Search Engine Algorithm. I haven't thoroughly tested the queries yet, so be aware that there may be minor bugs.
 
-The latest upload includes a technique for generic synonym matching within the search engine algorithm. Run the appropriate queries on your SQL Server 2017/2019 database, using either SSMS or Visual Studio 2017/2019. Set-up steps include: 1.Execute the create schema and import data queries; 2.Execute the thesaurus_integration query or the test_thesaurus_load query depending on your hardware, and how quickly you want to get to developing yourself; 3.Finally execute the text_search_algorithm query. The results should display in the appropriate panel.
+The latest upload includes a technique for fragment purposym matching within the search engine algorithm. Run the appropriate queries on your SQL Server 2017/2019 database, using either SSMS or Visual Studio 2017/2019. Set-up steps include: 1.Execute the create schema and import data queries; 2.Execute the synonym_thesaurus_integration query and the fragment_thesaurus_integration query (once you have sourced a representative set of important enterprise Text files and/or Microsoft Word documents); 3.Finally execute the text_search_algorithm query. The results should display in the appropriate panel. If you're feeling brave, consider integrating these steps into your existing or new product/service/experience, but bare in mind that there will be incremental changes going forward.
 
-Over the coming weeks and months, I will gradually add to the back-end, middle-services, and front-end code, with the aim of producing an open-source high-performance, feautre-rich stack of configure and integrate code and applications, in order for companies of any size to optimally plan, transform, and run their organisation via a robust enterprise architecture paradigm.
+Over the coming weeks and months, I will gradually add to the back-end, API gateway, and front-end code, with the aim of producing an open-source high-performance (effective and efficient), feautre-rich library of configure and integrate code, in order for companies of any size to optimally plan, transform, and run their organisation via a robust enterprise architecture digital twin paradigm.
+
+I won't be dealing with parameter binding, indexes, or query execution plans until much later in development, when I build the UI.
