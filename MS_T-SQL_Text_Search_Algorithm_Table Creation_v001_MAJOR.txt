@@ -1,4 +1,0 @@
-CREATE Table Elements_Type_01
-([Name] Nvarchar(1000));
-CREATE Table Elements_Type_02
-([Name] Nvarchar(1000));

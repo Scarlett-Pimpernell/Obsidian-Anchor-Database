@@ -1,5 +1,5 @@
 --HEADER:
---MS Text Search Thesaurus Integration
+--MS Text Search Generic Thesaurus Integration
 --T-SQL
 --SQL Server 2019
 --Initial Operating Capability
@@ -36,7 +36,7 @@
 
 
 Drop Table If Exists dbo.Raw_Generic_Thesaurus;
-Create Table dbo.Raw_Generic_Thesaurus ([Data] nvarchar(4000))
+Create Table dbo.Raw_Generic_Thesaurus ([Data] nvarchar(Max))
 
 Bulk Insert dbo.Raw_Generic_Thesaurus
 	FROM 'C:\Temp\th_en_GB_final.dat'
@@ -56,14 +56,14 @@ Set @Raw_Clob_Thesaurus =
 			AS [Data]);
 
 --I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one.
-Declare @Raw_Generic_Thesaurus_Table_Variable_1 Table ([Data] nvarchar(4000), [Duplication_Index] Int)
+Declare @Raw_Generic_Thesaurus_Table_Variable_1 Table ([Data] nvarchar(Max), [Duplication_Index] Int)
 Insert Into @Raw_Generic_Thesaurus_Table_Variable_1
 Select
 	[Data],
 	(Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))) - (Patindex('%'+[Data]+'%', Right(@Raw_Clob_Thesaurus, (Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))))) - 1) As [Duplication_Index]
 		From dbo.Raw_Generic_Thesaurus
 
-Declare @Raw_Generic_Thesaurus_Table_Variable_2 Table ([Data] nvarchar(4000), [Duplication_Index] Int, [Order] Int)
+Declare @Raw_Generic_Thesaurus_Table_Variable_2 Table ([Data] nvarchar(Max), [Duplication_Index] Int, [Order] Int)
 Insert Into @Raw_Generic_Thesaurus_Table_Variable_2
 Select
 	[Data],
@@ -72,7 +72,7 @@ Select
 		From @Raw_Generic_Thesaurus_Table_Variable_1
 
 
-Declare @Intermediate_Generic_Thesaurus_Table_Variable Table ([Word] Nvarchar(400), [Limited_Synonyms] Nvarchar(400));
+Declare @Intermediate_Generic_Thesaurus_Table_Variable Table ([Word] Nvarchar(Max), [Limited_Synonyms] Nvarchar(Max));
 Insert Into @Intermediate_Generic_Thesaurus_Table_Variable
 Select
 	Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(A.[Data], '|1', ''), '|2', ''), '|3', ''), '|4', ''), '|5', ''), '|6', ''), '|7', ''), '|8', ''), '|9', '') As [Word],
@@ -91,7 +91,7 @@ Select
 
 
 Drop Table If Exists dbo.Obsidian_Generic_Thesaurus;
-Create Table dbo.Obsidian_Generic_Thesaurus ([Word] Nvarchar(400), [Synonym] Nvarchar(400));
+Create Table dbo.Obsidian_Generic_Thesaurus ([Word] Nvarchar(Max), [Synonym] Nvarchar(Max));
 
 Insert Into dbo.Obsidian_Generic_Thesaurus ([Word], [Synonym])
 Select

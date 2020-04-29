@@ -1,0 +1,306 @@
+--HEADER:
+--MS Text Search Technique
+--T-SQL
+--SQL Server 2019
+--Initial Operating Capability
+--Version 1.2
+
+
+--OVERVIEW:
+--The current algorithm takes a search text variable,
+--splits the search text variable into a table variable using space delimiters,
+--cross references the table variable to multiple element type tables using a join construct,
+--assigns a whole match score column value based on the repository elements' name's whole match likeness,
+--assigns a slide match score column value based on the repository elements' name's extended slide match likeness (for typo handling),
+--assigns a fragment match score column value based on the repository elements' name's fragment match likeness,
+--assigns a generic synonym split match score column value based on the repository elements' name's generic synonym split match likeness,
+--assigns a fragment purposym match score column value based on the repository elements' name's data science fragment synonym match likeness,
+--assigns a length score column value based on the repository elements' name's length unlikeness,
+--assigns an aggregate score column value based on all of the score column values,
+--filters the aggregate score column by a score threshold variable,
+--and finally orders by optimal cascading of the values in the score columns.
+
+--USAGE DIRECTIONS:
+--This algorithm should be used in Microsoft SQL Server 2019.
+--Don't forget to include the desired search text variable delimiter, and element tables, with their corresponding name columns, into the appropriate query blocks below.
+--Turning on the full text indexing feature may significantly speed up query execution time. I will investigate this at a much later date.
+
+--FUNCTIONALITY STILL TO BE INCLUDED IN THE ALGORITHM INCLUDES:
+--Integrate A Basic Text Search Engine Technique --> Delivered.
+--Integrate A Generic Synonym Matching Technique --> Delivered.
+--Integrate A Fragment Purposym Matching Technique --> Delivered.
+--Integrate adjacent sentence understanding --> Estimated Release: May 2020.
+--Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Jun 2020.
+--Integrate A Client Enterprise Specific Phrase Inferencing Technique --> Estimated Release: Jul 2020.
+--Integrate Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: Aug 2020.
+--Integrate Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: Sep 2020.
+--Integrate Dimensional Boosting By User Segment Groups --> Estimated Release: Oct 2020.
+--Integrate Automatic Digital Enterprise Twin Algorithm --> Estimated Release: H1 2021.
+
+--TESTING:
+--Optimise indexes on referenced tables.
+--Optimise query execution plan For compute efficiency.
+--Check query for protection against SQL injection attacks... make sure the parameter is bound properly.
+--Check production environment algorithm performance, on big-data scale (millions of search elements) or hyper-data scale (billions of search elements).
+
+--NOTA BENE:
+--The ideal production use case for this algorithm includes the caching of a core set of common search text variables.
+--This search algorithm excludes search operator functionality, but including search operators would be a relatively simple change if a specific client asked for this requirement.
+--The generic synonym and fragment purposym techniques must be used together in order to attain greatest effectiveness. Otherwise, if you just used a generic synonym table, the algorithm would not understand search phrase context i.e. whether particular sub-phrases or words of your search query are intended as adjectives, nouns, or verbs etc.
+
+
+--The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
+Drop Function If Exists dbo.Obsidian_Clean_Duplicates --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+
+Go
+
+Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
+Returns Nvarchar(Max)
+With Schemabinding
+AS
+Begin
+
+Set @Data = @Duplicate_Character + @Data
+
+While Patindex('%' + @Duplicate_Character + @Duplicate_Character + '%',@Data) > 0
+	Set @Data = Replace(@Data, @Duplicate_Character + @Duplicate_Character, @Duplicate_Character)
+
+Return Right(@Data, (Len(@Data) - 1))
+
+End
+
+Go
+
+
+Declare @Search_Text As Nvarchar(Max)
+Set @Search_Text = 'Michael Development Sixteen' --This variable should ideally be constrained to <= 200 characters long.
+
+
+Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(Max))
+Insert Into @Element_Names_Table_Variable ([Name])
+SELECT 
+	[Name] As [Name]
+From dbo.Elements_Type_01
+Union All
+SELECT 
+	[Name] As [Name]
+From dbo.Elements_Type_02
+Union All
+Select
+	[Value] As [Name]
+From dbo.Obsidian_Cumulative_Sentences
+--Optinally add desired element tables here, along with their name columns. Also, optionally, use the accompanying Obsidian repository's cumulative sentences table (dbo.Obsidian_Cumulative_Sentences) in the select statment in order to configure the back-end for an Enterprise Search Enginge service which also searches through important enterprise Text files, Microsoft Word documents, and in the future PDF files. This requires the use of the accompanying Obsidian repository fragment thesaurus query.
+
+
+Declare @Search_Text_Typo_Granularity_Percentage As Int
+Set @Search_Text_Typo_Granularity_Percentage = 15 --This variable value must be constrained to 0>=x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
+
+Declare @Search_Text_Extended_Slide_Table_Variable TABLE([Slide_Value] Nvarchar(Max))
+Insert Into @Search_Text_Extended_Slide_Table_Variable ([Slide_Value])
+Select 
+	Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End) As [Slide_Value]
+From (Select @Search_Text B) A
+join Master..Spt_Values V On V.[Number] < Len(A.B)
+where V.Type = 'P' --This query slides across a string variable by one position at a time. As a result, the leading characters carry less weight than the rest of the characters... This is fixed by joining the results of a partial reverse search text slide, as seen below.
+Union All
+Select 
+	Reverse(Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End)) As [Slide_Value]
+From (Select Reverse(@Search_Text) B) A
+join Master..Spt_Values V On V.[Number] < Len(A.B)
+where V.Type = 'P'
+And V.[Number] > Len(@Search_Text) - (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100)
+
+
+Declare @Search_Text_Split_Table_Variable_A Table ([Value] Nvarchar(100) NOT NULL)
+Insert Into @Search_Text_Split_Table_Variable_A
+Select [Value] From String_Split(@Search_Text, ' ') --Add desired word delimiter here.
+
+Declare @Search_Text_Split_Table_Variable_B Table ([Value] Nvarchar(Max))
+Insert Into @Search_Text_Split_Table_Variable_B ([Value]) --You have to insert the delimited search text words into another table variable in order to perform a minor cleanup.
+Select
+	Trim(dbo.Obsidian_Clean_Duplicates([Value], ' ')) As [Value] --Including minor leading, trailing, and consecutive-duplicate space cleanup.
+From @Search_Text_Split_Table_Variable_A
+
+Declare @Synonym_Lookup_Table_Variable Table ([Synonym] Nvarchar(100))
+Insert Into @Synonym_Lookup_Table_Variable
+Select
+	B.[Synonym]
+From @Search_Text_Split_Table_Variable_B A
+Inner Join dbo.Obsidian_Generic_Thesaurus B
+	On (A.[Value] = B.[Word] And B.[Synonym] <> '')
+
+
+Declare @Search_Text_Slide_Length_Table_Variable TABLE([Search_Text] Nvarchar(Max), [Slide_Length] Int)
+Insert Into @Search_Text_Slide_Length_Table_Variable ([Search_Text], [Slide_Length])
+Select
+	@Search_Text As [Search_Text],
+	Singles.N + 10*Tens.n + 100*Hundreds.n As [Slide_Length]
+From 
+	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n)
+Where Singles.n + 10*Tens.n + 100*Hundreds.n BETWEEN 1 AND Len(@Search_Text)
+Order By 1;
+
+
+Declare @Search_Text_Partial_Fragment_Table_Variable TABLE([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int);
+
+With Search_Text_Fragments (n, [Search_Text], [Slide_Length], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) As
+(
+Select
+	1,
+	[Search_Text],
+	[Slide_Length],
+	Substring([Search_Text], 1, [Slide_Length]) As [Fragment],
+	(1) As [Fragment_Start_Index],
+	([Slide_Length]) As [Fragment_End_Index]
+From @Search_Text_Slide_Length_Table_Variable
+Union All
+Select
+	n + 1,
+	[Search_Text],
+	[Slide_Length],
+	Substring([Search_Text], n + 1, [Slide_Length]) As [Fragment],
+	(n + 1) As [Fragment_Start_Index],
+	(n + [Slide_Length]) As [Fragment_End_Index]
+From Search_Text_Fragments
+Where n < Len(Search_Text)
+)
+
+Insert Into @Search_Text_Partial_Fragment_Table_Variable ([Search_Text], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	[Search_Text],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From Search_Text_Fragments
+Option (Maxrecursion 200) --Limited search text length for efficiency reasons.
+
+Declare @Search_Text_Spaces TABLE([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
+Insert Into @Search_Text_Spaces ([Search_Text], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	[Search_Text],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From @Search_Text_Partial_Fragment_Table_Variable
+Where [Fragment] = ' '
+
+Declare @Search_Text_Fragment_Table_Variable Table ([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
+Insert Into @Search_Text_Fragment_Table_Variable ([Search_Text], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	A.[Search_Text] As [Search_Text],
+	A.[Fragment] As [Fragment],
+	Avg(A.[Fragment_Start_Index]) As [Fragment_Start_Index],
+	Avg(A.[Fragment_End_Index]) As [Fragment_End_Index]
+From @Search_Text_Partial_Fragment_Table_Variable A
+Where 
+	A.[Fragment_Start_Index] = 1 
+	And A.[Fragment_End_Index] = Len(A.[Search_Text])
+	And A.[Fragment] <> ' '
+	Or
+	A.[Fragment_Start_Index] = 1
+	And A.[Fragment_End_Index] In (Select B.[Fragment_Start_Index] - 1 From @Search_Text_Spaces B) 
+	And A.[Fragment] <> ' '
+	Or 
+	A.[Fragment_End_Index] = Len(A.[Search_Text])
+	And A.[Fragment_Start_Index] In (Select C.[Fragment_End_Index] + 1 From @Search_Text_Spaces C)
+	And A.[Fragment] <> ' '
+	Or 
+	A.[Fragment_Start_Index] In (Select D.[Fragment_End_Index] + 1 From @Search_Text_Spaces D)
+	And A.[Fragment_End_Index] In (Select E.[Fragment_Start_Index] - 1 From @Search_Text_Spaces E)
+	And A.[Fragment] <> ' '
+Group By A.[Search_Text], A.[Fragment]
+
+
+Declare @Sub_Fragment_Purposym_Lookup_Table_Variable Table ([Sub_Fragment_Purposym] Nvarchar(Max))
+Insert Into @Sub_Fragment_Purposym_Lookup_Table_Variable ([Sub_Fragment_Purposym])
+Select
+	B.[Sub_Fragment_Purposym]
+From @Search_Text_Fragment_Table_Variable A
+Inner Join dbo.Obsidian_Fragment_Thesaurus B
+On (A.[Fragment] = B.[Fragment] And B.[Sub_Fragment_Purposym] <> '')
+
+
+Declare @Length_Score_Table_Variable TABLE([Raw_Length_Deviation_Score] FLoat)
+Insert Into @Length_Score_Table_Variable ([Raw_Length_Deviation_Score])
+Select
+	Sqrt(Square((Cast(Len([Name]) - Len(@Search_Text) As Float) / Cast(Len(@Search_Text) As Float)) * 100)) As [Raw_Length_Deviation_Score]
+From @Element_Names_Table_Variable
+
+Declare @Top_Length_Deviation_Score As Float
+Set @Top_Length_Deviation_Score = (Select Top (1) [Raw_Length_Deviation_Score] From @Length_Score_Table_Variable Order By [Raw_Length_Deviation_Score] Desc)
+
+
+Declare @Search_Results_A Table ([Name] Nvarchar(Max), [Whole_Match_Score] FLoat, [Length_Deviation_Score] FLoat)
+Insert Into @Search_Results_A ([Name], [Whole_Match_Score], [Length_Deviation_Score])
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+@Search_Text+'%' Then 100.000 / 4 Else 0 End As Float) As [Whole_Match_Score],
+	(Sqrt(Square((Cast(Len([Name]) - Len(@Search_Text) As Float) / Cast(Len(@Search_Text) As Float)) * 100)) / @Top_Length_Deviation_Score) * 100 As [Length_Deviation_Score]
+From @Element_Names_Table_Variable
+Where [Name] <> ''
+
+Declare @Search_Results_B Table ([Name] Nvarchar(Max), [Slide_Match_Score] FLoat)
+Insert Into @Search_Results_B ([Name], [Slide_Match_Score])
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+[Slide_Value]+'%' Then 100.000 / 4 Else 0 End As Float) As [Slide_Match_Score]
+From @Element_Names_Table_Variable
+Cross Join @Search_Text_Extended_Slide_Table_Variable
+Where [Slide_Value] <> ''
+				
+Declare @Search_Results_C Table ([Name] Nvarchar(Max), [Fragment_Match_Score] FLoat)
+Insert Into @Search_Results_C ([Name], [Fragment_Match_Score])
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+[Fragment]+'%' Then 100.000 / 4 Else 0 End As Float) As [Fragment_Match_Score]
+From @Element_Names_Table_Variable
+Cross Join @Search_Text_Fragment_Table_Variable
+Where [Fragment] <> ''
+
+Declare @Search_Results_D Table ([Name] Nvarchar(Max), [Generic_Synonym_Match_Score] Float)
+Insert Into @Search_Results_D
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+[Synonym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Generic_Synonym_Match_Score]
+From @Element_Names_Table_Variable
+Cross Join @Synonym_Lookup_Table_Variable
+Where [Synonym] <> ''
+
+Declare @Search_Results_E Table ([Name] Nvarchar(Max), [Sub_Fragment_Purposym_Match_Score] Float)
+Insert Into @Search_Results_E ([Name], [Sub_Fragment_Purposym_Match_Score])
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+[Sub_Fragment_Purposym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Sub_Fragment_Purposym_Match_Score]
+From @Element_Names_Table_Variable
+Cross Join @Sub_Fragment_Purposym_Lookup_Table_Variable
+Where [Sub_Fragment_Purposym] <> ''
+
+
+Declare @Aggregate_Score_Threshold As Int
+Set @Aggregate_Score_Threshold = 0 --This variable value must be constrained to 0 <= x >= 100.
+
+Select
+	A.[Name] As [Name],
+	Cast(Avg(A.[Whole_Match_Score]) As Decimal(5, 2)) As [Whole_Match_Score],
+	Cast(Avg(B.[Slide_Match_Score]) As Decimal(5, 2)) As [Slide_Match_Score],
+	Cast(Avg(C.[Fragment_Match_Score]) As Decimal(5, 2)) As [Fragment_Match_Score],
+	Cast(Avg(D.[Generic_Synonym_Match_Score]) As Decimal(5,2)) As [Generic_Synonym_Match_Score],
+	Cast(Avg(E.[Sub_Fragment_Purposym_Match_Score]) As Decimal(5, 2)) As [Sub_Fragment_Purposym_Match_Score],
+	Cast(Avg(A.[Length_Deviation_Score]) As Decimal(5, 2)) As [Length_Deviation_Score],
+	Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score]))) As Decimal(5, 2)) As [Aggregate_Score]
+From @Search_Results_A A 
+	Inner Join @Search_Results_B B
+	On (A.[Name] = B.[Name])
+	Inner Join @Search_Results_C C
+	On (A.[Name] = C.[Name])
+	Inner Join @Search_Results_D D
+	On (A.[Name] = D.[Name])
+	Inner Join @Search_Results_E E
+	On (A.[Name] = E.[Name])
+Group By A.[Name]
+Having Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score]))) As Decimal(5, 2)) > = @Aggregate_Score_Threshold
+Order By [Whole_Match_Score] Desc, [Slide_Match_Score] Desc, [Fragment_Match_Score] Desc, [Generic_Synonym_Match_Score] Desc, [Sub_Fragment_Purposym_Match_Score] Desc, [Length_Deviation_Score] Asc, [Aggregate_Score] Desc
+
+--The last 7 query blocks can be consolidated into just 2  query blocks in a production deployment where achieving the highest efficiency performance is essential. In this query however, I have kept them separate for the purpose of ease of understanding.
