@@ -51,7 +51,7 @@
 
 
 --The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
-Declare @Create_Function_Command Nvarchar(Max);
+Declare @Create_Function_Command Nvarchar(1000);
 Set @Create_Function_Command =
 	N'Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
 Returns Nvarchar(Max)
@@ -72,11 +72,11 @@ If Not Exists (Select * From Sysobjects Where Name='Obsidian_Clean_Duplicates' a
 Execute sp_executesql @Create_Function_Command;
 
 
-Declare @Search_Text As Nvarchar(Max)
-Set @Search_Text = 'Michael Development Sixteen' --This variable should ideally be constrained to <= 200 characters long.
+Declare @Search_Text As Nvarchar(250)
+Set @Search_Text = 'Michael Development Sixteen' --This variable should ideally be constrained to <= 250 characters long.
 
 
-Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(Max))
+Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(8000))
 Insert Into @Element_Names_Table_Variable ([Name])
 SELECT 
 	[Name] As [Name]
@@ -95,7 +95,7 @@ From dbo.Obsidian_Cumulative_Sentences
 Declare @Search_Text_Typo_Granularity_Percentage As Int
 Set @Search_Text_Typo_Granularity_Percentage = 15 --This variable value must be constrained to 0>=x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
 
-Declare @Search_Text_Extended_Slide_Table_Variable TABLE([Slide_Value] Nvarchar(Max))
+Declare @Search_Text_Extended_Slide_Table_Variable TABLE([Slide_Value] Nvarchar(250))
 Insert Into @Search_Text_Extended_Slide_Table_Variable ([Slide_Value])
 Select 
 	Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End) As [Slide_Value]
@@ -111,17 +111,17 @@ where V.Type = 'P'
 And V.[Number] > Len(@Search_Text) - (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100)
 
 
-Declare @Search_Text_Split_Table_Variable_A Table ([Value] Nvarchar(100) NOT NULL)
+Declare @Search_Text_Split_Table_Variable_A Table ([Value] Nvarchar(250))
 Insert Into @Search_Text_Split_Table_Variable_A
 Select [Value] From String_Split(@Search_Text, ' ') --Add desired word delimiter here.
 
-Declare @Search_Text_Split_Table_Variable_B Table ([Value] Nvarchar(Max))
+Declare @Search_Text_Split_Table_Variable_B Table ([Value] Nvarchar(250))
 Insert Into @Search_Text_Split_Table_Variable_B ([Value]) --You have to insert the delimited search text words into another table variable in order to perform a minor cleanup.
 Select
 	Trim(dbo.Obsidian_Clean_Duplicates([Value], ' ')) As [Value] --Including minor leading, trailing, and consecutive-duplicate space cleanup.
 From @Search_Text_Split_Table_Variable_A
 
-Declare @Synonym_Lookup_Table_Variable Table ([Synonym] Nvarchar(100))
+Declare @Synonym_Lookup_Table_Variable Table ([Synonym] Nvarchar(250))
 Insert Into @Synonym_Lookup_Table_Variable
 Select
 	B.[Synonym]
@@ -130,7 +130,7 @@ Inner Join dbo.Obsidian_Synonym_Thesaurus B
 	On (A.[Value] = B.[Word] And B.[Synonym] <> '')
 
 
-Declare @Search_Text_Slide_Length_Table_Variable TABLE([Search_Text] Nvarchar(Max), [Slide_Length] Int)
+Declare @Search_Text_Slide_Length_Table_Variable TABLE([Search_Text] Nvarchar(250), [Slide_Length] Int)
 Insert Into @Search_Text_Slide_Length_Table_Variable ([Search_Text], [Slide_Length])
 Select
 	@Search_Text As [Search_Text],
@@ -139,11 +139,11 @@ From
 	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
 	(Values(0),(1),(2)) Hundreds(n)
-Where Singles.n + 10*Tens.n + 100*Hundreds.n BETWEEN 1 AND Len(@Search_Text)
+Where Singles.n + 10*Tens.n + 100*Hundreds.n Between 1 And Len(@Search_Text)
 Order By 1;
 
 
-Declare @Search_Text_Partial_Fragment_Table_Variable TABLE([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int);
+Declare @Search_Text_Partial_Fragment_Table_Variable TABLE([Search_Text] Nvarchar(250), [Fragment] Nvarchar(250), [Fragment_Start_Index] Int, [Fragment_End_Index] Int);
 
 With Search_Text_Fragments (n, [Search_Text], [Slide_Length], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) As
 (
@@ -176,7 +176,7 @@ Select
 From Search_Text_Fragments
 Option (Maxrecursion 200) --Limited search text length for efficiency reasons.
 
-Declare @Search_Text_Spaces TABLE([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
+Declare @Search_Text_Spaces TABLE([Search_Text] Nvarchar(250), [Fragment] Nvarchar(250), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
 Insert Into @Search_Text_Spaces ([Search_Text], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
 Select
 	[Search_Text],
@@ -186,7 +186,7 @@ Select
 From @Search_Text_Partial_Fragment_Table_Variable
 Where [Fragment] = ' '
 
-Declare @Search_Text_Fragment_Table_Variable Table ([Search_Text] Nvarchar(Max), [Fragment] Nvarchar(Max), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
+Declare @Search_Text_Fragment_Table_Variable Table ([Search_Text] Nvarchar(250), [Fragment] Nvarchar(250), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
 Insert Into @Search_Text_Fragment_Table_Variable ([Search_Text], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
 Select
 	A.[Search_Text] As [Search_Text],
@@ -213,7 +213,7 @@ Where
 Group By A.[Search_Text], A.[Fragment]
 
 
-Declare @Purposym_Lookup_Table_Variable Table ([Purposym] Nvarchar(Max))
+Declare @Purposym_Lookup_Table_Variable Table ([Purposym] Nvarchar(8000))
 Insert Into @Purposym_Lookup_Table_Variable ([Purposym])
 Select
 	B.[Purposym]
@@ -222,7 +222,7 @@ Inner Join dbo.Obsidian_Purposym_Thesaurus B
 On (A.[Fragment] = B.[Fragment] And B.[Purposym] <> '')
 
 
-Declare @Length_Score_Table_Variable TABLE([Raw_Length_Deviation_Score] FLoat)
+Declare @Length_Score_Table_Variable Table ([Raw_Length_Deviation_Score] Float)
 Insert Into @Length_Score_Table_Variable ([Raw_Length_Deviation_Score])
 Select
 	Sqrt(Square((Cast(Len([Name]) - Len(@Search_Text) As Float) / Cast(Len(@Search_Text) As Float)) * 100)) As [Raw_Length_Deviation_Score]
@@ -232,7 +232,7 @@ Declare @Top_Length_Deviation_Score As Float
 Set @Top_Length_Deviation_Score = (Select Top (1) [Raw_Length_Deviation_Score] From @Length_Score_Table_Variable Order By [Raw_Length_Deviation_Score] Desc)
 
 
-Declare @Search_Results_A Table ([Name] Nvarchar(Max), [Whole_Match_Score] FLoat, [Length_Deviation_Score] FLoat)
+Declare @Search_Results_A Table ([Name] Nvarchar(8000), [Whole_Match_Score] Float, [Length_Deviation_Score] Float)
 Insert Into @Search_Results_A ([Name], [Whole_Match_Score], [Length_Deviation_Score])
 Select
 	[Name],
@@ -241,7 +241,7 @@ Select
 From @Element_Names_Table_Variable
 Where [Name] <> ''
 
-Declare @Search_Results_B Table ([Name] Nvarchar(Max), [Slide_Match_Score] FLoat)
+Declare @Search_Results_B Table ([Name] Nvarchar(8000), [Slide_Match_Score] Float)
 Insert Into @Search_Results_B ([Name], [Slide_Match_Score])
 Select
 	[Name],
@@ -250,7 +250,7 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Extended_Slide_Table_Variable
 Where [Slide_Value] <> ''
 				
-Declare @Search_Results_C Table ([Name] Nvarchar(Max), [Fragment_Match_Score] FLoat)
+Declare @Search_Results_C Table ([Name] Nvarchar(8000), [Fragment_Match_Score] Float)
 Insert Into @Search_Results_C ([Name], [Fragment_Match_Score])
 Select
 	[Name],
@@ -259,7 +259,7 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Fragment_Table_Variable
 Where [Fragment] <> ''
 
-Declare @Search_Results_D Table ([Name] Nvarchar(Max), [Synonym_Match_Score] Float)
+Declare @Search_Results_D Table ([Name] Nvarchar(8000), [Synonym_Match_Score] Float)
 Insert Into @Search_Results_D
 Select
 	[Name],
@@ -268,7 +268,7 @@ From @Element_Names_Table_Variable
 Cross Join @Synonym_Lookup_Table_Variable
 Where [Synonym] <> ''
 
-Declare @Search_Results_E Table ([Name] Nvarchar(Max), [Purposym_Match_Score] Float)
+Declare @Search_Results_E Table ([Name] Nvarchar(8000), [Purposym_Match_Score] Float)
 Insert Into @Search_Results_E ([Name], [Purposym_Match_Score])
 Select
 	[Name],
