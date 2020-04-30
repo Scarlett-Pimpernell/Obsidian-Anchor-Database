@@ -30,11 +30,12 @@
 --Integrate A Generic Synonym Matching Technique --> Delivered.
 --Integrate A Fragment Purposym Matching Technique --> Delivered.
 --Integrate adjacent sentence understanding --> Estimated Release: May 2020.
---Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Jun 2020.
---Integrate A Client Enterprise Specific Phrase Inferencing Technique --> Estimated Release: Jul 2020.
---Integrate Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: Aug 2020.
---Integrate Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: Sep 2020.
---Integrate Dimensional Boosting By User Segment Groups --> Estimated Release: Oct 2020.
+--Integrate question and answer functionality --> Estimated Release: Jul 2020.
+--Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Aug 2020.
+--Integrate A Client Enterprise Specific Search Phrase Inferencing Technique --> Estimated Release: Aug 2020.
+--Integrate Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: Sep 2020.
+--Integrate Dimensional Boosting By Epoch Network/Peers/Ancestors/Descendants --> Estimated Release: Oct 2020.
+--Integrate Dimensional Boosting By User Segment Groups --> Estimated Release: Nov 2020.
 --Integrate Automatic Digital Enterprise Twin Algorithm --> Estimated Release: H1 2021.
 
 --TESTING:
@@ -50,11 +51,9 @@
 
 
 --The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
-Drop Function If Exists dbo.Obsidian_Clean_Duplicates --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
-
-Go
-
-Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
 Returns Nvarchar(Max)
 With Schemabinding
 AS
@@ -62,14 +61,15 @@ Begin
 
 Set @Data = @Duplicate_Character + @Data
 
-While Patindex('%' + @Duplicate_Character + @Duplicate_Character + '%',@Data) > 0
+While Patindex(''%'' + @Duplicate_Character + @Duplicate_Character + ''%'',@Data) > 0
 	Set @Data = Replace(@Data, @Duplicate_Character + @Duplicate_Character, @Duplicate_Character)
 
 Return Right(@Data, (Len(@Data) - 1))
 
-End
+End';
 
-Go
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Clean_Duplicates' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
 
 
 Declare @Search_Text As Nvarchar(Max)
@@ -126,7 +126,7 @@ Insert Into @Synonym_Lookup_Table_Variable
 Select
 	B.[Synonym]
 From @Search_Text_Split_Table_Variable_B A
-Inner Join dbo.Obsidian_Generic_Thesaurus B
+Inner Join dbo.Obsidian_Synonym_Thesaurus B
 	On (A.[Value] = B.[Word] And B.[Synonym] <> '')
 
 
@@ -138,7 +138,7 @@ Select
 From 
 	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
-	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n)
+	(Values(0),(1),(2)) Hundreds(n)
 Where Singles.n + 10*Tens.n + 100*Hundreds.n BETWEEN 1 AND Len(@Search_Text)
 Order By 1;
 
@@ -213,13 +213,13 @@ Where
 Group By A.[Search_Text], A.[Fragment]
 
 
-Declare @Sub_Fragment_Purposym_Lookup_Table_Variable Table ([Sub_Fragment_Purposym] Nvarchar(Max))
-Insert Into @Sub_Fragment_Purposym_Lookup_Table_Variable ([Sub_Fragment_Purposym])
+Declare @Purposym_Lookup_Table_Variable Table ([Purposym] Nvarchar(Max))
+Insert Into @Purposym_Lookup_Table_Variable ([Purposym])
 Select
-	B.[Sub_Fragment_Purposym]
+	B.[Purposym]
 From @Search_Text_Fragment_Table_Variable A
-Inner Join dbo.Obsidian_Fragment_Thesaurus B
-On (A.[Fragment] = B.[Fragment] And B.[Sub_Fragment_Purposym] <> '')
+Inner Join dbo.Obsidian_Purposym_Thesaurus B
+On (A.[Fragment] = B.[Fragment] And B.[Purposym] <> '')
 
 
 Declare @Length_Score_Table_Variable TABLE([Raw_Length_Deviation_Score] FLoat)
@@ -259,23 +259,23 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Fragment_Table_Variable
 Where [Fragment] <> ''
 
-Declare @Search_Results_D Table ([Name] Nvarchar(Max), [Generic_Synonym_Match_Score] Float)
+Declare @Search_Results_D Table ([Name] Nvarchar(Max), [Synonym_Match_Score] Float)
 Insert Into @Search_Results_D
 Select
 	[Name],
-	Cast(Case When [Name] Like '%'+[Synonym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Generic_Synonym_Match_Score]
+	Cast(Case When [Name] Like '%'+[Synonym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Synonym_Match_Score]
 From @Element_Names_Table_Variable
 Cross Join @Synonym_Lookup_Table_Variable
 Where [Synonym] <> ''
 
-Declare @Search_Results_E Table ([Name] Nvarchar(Max), [Sub_Fragment_Purposym_Match_Score] Float)
-Insert Into @Search_Results_E ([Name], [Sub_Fragment_Purposym_Match_Score])
+Declare @Search_Results_E Table ([Name] Nvarchar(Max), [Purposym_Match_Score] Float)
+Insert Into @Search_Results_E ([Name], [Purposym_Match_Score])
 Select
 	[Name],
-	Cast(Case When [Name] Like '%'+[Sub_Fragment_Purposym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Sub_Fragment_Purposym_Match_Score]
+	Cast(Case When [Name] Like '%'+[Purposym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Purposym_Match_Score]
 From @Element_Names_Table_Variable
-Cross Join @Sub_Fragment_Purposym_Lookup_Table_Variable
-Where [Sub_Fragment_Purposym] <> ''
+Cross Join @Purposym_Lookup_Table_Variable
+Where [Purposym] <> ''
 
 
 Declare @Aggregate_Score_Threshold As Int
@@ -286,10 +286,10 @@ Select
 	Cast(Avg(A.[Whole_Match_Score]) As Decimal(5, 2)) As [Whole_Match_Score],
 	Cast(Avg(B.[Slide_Match_Score]) As Decimal(5, 2)) As [Slide_Match_Score],
 	Cast(Avg(C.[Fragment_Match_Score]) As Decimal(5, 2)) As [Fragment_Match_Score],
-	Cast(Avg(D.[Generic_Synonym_Match_Score]) As Decimal(5,2)) As [Generic_Synonym_Match_Score],
-	Cast(Avg(E.[Sub_Fragment_Purposym_Match_Score]) As Decimal(5, 2)) As [Sub_Fragment_Purposym_Match_Score],
+	Cast(Avg(D.[Synonym_Match_Score]) As Decimal(5,2)) As [Synonym_Match_Score],
+	Cast(Avg(E.[Purposym_Match_Score]) As Decimal(5, 2)) As [Purposym_Match_Score],
 	Cast(Avg(A.[Length_Deviation_Score]) As Decimal(5, 2)) As [Length_Deviation_Score],
-	Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score]))) As Decimal(5, 2)) As [Aggregate_Score]
+	Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score]))) As Decimal(5, 2)) As [Aggregate_Score]
 From @Search_Results_A A 
 	Inner Join @Search_Results_B B
 	On (A.[Name] = B.[Name])
@@ -300,7 +300,7 @@ From @Search_Results_A A
 	Inner Join @Search_Results_E E
 	On (A.[Name] = E.[Name])
 Group By A.[Name]
-Having Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Generic_Synonym_Match_Score] + E.[Sub_Fragment_Purposym_Match_Score]))) As Decimal(5, 2)) > = @Aggregate_Score_Threshold
-Order By [Whole_Match_Score] Desc, [Slide_Match_Score] Desc, [Fragment_Match_Score] Desc, [Generic_Synonym_Match_Score] Desc, [Sub_Fragment_Purposym_Match_Score] Desc, [Length_Deviation_Score] Asc, [Aggregate_Score] Desc
+Having Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score]))) As Decimal(5, 2)) > = @Aggregate_Score_Threshold
+Order By [Whole_Match_Score] Desc, [Slide_Match_Score] Desc, [Fragment_Match_Score] Desc, [Synonym_Match_Score] Desc, [Purposym_Match_Score] Desc, [Length_Deviation_Score] Asc, [Aggregate_Score] Desc
 
 --The last 7 query blocks can be consolidated into just 2  query blocks in a production deployment where achieving the highest efficiency performance is essential. In this query however, I have kept them separate for the purpose of ease of understanding.
