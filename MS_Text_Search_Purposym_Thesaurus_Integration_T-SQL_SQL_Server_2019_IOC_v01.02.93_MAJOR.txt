@@ -499,13 +499,15 @@ Select
 	B.[Fragment] As [Purposym]
 From dbo.Obsidian_Cumulative_Raw_Fragments A
 Cross Join @Obsidian_Raw_Fragments B
-Inner Join @Obsidian_Raw_Fragments C
-	On (C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') --This line makes sure that there is at least one word match between the fragment and purposym. It acts like an anchoring mechanism if you like. 
+--Inner Join @Obsidian_Raw_Fragments C
+--	On (C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') --This line makes sure that there is at least one word match between the fragment and purposym. It acts like an anchoring mechanism if you like. It can improve efficiency, but at the cost of sensitivity to situations where there is no common sub fragment shared by the fragment and purposym.
 Where --The code lines below filter for likeness of leading and trailing value fragments either side of each fragment and purposym cross join pairing. If alike, the purposym 'has' similar purpose and often similar meaning to all or part of the fragment.
 	A.[Fragment] <> '%'+B.[Fragment]+'%' --This line makes sure that the purposym is not merely a sub fragment.
 	And A.[Value] <> B.[Value] --This line makes sure that the purposym is not from a duplicate sentence. This will be removed later on, when I get round to integrating adjacent sentence understanding functionality. For now, it boosts efficiency.
-	And (Substring(B.[Value], 1, (B.[Fragment_Start_Index] - 1))) Like '%'+(Substring(A.[Value], 1, (A.[Fragment_Start_Index] - 1)))+'%' --This is the leading sail.
-	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like '%'+(Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value])))+'%' --This is the trailing sail.
+	And Len(A.[Fragment]) <> Len(A.[Value]) --Together these two lines remove pairings where there are no leading and trailing sails.
+	And Len(B.[Fragment]) <> Len(B.[Value]) --Together these two lines remove pairings where there are no leading and trailing sails.
+	And (Substring(B.[Value], 1, (B.[Fragment_Start_Index] - 1))) Like (Substring(A.[Value], 1, (A.[Fragment_Start_Index] - 1))) --This is the leading sail.
+	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like (Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value]))) --This is the trailing sail.
 Group By A.[Fragment], B.[Fragment] --This line improves efficiency by collapsing multiple instances of fragment and purposym pairings which arise due to similar word sequences in different sentences.
 
 Go
@@ -520,3 +522,5 @@ With Obsidian_Purposym_Thesaurus_With_Order As
 Delete A
 From Obsidian_Purposym_Thesaurus_With_Order A
 Where [Order] < (Select Max([Order]) From Obsidian_Purposym_Thesaurus_With_Order B Where B.[Fragment] = A.[Fragment] And B.[Purposym] = A.[Purposym] Group By [Fragment], [Purposym])
+
+Select * From dbo.Obsidian_Purposym_Thesaurus Order By [Fragment] Asc, [Purposym] Asc
