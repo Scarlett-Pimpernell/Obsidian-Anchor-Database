@@ -503,7 +503,7 @@ Select
 From dbo.Obsidian_Cumulative_Raw_Fragments A
 Cross Join @Obsidian_Raw_Fragments B
 Inner Join @Obsidian_Raw_Fragments C
-	On (C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') --This line makes sure that there is at least one word match between the fragment and purposym. It acts like an anchoring mechanism if you like. 
+	On (C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') --This line makes sure that there is at least one word match between the fragment and purposym. It acts like an anchoring mechanism if you like, making the select statement more efficient, but at the same time sacrificing sensitivity to matches where there is no intrinsic commonality between the fragment and the purposym. If you have access to a maximum spec cloud environemnt, consider removing this join clause altogether. 
 Where --The code lines below filter for likeness of leading and trailing value fragments either side of each fragment and purposym cross join pairing. If alike, the purposym 'has' similar purpose and often similar meaning to all or part of the fragment.
 	A.[Fragment] <> '%'+B.[Fragment]+'%' --This line makes sure that the purposym is not merely a sub fragment.
 	And A.[Value] <> B.[Value] --This line makes sure that the purposym is not from a duplicate sentence. This will be removed later on, when I get round to integrating adjacent sentence understanding functionality. For now, it boosts efficiency.
