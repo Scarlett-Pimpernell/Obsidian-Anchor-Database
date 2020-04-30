@@ -29,8 +29,6 @@
 --I actually recommend that when first deploying this fragment thesaurus algorithm, please start with a performance scaling test. Try 25 text documents, and then 50 text documents. Time both executions of the query. This will give you an idea of the rate of exponentiation on execution times on your particular hardware, as data volumes increase.
 
 --NOTA BENE:
---Never cancel this query during execution! You could loose or corrupt your entire existing fragment thesaurus otherwise, and have to process all your Text files from scratch. Therefore please follow the testing guidelines before executing the query.
---If you do accidentally loose or corrupt the fragment thesaurus, so long as you don't re-execute the query, you can retrieve the old fragment thesaurus from the table called Obsidian_Intermediate_Fragment_Thesaurus_B.
 --I have protected the code from Powershell injection and SQL injection attacks, both on import and on calculate. These two types of cyber attacks are possible when executing the xp_cmdshell or sp_executesql stored procedures.  
 --This query may take a very long time to execute on low performance hardware, as it is carrying out a substantially complex ETL on the Microsoft Word documents which you provide to it as inputs. As such, expect the processing time to increase exponentially with greater numbers of Microsoft Word documents, and greater lengths of Microsoft Word documents.
 --If you are running the query in the cloud, consider keeping a close eye on the amount of compute resources you are using up.
