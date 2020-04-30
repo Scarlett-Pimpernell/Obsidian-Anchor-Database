@@ -1,5 +1,5 @@
 --HEADER:
---MS Text Search Fragment Thesaurus Integration
+--MS Text Search Purposym Thesaurus Integration
 --T-SQL
 --SQL Server 2019
 --Initial Operating Capability
@@ -60,7 +60,7 @@ Set @Create_Archive_Folder_Command =
 
 Execute sp_executesql @Create_Archive_Folder_Command;
 
---In the future, a block of code should be integrated here, which includes the accompanying Powershell script that converts Microsoft Word documents into Text files. However, for now, Microsoft does not allow multi-line variables to be declared within SQL server. If you want to completely automate this Obsidian fragment thesaurus function, please get on to Microsoft with an urgent and important feature request which covers allowing multi-line variables in SQL Server. For the time being, you will have to just remember to manually execute the conversion powershell script from the Obsidian repository, directly in the Powershell console itself, once you have the required Microsoft Word documents in place. It shouldn't be too onerous, because updating the fragment thesaurus shouldn't happen any more often than weekly or monthly in a production solution.
+--In the future, a block of code should be integrated here, which includes the accompanying Powershell script that converts Microsoft Word documents into Text files. However, for now, Microsoft does not allow multi-line variables to be declared within SQL server. If you want to completely automate this Obsidian purposym thesaurus function, please get on to Microsoft with an urgent and important feature request which covers allowing multi-line variables in SQL Server. For the time being, you will have to just remember to manually execute the conversion powershell script from the Obsidian repository, directly in the Powershell console itself, once you have the required Microsoft Word documents in place. It shouldn't be too onerous, because updating the fragment thesaurus shouldn't happen any more often than weekly or monthly in a production solution.
 
 Declare @Raw_Directory_File_Search Table ([output] Nvarchar(Max))
 Insert Into @Raw_Directory_File_Search ([output])
