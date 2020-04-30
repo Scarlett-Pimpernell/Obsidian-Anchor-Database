@@ -52,7 +52,7 @@ Set @File_Path = 'C:\Temp\Fragment_Thesaurus_Data' --Repoint this file path refe
 Set @File_Path = Case When Right(@File_Path, 1) = '\' Then @File_Path Else @File_Path + '\' End --The case statement is used in order to always make sure that the file path includes a trailing backslash (\).
 
 Declare @Archive_File_Path Nvarchar(Max)
-Set @Archive_File_Path = @File_path + 'Archive\'
+Set @Archive_File_Path = Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + 'Archive\'
 
 Declare @Create_Archive_Folder_Command Nvarchar(Max)
 Set @Create_Archive_Folder_Command =     
@@ -110,27 +110,27 @@ Order By [Order];
  
 Open Data_Import
 Fetch Next From Data_Import Into @Order
-Set @File_Path = (Select [File_Path] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
-Set @File_Name = (Select [File_Name] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Path = (Select Replace(Replace([File_Path], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select Replace(Replace([File_Name], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
 Set @File_Import_Command = 
     N'SELECT @Data1 = Cast([Bulkcolumn] AS Nvarchar(MAX))
-    from Openrowset (Bulk ''' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ''',
+    from Openrowset (Bulk ''' + @File_Path + @File_Name + ''',
     Single_CLOB) Row_Set'
 
 Execute sp_executesql @File_Import_Command, N'@Data1 Nvarchar(MAX) Output',@Data1 =@Data Output
 
 Set @File_Copy_Command = 
-    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ' ' + Replace(Replace(@Archive_File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + @File_Path + @File_Name + ' ' + @Archive_File_Path + ''', No_Output;'
 
 Execute sp_executesql @File_Copy_Command;       
 
 Set @File_Rename_Command =     
-    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + Replace(Replace(@Archive_File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ' ' + '-NewName ' + Cast(Left(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', ''), (Len(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '')) - Charindex('.', Reverse(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', ''))))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + @Archive_File_Path + @File_Name + ' ' + '-NewName ' + Cast(Left(@File_Name, (Len(@File_Name) - Charindex('.', Reverse(@File_Name)))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
 
 Execute sp_executesql @File_Rename_Command; --Currently, the Rename-Item command doesn't seem to work when used by the sp_executesql stored procedure. This may be something to flag up to Microsoft for fixing!... Neither does the Move-Item command actually.
 
 Set @File_Delete_Command =     
-    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + @File_Path + @File_Name + ''', No_Output;'
 
 Execute sp_executesql @File_Delete_Command;
 
@@ -141,27 +141,27 @@ Begin
     Where [Order] = @Order;
 
 Set @Order = (@Order + 1)
-Set @File_Path = (Select [File_Path] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
-Set @File_Name = (Select [File_Name] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Path = (Select Replace(Replace([File_Path], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select Replace(Replace([File_Name], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
 Set @File_Import_Command = 
     N'SELECT @Data1 = Cast([Bulkcolumn] AS Nvarchar(MAX))
-    from Openrowset (Bulk ''' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ''',
+    from Openrowset (Bulk ''' + @File_Path + @File_Name + ''',
     Single_CLOB) Row_Set'
 
 Execute sp_executesql @File_Import_Command, N'@Data1 Nvarchar(MAX) Output',@Data1 =@Data Output
 
 Set @File_Copy_Command = 
-    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ' ' + Replace(Replace(@Archive_File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + @File_Path + @File_Name + ' ' + @Archive_File_Path + ''', No_Output;'
 
 Execute sp_executesql @File_Copy_Command;       
 
 Set @File_Rename_Command =     
-    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + Replace(Replace(@Archive_File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ' ' + '-NewName ' + Cast(Left(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', ''), (Len(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '')) - Charindex('.', Reverse(Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', ''))))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + @Archive_File_Path + @File_Name + ' ' + '-NewName ' + Cast(Left(@File_Name, (Len(@File_Name) - Charindex('.', Reverse(@File_Name)))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
 
 Execute sp_executesql @File_Rename_Command; --Currently, the Rename-Item command doesn't seem to work when used by the sp_executesql stored procedure. This may be something to flag up to Microsoft for fixing!... Neither does the Move-Item command actually.
 
 Set @File_Delete_Command =     
-    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + Replace(Replace(@File_Name, 'xp_cmdshell', ''), 'sp_executesql', '') + ''', No_Output;'
+    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + @File_Path + @File_Name + ''', No_Output;'
 
 Execute sp_executesql @File_Delete_Command;
 
@@ -175,11 +175,9 @@ Go
 
 ----------The Transformation Stage Follows In the Code Blocks Below----------
 --The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
-Drop Function If Exists dbo.Obsidian_Clean_Duplicates --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
-
-Go
-
-Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
 Returns Nvarchar(Max)
 With Schemabinding
 AS
@@ -187,14 +185,16 @@ Begin
 
 Set @Data = @Duplicate_Character + @Data
 
-While Patindex('%' + @Duplicate_Character + @Duplicate_Character + '%',@Data) > 0
+While Patindex(''%'' + @Duplicate_Character + @Duplicate_Character + ''%'',@Data) > 0
 	Set @Data = Replace(@Data, @Duplicate_Character + @Duplicate_Character, @Duplicate_Character)
 
 Return Right(@Data, (Len(@Data) - 1))
 
-End
+End';
 
-Go
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Clean_Duplicates' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
 
 --The following code blocks use a cursor in order to delimit the [Data] sentences which were previously extracted from the Microsoft Word documents and Text files. This is necessary in order to avoid performance crippling exponential fragments later on, which would occur for very long strings/documents. It seems sensible to do this delimiting anyway, because there is very little abstract knowledge which can be learnt from strings covering more than one sentence. As new computer hardware paradigms emerge, I will endeavour to update this query in order to make use of whole paragraph information.
 Declare @Order Int;
@@ -493,21 +493,33 @@ Select
 	[Fragment_End_Index]
 From @Obsidian_Raw_Fragments
 
---Then the new fragment and sub fragment purposym pairings are inserted into the fragment thesaurus.
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Fragment_Thesaurus' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
-Create Table dbo.Obsidian_Fragment_Thesaurus ([Fragment] Nvarchar(Max), [Sub_Fragment_Purposym] Nvarchar(Max));
-Insert Into dbo.Obsidian_Fragment_Thesaurus ([Fragment], [Sub_Fragment_Purposym])
+--Then the new fragment and purposym pairings are inserted into the fragment thesaurus.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Purposym_Thesaurus' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Purposym_Thesaurus ([Fragment] Nvarchar(Max), [Purposym] Nvarchar(Max));
+Insert Into dbo.Obsidian_Purposym_Thesaurus ([Fragment], [Purposym])
 Select
 	A.[Fragment] As [Fragment],
-	B.[Fragment] As [Sub_Fragment_Purposym]
+	B.[Fragment] As [Purposym]
 From dbo.Obsidian_Cumulative_Raw_Fragments A
 Cross Join @Obsidian_Raw_Fragments B
-Where --The code lines below filter for likeness of leading and trailing value fragments either side of each fragment and sub fragment purposym cross join pairing. If alike, the sub fragment purposym 'has' similar purpose and often similar meaning to all or part of the fragment.
-	A.[Fragment] <> '%'+B.[Fragment]+'%' --This line makes sure that the sub fragment purposym is not merely a sub fragment.
-	And A.[Value] <> B.[Value] --This line makes sure that the sub fragment purposym is not from a duplicate sentence. This will be removed later on, when I get round to integrating adjacent sentence understanding functionality. For now, it boosts efficiency.
-	And (Substring(B.[Value], 1, (B.[Fragment_Start_Index] - 1))) Like '%'+(Substring(A.[Value], 1, (A.[Fragment_Start_Index] - 1)))+'%'
-	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like '%'+(Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value])))+'%'
-	And (Select Count(1) From @Obsidian_Raw_Fragments C Where C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') > 0 --This line makes sure that there is at least one word match between the fragment and sub fragment purposym. It acts like an anchoring mechanism if you like.
-Group By A.[Fragment], B.[Fragment] --This line improves efficiency by collapsing multiple instances of fragment and sub fragment purposym pairings which arise due to similar word sequences in different sentences.
+Inner Join @Obsidian_Raw_Fragments C
+	On (C.[Value] = B.[Value] And B.[Fragment] Like '%'+C.[Fragment]+'%' And A.[Fragment] Like '%'+C.[Fragment]+'%') --This line makes sure that there is at least one word match between the fragment and purposym. It acts like an anchoring mechanism if you like. 
+Where --The code lines below filter for likeness of leading and trailing value fragments either side of each fragment and purposym cross join pairing. If alike, the purposym 'has' similar purpose and often similar meaning to all or part of the fragment.
+	A.[Fragment] <> '%'+B.[Fragment]+'%' --This line makes sure that the purposym is not merely a sub fragment.
+	And A.[Value] <> B.[Value] --This line makes sure that the purposym is not from a duplicate sentence. This will be removed later on, when I get round to integrating adjacent sentence understanding functionality. For now, it boosts efficiency.
+	And (Substring(B.[Value], 1, (B.[Fragment_Start_Index] - 1))) Like '%'+(Substring(A.[Value], 1, (A.[Fragment_Start_Index] - 1)))+'%' --This is the leading sail.
+	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like '%'+(Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value])))+'%' --This is the trailing sail.
+Group By A.[Fragment], B.[Fragment] --This line improves efficiency by collapsing multiple instances of fragment and purposym pairings which arise due to similar word sequences in different sentences.
 
 Go
+
+--The following code blocks carry out a post process cleanup of any duplicates that may be in the purposym thesaurus, and therefore improves subsequent search engine efficiency.
+With Obsidian_Purposym_Thesaurus_With_Order As
+(
+ Select Row_Number() Over (Partition By [Fragment], [Purposym] Order By [Fragment], [Purposym]) As [Order], [Fragment], [Purposym]
+ From dbo.Obsidian_Purposym_Thesaurus
+)
+
+Delete A
+From Obsidian_Purposym_Thesaurus_With_Order A
+Where [Order] < (Select MAX([Order]) From Obsidian_Purposym_Thesaurus_With_Order B Where B.[Fragment] = A.[Fragment] And B.[Purposym] = A.[Purposym] Group By [Fragment], [Purposym])
