@@ -76,7 +76,7 @@ Declare @Search_Text As Nvarchar(250)
 Set @Search_Text = 'Michael Development Sixteen' --This variable should ideally be constrained to <= 250 characters long.
 
 
-Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(8000))
+Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(4000))
 Insert Into @Element_Names_Table_Variable ([Name])
 SELECT 
 	[Name] As [Name]
@@ -213,7 +213,7 @@ Where
 Group By A.[Search_Text], A.[Fragment]
 
 
-Declare @Purposym_Lookup_Table_Variable Table ([Purposym] Nvarchar(8000))
+Declare @Purposym_Lookup_Table_Variable Table ([Purposym] Nvarchar(4000))
 Insert Into @Purposym_Lookup_Table_Variable ([Purposym])
 Select
 	B.[Purposym]
@@ -232,7 +232,7 @@ Declare @Top_Length_Deviation_Score As Float
 Set @Top_Length_Deviation_Score = (Select Top (1) [Raw_Length_Deviation_Score] From @Length_Score_Table_Variable Order By [Raw_Length_Deviation_Score] Desc)
 
 
-Declare @Search_Results_A Table ([Name] Nvarchar(8000), [Whole_Match_Score] Float, [Length_Deviation_Score] Float)
+Declare @Search_Results_A Table ([Name] Nvarchar(4000), [Whole_Match_Score] Float, [Length_Deviation_Score] Float)
 Insert Into @Search_Results_A ([Name], [Whole_Match_Score], [Length_Deviation_Score])
 Select
 	[Name],
@@ -241,7 +241,7 @@ Select
 From @Element_Names_Table_Variable
 Where [Name] <> ''
 
-Declare @Search_Results_B Table ([Name] Nvarchar(8000), [Slide_Match_Score] Float)
+Declare @Search_Results_B Table ([Name] Nvarchar(4000), [Slide_Match_Score] Float)
 Insert Into @Search_Results_B ([Name], [Slide_Match_Score])
 Select
 	[Name],
@@ -250,7 +250,7 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Extended_Slide_Table_Variable
 Where [Slide_Value] <> ''
 				
-Declare @Search_Results_C Table ([Name] Nvarchar(8000), [Fragment_Match_Score] Float)
+Declare @Search_Results_C Table ([Name] Nvarchar(4000), [Fragment_Match_Score] Float)
 Insert Into @Search_Results_C ([Name], [Fragment_Match_Score])
 Select
 	[Name],
@@ -259,7 +259,7 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Fragment_Table_Variable
 Where [Fragment] <> ''
 
-Declare @Search_Results_D Table ([Name] Nvarchar(8000), [Synonym_Match_Score] Float)
+Declare @Search_Results_D Table ([Name] Nvarchar(4000), [Synonym_Match_Score] Float)
 Insert Into @Search_Results_D
 Select
 	[Name],
@@ -268,7 +268,7 @@ From @Element_Names_Table_Variable
 Cross Join @Synonym_Lookup_Table_Variable
 Where [Synonym] <> ''
 
-Declare @Search_Results_E Table ([Name] Nvarchar(8000), [Purposym_Match_Score] Float)
+Declare @Search_Results_E Table ([Name] Nvarchar(4000), [Purposym_Match_Score] Float)
 Insert Into @Search_Results_E ([Name], [Purposym_Match_Score])
 Select
 	[Name],
