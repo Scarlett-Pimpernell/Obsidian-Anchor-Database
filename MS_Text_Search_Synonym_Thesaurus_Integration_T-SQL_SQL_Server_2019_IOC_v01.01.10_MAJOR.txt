@@ -36,7 +36,7 @@
 
 
 Drop Table If Exists dbo.Raw_Synonym_Thesaurus;  --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
-Create Table dbo.Raw_Synonym_Thesaurus ([Data] nvarchar(4000))
+Create Table dbo.Raw_Synonym_Thesaurus ([Data] nvarchar(Max))
 Bulk Insert dbo.Raw_Synonym_Thesaurus
 From 'C:\Temp\th_en_GB_final.dat'
 With
@@ -50,14 +50,14 @@ Set @Raw_Clob_Thesaurus =
 	(Select * From Openrowset (Bulk 'C:\Temp\th_en_GB_final.dat', Single_Clob) As [Data]);
 
 --I seem to have to calculate original row order in the .dat file, because as far as I can tell, Microsoft doesn't think people may want to bulk insert a flat file while maintaining row order... Your guess is as good as mine on this one.
-Declare @Raw_Synonym_Thesaurus_Table_Variable_A Table ([Data] nvarchar(4000), [Duplication_Index] Int)
+Declare @Raw_Synonym_Thesaurus_Table_Variable_A Table ([Data] nvarchar(Max), [Duplication_Index] Int)
 Insert Into @Raw_Synonym_Thesaurus_Table_Variable_A ([Data], [Duplication_Index])
 Select
 	[Data],
 	(Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))) - (Patindex('%'+[Data]+'%', Right(@Raw_Clob_Thesaurus, (Len(@Raw_Clob_Thesaurus) - (Patindex('%'+[Data]+'%', @Raw_Clob_Thesaurus) + (Row_Number ( ) Over (Partition By [Data] Order By [Data] Asc) - 2))))) - 1) As [Duplication_Index]
 From dbo.Raw_Synonym_Thesaurus
 
-Declare @Raw_Synonym_Thesaurus_Table_Variable_B Table ([Data] nvarchar(4000), [Duplication_Index] Int, [Order] Int)
+Declare @Raw_Synonym_Thesaurus_Table_Variable_B Table ([Data] nvarchar(Max), [Duplication_Index] Int, [Order] Int)
 Insert Into @Raw_Synonym_Thesaurus_Table_Variable_B ([Data], [Duplication_Index], [Order])
 Select
 	[Data],
@@ -66,7 +66,7 @@ Select
 From @Raw_Synonym_Thesaurus_Table_Variable_A
 
 
-Declare @Intermediate_Synonym_Thesaurus_Table_Variable Table ([Word] Nvarchar(250), [Limited_Synonyms] Nvarchar(250));
+Declare @Intermediate_Synonym_Thesaurus_Table_Variable Table ([Word] Nvarchar(250), [Limited_Synonyms] Nvarchar(Max));
 Insert Into @Intermediate_Synonym_Thesaurus_Table_Variable ([Word], [Limited_Synonyms])
 Select
 	Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(Replace(A.[Data], '|1', ''), '|2', ''), '|3', ''), '|4', ''), '|5', ''), '|6', ''), '|7', ''), '|8', ''), '|9', '') As [Word],
