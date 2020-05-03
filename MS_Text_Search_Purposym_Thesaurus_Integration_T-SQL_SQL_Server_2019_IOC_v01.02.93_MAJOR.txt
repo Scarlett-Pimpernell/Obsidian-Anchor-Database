@@ -321,7 +321,7 @@ From
 	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n),
-	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8)) Thousands(n)	
+	(Values(0),(1),(2),(3),(4)) Thousands(n)	
 Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n Between 1 And Len(@Value)
 Order By 1;
 
@@ -381,7 +381,7 @@ From
 	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
 	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n),
-	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8)) Thousands(n)
+	(Values(0),(1),(2),(3),(4)) Thousands(n)
 Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n Between 1 And Len(@Value)
 Order By 1;
 
