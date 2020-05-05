@@ -29,8 +29,8 @@
 --Integrate A Basic Text Search Engine Technique --> Delivered.
 --Integrate A Generic Synonym Matching Technique --> Delivered.
 --Integrate A Fragment Purposym Matching Technique --> Delivered.
---Integrate adjacent sentence understanding --> Estimated Release: May 2020.
---Integrate question and answer functionality --> Estimated Release: Jul 2020.
+--Integrate question and answer functionality --> Estimated Release: Jun 2020.
+--Integrate adjacent sentence understanding --> Estimated Release: Jul 2020.
 --Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Aug 2020.
 --Integrate A Client Enterprise Specific Search Phrase Inferencing Technique --> Estimated Release: Aug 2020.
 --Integrate Dimensional Boosting By Viewed Element Network/Peers/Ancestors/Descendants --> Estimated Release: Sep 2020.
