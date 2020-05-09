@@ -1,7 +1,7 @@
 # Obsidian
 Intelligent Enterprise Architecture - Human Interaction Interface, Search Engine, and Artificial Intelligence Agent.
 
-I have finally picked up the coding hobby again, found some suitable hardware to work with, and now intend to code non-stop for the forseeable future.
+I will not be releasing any more code until the moral and ethical state of the world has improved.
 
 Current Development Focus Is On the Core Search Engine Algorithm. I haven't thoroughly tested the queries yet, so be aware that there may be minor bugs.
 
