@@ -492,7 +492,7 @@ Select
 	[Fragment_End_Index]
 From @Obsidian_Raw_Fragments
 
---Then the new fragment and purposym pairings are inserted into the intermediate purposym thesaurus table variable.
+--Then the new fragment and purposym pairings are inserted into the intermediate new purposym thesaurus table variable.
 Declare @Obsidian_Intermediate_New_Purposym_Thesaurus Table ([Fragment_Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int, [Purposym_Value] Nvarchar(4000), [Purposym] Nvarchar(4000), [Purposym_Start_Index] Int, [Purposym_End_Index] Int);
 Insert Into @Obsidian_Intermediate_New_Purposym_Thesaurus ([Fragment_Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index], [Purposym_Value], [Purposym], [Purposym_Start_Index], [Purposym_End_Index])
 Select
