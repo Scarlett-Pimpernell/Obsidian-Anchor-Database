@@ -94,7 +94,7 @@ From dbo.Obsidian_Cumulative_Sentences
 
 
 Declare @Search_Text_Typo_Granularity_Percentage As Int
-Set @Search_Text_Typo_Granularity_Percentage = 15 --This variable value must be constrained to 0>=x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
+Set @Search_Text_Typo_Granularity_Percentage = 20 --This variable value must be constrained to 0>=x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
 
 Declare @Search_Text_Extended_Typo_Table_Variable TABLE([Typo_Value] Nvarchar(250))
 Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])

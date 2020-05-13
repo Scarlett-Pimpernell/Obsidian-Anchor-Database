@@ -582,7 +582,7 @@ Declare @Coverage_Percentage_Threshold Int
 Set @Coverage_Percentage_Threshold = 20 --This variable value must be constrained to 0 < x >= 100.
 
 --Below is the final load into the synonym thesaurus.
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Synonym_Thesaurus' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Drop Table If Exists dbo.Obsidian_Synonym_Thesaurus; --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
 Create Table dbo.Obsidian_Synonym_Thesaurus ([Fragment] Nvarchar(4000), [Synonym] Nvarchar(4000), [Coverage_Percentage] Float);
 Insert Into dbo.Obsidian_Synonym_Thesaurus ([Fragment], [Synonym], [Coverage_Percentage])
 Select
