@@ -26,9 +26,9 @@
 --Turning on the full text indexing feature may significantly speed up query execution time. I will investigate this at a much later date.
 
 --FUNCTIONALITY STILL TO BE INCLUDED IN THE ALGORITHM INCLUDES:
---Integrate A Basic Text Search Engine Technique --> Delivered.
---Integrate A Fragment Purposym Matching Technique --> Delivered.
---Integrate A Word/Phrase Synonym Matching Technique --> May 2020.
+--Integrate A Basic Text Search Engine Technique --> Delivered Oct 2019.
+--Integrate A Fragment Purposym Matching Technique --> Delivered Apr 2020.
+--Integrate A Fragment Synonym Matching Technique --> Delivered May 2020.
 --Integrate question and answer functionality --> Estimated Release: Jun 2020.
 --Integrate adjacent sentence understanding --> Estimated Release: Jul 2020.
 --Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Aug 2020.
