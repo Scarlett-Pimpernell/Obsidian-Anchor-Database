@@ -3,7 +3,7 @@
 --T-SQL
 --SQL Server 2019
 --Initial Operating Capability
---Version 1.2
+--Version 1.3
 
 
 --OVERVIEW:
@@ -11,10 +11,10 @@
 --splits the search text variable into a table variable using space delimiters,
 --cross references the table variable to multiple element type tables using a join construct,
 --assigns a whole match score column value based on the repository elements' name's whole match likeness,
---assigns a slide match score column value based on the repository elements' name's extended slide match likeness (for typo handling),
+--assigns a typo match score column value based on the repository elements' name's extended typo match likeness,
 --assigns a fragment match score column value based on the repository elements' name's fragment match likeness,
---assigns a generic synonym split match score column value based on the repository elements' name's generic synonym split match likeness,
---assigns a fragment purposym match score column value based on the repository elements' name's data science fragment synonym match likeness,
+--assigns a fragment purposym match score column value based on the repository elements' name's machine learning fragment purposym match likeness,
+--assigns a word/phrase synonym split match score column value based on the repository elements' name's word/phrase synonym split match likeness,
 --assigns a length score column value based on the repository elements' name's length unlikeness,
 --assigns an aggregate score column value based on all of the score column values,
 --filters the aggregate score column by a score threshold variable,
@@ -27,8 +27,8 @@
 
 --FUNCTIONALITY STILL TO BE INCLUDED IN THE ALGORITHM INCLUDES:
 --Integrate A Basic Text Search Engine Technique --> Delivered.
---Integrate A Generic Synonym Matching Technique --> Delivered.
 --Integrate A Fragment Purposym Matching Technique --> Delivered.
+--Integrate A Word/Phrase Synonym Matching Technique --> May 2020.
 --Integrate question and answer functionality --> Estimated Release: Jun 2020.
 --Integrate adjacent sentence understanding --> Estimated Release: Jul 2020.
 --Integrate A Client Enterprise Specific Synonym Matching Technique --> Estimated Release: Aug 2020.
@@ -47,7 +47,7 @@
 --NOTA BENE:
 --The ideal production use case for this algorithm includes the caching of a core set of common search text variables.
 --This search algorithm excludes search operator functionality, but including search operators would be a relatively simple change if a specific client asked for this requirement.
---The generic synonym and fragment purposym techniques must be used together in order to attain greatest effectiveness. Otherwise, if you just used a generic synonym table, the algorithm would not understand search phrase context i.e. whether particular sub-phrases or words of your search query are intended as adjectives, nouns, or verbs etc.
+--The word/phrase synonym and fragment purposym techniques must be used together in order to attain greatest effectiveness. Otherwise, if you just used a word/phrase synonym table, the algorithm would not understand search word/phrase context i.e. whether particular sub-phrases or words of your search query are intended as adjectives, nouns, or verbs etc.
 
 
 --The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
@@ -73,16 +73,17 @@ Execute sp_executesql @Create_Function_Command;
 
 
 Declare @Search_Text As Nvarchar(250)
-Set @Search_Text = 'Michael Development Sixteen' --This variable should ideally be constrained to <= 250 characters long.
+Set @Search_Text = 'MooD 16 Obsidian' --This variable should ideally be constrained to <= 250 characters long.
+Set @Search_Text = Trim(dbo.Obsidian_Clean_Duplicates(@Search_Text, ' ')) --Including minor leading, trailing, and consecutive-duplicate space cleanup.
 
 
 Declare @Element_Names_Table_Variable Table ([Name] Nvarchar(4000))
 Insert Into @Element_Names_Table_Variable ([Name])
-SELECT 
+Select 
 	[Name] As [Name]
 From dbo.Elements_Type_01
 Union All
-SELECT 
+Select 
 	[Name] As [Name]
 From dbo.Elements_Type_02
 Union All
@@ -95,39 +96,20 @@ From dbo.Obsidian_Cumulative_Sentences
 Declare @Search_Text_Typo_Granularity_Percentage As Int
 Set @Search_Text_Typo_Granularity_Percentage = 15 --This variable value must be constrained to 0>=x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
 
-Declare @Search_Text_Extended_Slide_Table_Variable TABLE([Slide_Value] Nvarchar(250))
-Insert Into @Search_Text_Extended_Slide_Table_Variable ([Slide_Value])
+Declare @Search_Text_Extended_Typo_Table_Variable TABLE([Typo_Value] Nvarchar(250))
+Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
 Select 
-	Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End) As [Slide_Value]
+	Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End) As [Typo_Value]
 From (Select @Search_Text B) A
 join Master..Spt_Values V On V.[Number] < Len(A.B)
 where V.Type = 'P' --This query slides across a string variable by one position at a time. As a result, the leading characters carry less weight than the rest of the characters... This is fixed by joining the results of a partial reverse search text slide, as seen below.
 Union All
 Select 
-	Reverse(Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End)) As [Slide_Value]
+	Reverse(Substring(A.B, V.[Number]+1, Case When (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100) > 1 Then Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100 Else 1 End)) As [Typo_Value]
 From (Select Reverse(@Search_Text) B) A
 join Master..Spt_Values V On V.[Number] < Len(A.B)
 where V.Type = 'P'
 And V.[Number] > Len(@Search_Text) - (Len(@Search_Text) * @Search_Text_Typo_Granularity_Percentage / 100)
-
-
-Declare @Search_Text_Split_Table_Variable_A Table ([Value] Nvarchar(250))
-Insert Into @Search_Text_Split_Table_Variable_A
-Select [Value] From String_Split(@Search_Text, ' ') --Add desired word delimiter here.
-
-Declare @Search_Text_Split_Table_Variable_B Table ([Value] Nvarchar(250))
-Insert Into @Search_Text_Split_Table_Variable_B ([Value]) --You have to insert the delimited search text words into another table variable in order to perform a minor cleanup.
-Select
-	Trim(dbo.Obsidian_Clean_Duplicates([Value], ' ')) As [Value] --Including minor leading, trailing, and consecutive-duplicate space cleanup.
-From @Search_Text_Split_Table_Variable_A
-
-Declare @Synonym_Lookup_Table_Variable Table ([Synonym] Nvarchar(250))
-Insert Into @Synonym_Lookup_Table_Variable
-Select
-	B.[Synonym]
-From @Search_Text_Split_Table_Variable_B A
-Inner Join dbo.Obsidian_Synonym_Thesaurus B
-	On (A.[Value] = B.[Word] And B.[Synonym] <> '')
 
 
 Declare @Search_Text_Slide_Length_Table_Variable TABLE([Search_Text] Nvarchar(250), [Slide_Length] Int)
@@ -222,6 +204,15 @@ Inner Join dbo.Obsidian_Purposym_Thesaurus B
 On (A.[Fragment] = B.[Fragment] And B.[Purposym] <> '')
 
 
+Declare @Synonym_Lookup_Table_Variable Table ([Synonym] Nvarchar(250))
+Insert Into @Synonym_Lookup_Table_Variable
+Select
+	B.[Synonym]
+From @Search_Text_Fragment_Table_Variable A
+Inner Join dbo.Obsidian_Synonym_Thesaurus B
+	On (A.[Fragment] = B.[Fragment] And B.[Synonym] <> '')
+
+
 Declare @Length_Score_Table_Variable Table ([Raw_Length_Deviation_Score] Float)
 Insert Into @Length_Score_Table_Variable ([Raw_Length_Deviation_Score])
 Select
@@ -241,14 +232,14 @@ Select
 From @Element_Names_Table_Variable
 Where [Name] <> ''
 
-Declare @Search_Results_B Table ([Name] Nvarchar(4000), [Slide_Match_Score] Float)
-Insert Into @Search_Results_B ([Name], [Slide_Match_Score])
+Declare @Search_Results_B Table ([Name] Nvarchar(4000), [Typo_Match_Score] Float)
+Insert Into @Search_Results_B ([Name], [Typo_Match_Score])
 Select
 	[Name],
-	Cast(Case When [Name] Like '%'+[Slide_Value]+'%' Then 100.000 / 4 Else 0 End As Float) As [Slide_Match_Score]
+	Cast(Case When [Name] Like '%'+[Typo_Value]+'%' Then 100.000 / 4 Else 0 End As Float) As [Typo_Match_Score]
 From @Element_Names_Table_Variable
-Cross Join @Search_Text_Extended_Slide_Table_Variable
-Where [Slide_Value] <> ''
+Cross Join @Search_Text_Extended_Typo_Table_Variable
+Where [Typo_Value] <> ''
 				
 Declare @Search_Results_C Table ([Name] Nvarchar(4000), [Fragment_Match_Score] Float)
 Insert Into @Search_Results_C ([Name], [Fragment_Match_Score])
@@ -259,23 +250,23 @@ From @Element_Names_Table_Variable
 Cross Join @Search_Text_Fragment_Table_Variable
 Where [Fragment] <> ''
 
-Declare @Search_Results_D Table ([Name] Nvarchar(4000), [Synonym_Match_Score] Float)
-Insert Into @Search_Results_D
-Select
-	[Name],
-	Cast(Case When [Name] Like '%'+[Synonym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Synonym_Match_Score]
-From @Element_Names_Table_Variable
-Cross Join @Synonym_Lookup_Table_Variable
-Where [Synonym] <> ''
-
-Declare @Search_Results_E Table ([Name] Nvarchar(4000), [Purposym_Match_Score] Float)
-Insert Into @Search_Results_E ([Name], [Purposym_Match_Score])
+Declare @Search_Results_D Table ([Name] Nvarchar(4000), [Purposym_Match_Score] Float)
+Insert Into @Search_Results_D ([Name], [Purposym_Match_Score])
 Select
 	[Name],
 	Cast(Case When [Name] Like '%'+[Purposym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Purposym_Match_Score]
 From @Element_Names_Table_Variable
 Cross Join @Purposym_Lookup_Table_Variable
 Where [Purposym] <> ''
+
+Declare @Search_Results_E Table ([Name] Nvarchar(4000), [Synonym_Match_Score] Float)
+Insert Into @Search_Results_E
+Select
+	[Name],
+	Cast(Case When [Name] Like '%'+[Synonym]+'%' Then 100.000 / 4 Else 0 End As Float) As [Synonym_Match_Score]
+From @Element_Names_Table_Variable
+Cross Join @Synonym_Lookup_Table_Variable
+Where [Synonym] <> ''
 
 
 Declare @Aggregate_Score_Threshold As Int
@@ -284,12 +275,12 @@ Set @Aggregate_Score_Threshold = 0 --This variable value must be constrained to 
 Select
 	A.[Name] As [Name],
 	Cast(Avg(A.[Whole_Match_Score]) As Decimal(5, 2)) As [Whole_Match_Score],
-	Cast(Avg(B.[Slide_Match_Score]) As Decimal(5, 2)) As [Slide_Match_Score],
+	Cast(Avg(B.[Typo_Match_Score]) As Decimal(5, 2)) As [Typo_Match_Score],
 	Cast(Avg(C.[Fragment_Match_Score]) As Decimal(5, 2)) As [Fragment_Match_Score],
-	Cast(Avg(D.[Synonym_Match_Score]) As Decimal(5,2)) As [Synonym_Match_Score],
-	Cast(Avg(E.[Purposym_Match_Score]) As Decimal(5, 2)) As [Purposym_Match_Score],
+	Cast(Avg(D.[Purposym_Match_Score]) As Decimal(5, 2)) As [Purposym_Match_Score],
+	Cast(Avg(E.[Synonym_Match_Score]) As Decimal(5,2)) As [Synonym_Match_Score],
 	Cast(Avg(A.[Length_Deviation_Score]) As Decimal(5, 2)) As [Length_Deviation_Score],
-	Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score]))) As Decimal(5, 2)) As [Aggregate_Score]
+	Cast(Avg(A.[Whole_Match_Score] + B.[Typo_Match_Score] + C.[Fragment_Match_Score] + D.[Purposym_Match_Score] + E.[Synonym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Typo_Match_Score] + C.[Fragment_Match_Score] + D.[Purposym_Match_Score] + E.[Synonym_Match_Score]))) As Decimal(5, 2)) As [Aggregate_Score]
 From @Search_Results_A A 
 	Inner Join @Search_Results_B B
 	On (A.[Name] = B.[Name])
@@ -300,7 +291,7 @@ From @Search_Results_A A
 	Inner Join @Search_Results_E E
 	On (A.[Name] = E.[Name])
 Group By A.[Name]
-Having Cast(Avg(A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Slide_Match_Score] + C.[Fragment_Match_Score] + D.[Synonym_Match_Score] + E.[Purposym_Match_Score]))) As Decimal(5, 2)) > = @Aggregate_Score_Threshold
-Order By [Whole_Match_Score] Desc, [Slide_Match_Score] Desc, [Fragment_Match_Score] Desc, [Synonym_Match_Score] Desc, [Purposym_Match_Score] Desc, [Length_Deviation_Score] Asc, [Aggregate_Score] Desc
+Having Cast(Avg(A.[Whole_Match_Score] + B.[Typo_Match_Score] + C.[Fragment_Match_Score] + D.[Purposym_Match_Score] + E.[Synonym_Match_Score] - ((A.[Length_Deviation_Score] / 100) * (A.[Whole_Match_Score] + B.[Typo_Match_Score] + C.[Fragment_Match_Score] + D.[Purposym_Match_Score] + E.[Synonym_Match_Score]))) As Decimal(5, 2)) > = @Aggregate_Score_Threshold
+Order By [Whole_Match_Score] Desc, [Typo_Match_Score] Desc, [Fragment_Match_Score] Desc, [Purposym_Match_Score] Desc, [Synonym_Match_Score] Desc, [Length_Deviation_Score] Asc, [Aggregate_Score] Desc
 
 --The last 7 query blocks can be consolidated into just 2  query blocks in a production deployment where achieving the highest efficiency performance is essential. In this query however, I have kept them separate for the purpose of ease of understanding.
