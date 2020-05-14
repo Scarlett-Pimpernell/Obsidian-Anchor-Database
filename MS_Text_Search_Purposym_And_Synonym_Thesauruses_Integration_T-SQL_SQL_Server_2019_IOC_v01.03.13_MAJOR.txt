@@ -537,9 +537,10 @@ Where --The code lines below filter for likeness of leading and trailing value f
 	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like (Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value]))) --This is the trailing sail.
 
 --Then the new fragment and synonym pairings are inserted into the intermediate full synonym thesaurus table variable.
-Declare @Obsidian_Intermediate_Full_Synonym_Thesaurus Table ([Fragment] Nvarchar(4000), [Synonym] Nvarchar(4000));
-Insert Into @Obsidian_Intermediate_Full_Synonym_Thesaurus ([Fragment], [Synonym])
+Declare @Obsidian_Intermediate_Full_Synonym_Thesaurus Table ([Anchor] Nvarchar(4000), [Fragment] Nvarchar(4000), [Synonym] Nvarchar(4000));
+Insert Into @Obsidian_Intermediate_Full_Synonym_Thesaurus ([Anchor], [Fragment], [Synonym])
 Select
+	A.[Fragment] As [Anchor],
 	A.[Purposym] As [Fragment],
 	B.[Purposym] As [Synonym]
 From @Obsidian_Intermediate_Full_Purposym_Thesaurus A
@@ -548,7 +549,7 @@ Where
 	B.[Fragment] = A.[Fragment] --This line acts as an anchor, so that only co-purposyms are matched.
 	And (Substring(B.[Purposym_Value], 1, (B.[Purposym_Start_Index] - 1))) Like (Substring(A.[Purposym_Value], 1, (A.[Purposym_Start_Index] - 1))) --This is the leading sail.
 	And (Substring(B.[Purposym_Value], (B.[Purposym_End_Index] + 1), Len(B.[Purposym_Value]))) Like (Substring(A.[Purposym_Value], (A.[Purposym_End_Index] + 1), Len(A.[Purposym_Value]))) --This is the trailing sail.
-Group By A.[Purposym], B.[Purposym]
+Group By A.[Fragment], A.[Purposym], B.[Purposym]
 
 --Purposym fragment counts are used to filter the synonym thesaurus table later on.
 Declare @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts Table ([Purposym] Nvarchar(4000), [Count] Int);
@@ -560,13 +561,14 @@ From @Obsidian_Intermediate_Full_Purposym_Thesaurus
 Group By [Purposym]
 
 --Synonym fragment counts are used to filter the synonym thesaurus table later on.
-Declare @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts Table ([Fragment] Nvarchar(4000), [Count] Float);
-Insert Into @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts ([Fragment], [Count])
+Declare @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts Table ([Anchor] Nvarchar(4000), [Fragment] Nvarchar(4000), [Count] Float);
+Insert Into @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts ([Anchor], [Fragment], [Count])
 Select
+	[Anchor],
 	[Fragment],
 	Count(1) As [Count]
 From @Obsidian_Intermediate_Full_Synonym_Thesaurus
-Group By [Fragment]
+Group By [Anchor], [Fragment]
 
 --Below is the final load into the purposym thesaurus.
 If Not Exists (Select * From Sysobjects Where Name='Obsidian_Purposym_Thesaurus' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
@@ -583,9 +585,10 @@ Set @Coverage_Percentage_Threshold = 20 --This variable value must be constraine
 
 --Below is the final load into the synonym thesaurus.
 Drop Table If Exists dbo.Obsidian_Synonym_Thesaurus; --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
-Create Table dbo.Obsidian_Synonym_Thesaurus ([Fragment] Nvarchar(4000), [Synonym] Nvarchar(4000), [Coverage_Percentage] Float);
-Insert Into dbo.Obsidian_Synonym_Thesaurus ([Fragment], [Synonym], [Coverage_Percentage])
+Create Table dbo.Obsidian_Synonym_Thesaurus ([Anchor] Nvarchar(4000), [Fragment] Nvarchar(4000), [Synonym] Nvarchar(4000), [Coverage_Percentage] Float);
+Insert Into dbo.Obsidian_Synonym_Thesaurus ([Anchor], [Fragment], [Synonym], [Coverage_Percentage])
 Select
+	A.[Anchor] As [Anchor], --This line is important only for maintaining a unique row ID.
 	A.[Fragment] As [Fragment],
 	A.[Synonym] As [Synonym],
 	((Avg(C.[Count]) / Avg(Square(B.[Count]))) * 100) As [Coverage_Percentage] --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]
@@ -593,11 +596,11 @@ From @Obsidian_Intermediate_Full_Synonym_Thesaurus A
 Inner Join @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts B
 	On (B.[Purposym] = A.[Fragment] And A.[Fragment] <> A.[Synonym] And A.[Fragment] <> '%'+A.[Synonym]+'%') --The second clause ensures that the synonym is not a duplicate, and the third clause makes sure that the synonym is not merely a sub fragment.
 Inner Join @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts C
-	On (C.[Fragment] = A.[Fragment] And A.[Fragment] <> A.[Synonym] And A.[Fragment] <> '%'+A.[Synonym]+'%') --The second clause ensures that the synonym is not a duplicate, and the third clause makes sure that the synonym is not merely a sub fragment.
-Group By A.[Fragment], A.[Synonym]
+	On (C.[Anchor] = A.[Anchor] And C.[Fragment] = A.[Fragment] And A.[Fragment] <> A.[Synonym] And A.[Fragment] <> '%'+A.[Synonym]+'%') --The third clause ensures that the synonym is not a duplicate, and the fourth clause makes sure that the synonym is not merely a sub fragment.
+Group By A.[Anchor], A.[Fragment], A.[Synonym]
 Having 
 	((Avg(C.[Count]) / Avg(Square(B.[Count]))) * 100) >= @Coverage_Percentage_Threshold --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]
--- The synonym thesaurus technique works, because in previous code blocks, we allowed for duplicate fragments which come from different sentences (Values). This makes the coverage percentage method work effectively.
+-- The synonym thesaurus technique works, because in previous code blocks, we allowed for duplicate fragments which come from different sentences (Values). This makes the coverage percentage method work effectively. 
 ;
 
 --The following code blocks carry out a post process cleanup of any duplicates that may be in the cumulative sentences, and therefore improves subsequent search engine efficiency.
