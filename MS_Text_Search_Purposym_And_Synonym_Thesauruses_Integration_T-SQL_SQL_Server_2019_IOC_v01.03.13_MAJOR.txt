@@ -597,6 +597,7 @@ Inner Join @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts C
 Group By A.[Fragment], A.[Synonym]
 Having 
 	((Avg(C.[Count]) / Avg(Square(B.[Count]))) * 100) >= @Coverage_Percentage_Threshold --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]
+-- The synonym thesaurus technique works, because in previous code blocks, we allowed for duplicate fragments which come from different sentences (Values). This makes the coverage percentage method work effectively.
 ;
 
 --The following code blocks carry out a post process cleanup of any duplicates that may be in the cumulative sentences, and therefore improves subsequent search engine efficiency.
