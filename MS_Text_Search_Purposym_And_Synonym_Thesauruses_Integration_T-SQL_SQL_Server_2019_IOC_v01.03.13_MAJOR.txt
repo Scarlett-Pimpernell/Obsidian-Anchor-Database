@@ -593,7 +593,7 @@ Select
 	((Sum(C.[Count]) / Avg(Square(B.[Count]))) * 100) As [Coverage_Percentage] --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]. We sum C.[Count], so that we can be senesitive to coverage percentage across fragment duplicates. We average B.[Count], because it is already a total.
 From @Obsidian_Intermediate_Full_Synonym_Thesaurus A
 Inner Join @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts B
-	On (B.[Purposym] = A.[Fragment] And A.[Fragment] <> A.[Synonym] And A.[Fragment] <> '%'+A.[Synonym]+'%') --The second clause ensures that the synonym is not a duplicate, and the third clause makes sure that the synonym is not merely a sub fragment.
+	On (B.[Purposym] = A.[Fragment])
 Inner Join @Obsidian_Intermediate_Full_Synonym_Thesaurus_Counts C
 	On (C.[Anchor] = A.[Anchor] And C.[Fragment] = A.[Fragment] And A.[Fragment] <> A.[Synonym] And A.[Fragment] <> '%'+A.[Synonym]+'%') --The first clause gives multi-purpose fragment duplicate count sensitivity. The second clause gives multi-context fragment duplicate count awareness. The third clause ensures that the synonym is not a duplicate, and the fourth clause makes sure that the synonym is not merely a sub fragment.
 Group By A.[Fragment], A.[Synonym] --We don't group by anchor, so that we can be senesitive to coverage percentage across fragment duplicates.
