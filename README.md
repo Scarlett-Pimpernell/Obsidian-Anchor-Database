@@ -3,7 +3,7 @@ Intelligent Enterprise Architecture - Human Interaction Interface, Search Engine
 
 I will not be releasing any more code until the moral and ethical state of the world has improved.
 
-Current Development Focus Is On the Core Search Engine Algorithm. I haven't thoroughly tested the queries yet, so be aware that there may be minor bugs.
+Current Development Focus Is On the Core Search Engine Algorithm. I haven't thoroughly tested the queries yet, so be aware that there may be minor bugs. Also, I am now well advanced in coding v01.04, which includes the ability to understand relationships within the text of a given document. Unfortunately, once again, may have to wait a while for this one, as I need to upgrade my hardware in order to continue... also dealing with an extremely complex technique which will most probably take a few weeks to get right at current rates of development.
 
 The latest upload includes a technique for fragment purposym matching within the search engine algorithm. Run the appropriate queries on your SQL Server 2017/2019 database, using either SSMS or Visual Studio 2017/2019. Set-up steps include: 1.Execute the synonym_thesaurus_integration query and the purposym_thesaurus_integration query (once you have sourced a representative set of important enterprise Text files and/or Microsoft Word documents); 2.Finally execute the text_search_algorithm query. The results should display in the appropriate panel. If you're feeling brave, consider integrating these steps into your existing or new product/service/experience, but bare in mind that there will be incremental changes going forward.
 
