@@ -1,4 +1,5 @@
 --SQL_Injection_Attack_Test_v00.01
+--The exploit in Test 3 requires you to start your hack variable with the code necessary to finish off the code block where the dynamic variable is defined. Then concatenated to the right of this prepended code, you cleverly insert your hack code. Then concatenated to the right of this hack code, you end the hack variable with the code necessary to start off the code block where the dynamic variable is defined.
 
 --Test 1: Injection attack on a table variable field... TEST PASSED!
 Declare @Variable Nvarchar(Max)
