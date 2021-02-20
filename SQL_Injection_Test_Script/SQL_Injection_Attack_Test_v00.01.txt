@@ -1,0 +1,49 @@
+--SQL_Injection_Attack_Test_v00.01
+
+--Test 1: Injection attack on a table variable field... TEST PASSED!
+Declare @Variable Nvarchar(Max)
+Set @Variable = 
+'''Can you provide the date and time of the end of the world as we know it?'' As [Customer_Request] Select Char(10) 
+Drop Table If Exists dbo.Injection_Hack Select Char(10) 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) Select Char(10) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked'' As [Message_From_Hacker] Select Char(10) 
+Select ''Can you provide the date and time of the end of the world as we know it?'''
+
+Declare @Table_Variable Table ([Customer_Request] Nvarchar(Max))
+Insert Into @Table_Variable ([Customer_Request])
+Select @Variable As [Customer_Request]
+
+Select * From @Table_Variable
+Select dbo.Injection_Hack
+
+--Test 2: Injection attack on a table field... TEST PASSED!
+Declare @Variable Nvarchar(Max)
+Set @Variable = 
+'''Can you provide the date and time of the end of the world as we know it?'' As [Customer_Request] Select Char(10) 
+Drop Table If Exists dbo.Injection_Hack Select Char(10) 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) Select Char(10) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked'' As [Message_From_Hacker] Select Char(10) 
+Select ''Can you provide the date and time of the end of the world as we know it?'''
+
+Create Table dbo.Customer_Requests ([Customer_Request] Nvarchar(Max))
+Insert Into dbo.Customer_Requests ([Customer_Request])
+Select @Variable As [Customer_Request]
+
+Select * From dbo.Customer_Requests
+Select dbo.Injection_Hack
+
+--Test 3: Injection attack on dynamically structured code... TEST FAILED!
+Declare @Variable Nvarchar(Max)
+Set @Variable = 
+'''Can you provide the date and time of the end of the world as we know it?'' As [Customer_Request] Select Char(10) 
+Drop Table If Exists dbo.Injection_Hack Select Char(10) 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) Select Char(10) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked'' As [Message_From_Hacker] Select Char(10) 
+Select ''Can you provide the date and time of the end of the world as we know it?'''
+
+Declare @Dynamic_SQL Nvarchar(Max)
+Set @Dynamic_SQL = N'Select ' + @Variable + ' As [Customer_Request]'
+
+Select @Dynamic_SQL
+Execute sp_executesql @Dynamic_SQL;
+Select * From dbo.Injection_Hack
