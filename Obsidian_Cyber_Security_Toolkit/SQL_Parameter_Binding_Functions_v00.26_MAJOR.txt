@@ -1,0 +1,240 @@
+--SQL_Parameter_Binding_Function_v00.04
+
+--OVERVIEW:
+--This function works on string parameters of less than 2 billion characters in length.
+--If using the parameter binding function in dynamically structured code (i.e. where variables compiled/defined at runtime are declared in the code of a method or technique, rather than an attribute), be careful that you don't introduce side-effects into other methods in the process e.g. length methods will be incorrect after parameter binding, and must therefore be adjusted appropriately where used.
+--If using dynamically structured code to store bound variable data, or to retern bound variable data to the user interface, please use the unbinding function beforehand.
+--The exploit in Test 01, 02, and 03, requires you to start your hack variable with the code necessary to finish off the code block where the dynamic variable is defined. Then concatenated to the right of this prepended code, you cleverly insert your hack code. Then concatenated to the right of this hack code, you end the hack variable with the code necessary to start off the code block where the dynamic variable is defined.
+--The alternative parameter binding/unbinding functions use loop techniques instead, but this becomes far less efficient/speedy in comparison to the implemented pivot techniques below, as variable string length increases.
+
+--NOTA BENE:
+--Please remember to avoid any manipulation methods on bound strings which are intended for subsequent unbinding, otherwise the unbound parameter will most likely be incorrect.
+--The moral of the story is basically, maintain maximum security on your source-code... otherwise hackers have a free-for-all with your internet connected product or service that hasn't fully implemented parameter binding techniques on all dynamically structured method code variables.
+--There are a couple of different tiny easter eggs hidden within the code below.
+
+
+--The following few blocks of code create a new function which is used across the Obsidian database in order to bind parameter strings, and therfore protect against SQL injection.#
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Parameter_Binder (@Parameter Nvarchar(Max))
+Returns Nvarchar(Max)
+As
+Begin
+
+Declare @Bound_Parameter Nvarchar(Max)
+Declare @Table_Variable_1 Table([Order] Int, [Character] Nvarchar(1))
+Declare @Table_Variable_2 Table([Order] Int, [Character] Nvarchar(5))
+Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(5))
+
+--The following codeblock slides across the parameter string, one position at a time, and inserts each character into a row.
+Insert Into @Table_Variable_1 ([Order], [Character]) 
+Select
+	(Row_Number() Over (Order By (Select NULL))) As [Order],
+	Substring(A.B, V.[Number]+1, 1) As [Character]
+From (Select @Parameter B) A
+join Master..Spt_Values V On V.[Number] < Len(A.B)
+where V.Type = ''P''
+
+--The following codeblock inserts an extra character row, in order to properly handle the last character in the parameter string later on.
+Insert Into @Table_Variable_1 ([Order], [Character])
+Values 
+((Len(@Parameter) + 1), ''0''),
+(0, ''0'')
+
+--The following codeblock generates an extra apostrophe for each consecutive sub-string of apostrophes in the parameter string, which has an odd apostrophe count.
+Insert Into @Table_Variable_2 ([Order], [Character])
+Select
+	A.[Order] As [Order],
+	(Case When ((Min(D.[Order]) - (Min(A.[Order]) - 1)) % 2) = 0 Then '''' Else (Char(39) + Char(215) + Char(172) + Char(175)) End) As [Character]
+From @Table_Variable_1 A
+Inner Join @Table_Variable_1 B
+	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(39))
+Inner Join @Table_Variable_1 C
+	On (C.[Order] >= A.[Order] And C.[Character] <> Char(39))
+Inner Join @Table_Variable_1 D
+	On (D.[Order] = (C.[Order] - 1) And D.[Character] = Char(39))
+Where A.[Character] = Char(39)
+Group By A.[Order]
+
+--This codeblock merges the generated bound apostrophes back into the pivoted bound parameter string.
+Insert Into @Table_Variable_3 ([Order], [Character])
+Select
+	A.[Order],
+	(A.[Character] + (Case When B.[Character] Is Null Then '''' Else B.[Character] End)) As [Character]
+From @Table_Variable_1 A
+Left Join @Table_Variable_2 B
+	On (B.[Order] = A.[Order])
+
+--This codeblock pivots the merged character rows, so that a bound parameter string is produced.
+Set @Bound_Parameter = 
+(Select 
+	String_Agg([Character], '''') Within Group (Order By [Order] Asc) As [Bound_Parameter] 
+From @Table_Variable_3
+Where 
+	[Order] <> (Len(@Parameter) + 1)
+	And [Order] <> 0
+)
+
+Return @Bound_Parameter
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Parameter_Binder' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
+
+--The following few blocks of code create a new function which is used across the Obsidian database in order to unbind parameter strings, and therfore protect against SQL injection.
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Parameter_Unbinder (@Bound_Parameter Nvarchar(Max))
+Returns Nvarchar(Max)
+As
+Begin
+
+Declare @Unbound_Parameter Nvarchar(Max)
+Declare @Table_Variable_1 Table([Order] Int, [Character] Nvarchar(1))
+Declare @Table_Variable_2 Table([Order] Int, [Character] Nvarchar(1))
+Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(1))
+
+--The following codeblock slides across the parameter string, one position at a time, and inserts each character into a row.
+Insert Into @Table_Variable_1 ([Order], [Character]) 
+Select
+	(Row_Number() Over (Order By (Select NULL))) As [Order],
+	Substring(A.B, V.[Number]+1, 1) As [Character]
+From (Select @Bound_Parameter B) A
+join Master..Spt_Values V On V.[Number] < Len(A.B)
+where V.Type = ''P''
+
+--The following codeblock inserts an extra character row, in order to properly handle the last character in the parameter string later on.
+Insert Into @Table_Variable_1 ([Order], [Character])
+Values 
+((Len(@Bound_Parameter) + 1), ''0''),
+(0, ''0'')
+
+--The following codeblock degenerates a bound apostrophe pattern for each consecutive sub-string of apostrophes in the parameter string.
+Insert Into @Table_Variable_2 ([Order], [Character])
+Select
+	A.[Order] As [Order],
+	'''' As [Character]
+From @Table_Variable_1 A
+Inner Join @Table_Variable_1 B
+	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(39))
+Inner Join @Table_Variable_1 C
+	On (C.[Order] >= A.[Order] And C.[Character] <> Char(39))
+Inner Join @Table_Variable_1 D
+	On (D.[Order] = (C.[Order] - 1) And D.[Character] = Char(39))
+Inner Join @Table_Variable_1 E
+	On (E.[Order] = (D.[Order] + 1) And E.[Character] = Char(215))
+Inner Join @Table_Variable_1 F
+	On (F.[Order] = (D.[Order] + 2) And F.[Character] = Char(172))
+Inner Join @Table_Variable_1 G
+	On (G.[Order] = (D.[Order] + 3) And G.[Character] = Char(175))
+Where A.[Character] = Char(39)
+Group By A.[Order]
+
+--This codeblock merges the degenerated bound apostrophes back into the pivoted unbound parameter string.
+Insert Into @Table_Variable_3 ([Order], [Character])
+Select
+	A.[Order],
+	Min(Case When B.[Character] Is Null Then A.[Character] Else B.[Character] End) As [Character]
+From @Table_Variable_1 A
+Left Join @Table_Variable_2 B
+	On (B.[Order] = A.[Order])
+Group By A.[Order]
+
+--This codeblock pivots the merged character rows, so that an unbound parameter string is produced.
+Set @Unbound_Parameter = 
+(Select 
+	String_Agg([Character], '''') Within Group (Order By [Order] Asc) As [Bound_Parameter] 
+From @Table_Variable_3
+Where
+	[Character] <> Char(215)
+	And [Character] <> Char(172)
+	And [Character] <> Char(175)
+	And [Order] <> (Len(@Bound_Parameter) + 1)
+	And [Order] <> 0
+)
+
+Return @Unbound_Parameter
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Parameter_Unbinder' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
+
+--Test 01: Unit test... TEST PASSED!
+Declare @Hack_Variable Nvarchar(Max)
+Set @Hack_Variable = 
+'Can you provide the date and time of the end of the world as we know it?'')
+Drop Table If Exists dbo.Injection_Hack 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
+Select (''Can you provide the date and time of the end of the world as we know it?'
+Select @Hack_Variable
+
+Declare @Bound_Variable Nvarchar(Max)
+Set @Bound_Variable = dbo.Obsidian_Parameter_Binder(@Hack_Variable)
+Select @Bound_Variable
+
+Declare @Unbound_Variable Nvarchar(Max)
+Set @Unbound_Variable = dbo.Obsidian_Parameter_Unbinder(@Bound_Variable)
+Select @Unbound_Variable
+
+
+--Test 02: Injection attack on dynamically structured code... TEST FAILED!
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request] Nvarchar(Max))
+Drop Table If Exists dbo.Injection_Hack
+
+Declare @Hack_Variable Nvarchar(Max)
+Set @Hack_Variable = 
+'Can you provide the date and time of the end of the world as we know it?'')
+Drop Table If Exists dbo.Injection_Hack 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
+Select (''Can you provide the date and time of the end of the world as we know it?'
+
+Declare @Dynamic_SQL Nvarchar(Max)
+Set @Dynamic_SQL = 
+	N'Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) 
+	Values (''' + @Hack_Variable + ''')'
+
+Execute sp_executesql @Dynamic_SQL;
+
+Select [Customer_Request] As [Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+
+If Exists (Select * From Sysobjects Where Name='Injection_Hack' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Select * From dbo.Injection_Hack
+
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests
+Drop Table If Exists dbo.Injection_Hack
+
+--Test 03: Injection attack on dynamically structured parameter bound code... TEST PASSED!
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request] Nvarchar(Max))
+Drop Table If Exists dbo.Injection_Hack
+
+Declare @Hack_Variable Nvarchar(Max)
+Set @Hack_Variable = 
+'Can you provide the date and time of the end of the world as we know it?'')
+Drop Table If Exists dbo.Injection_Hack 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
+Select (''Can you provide the date and time of the end of the world as we know it?'
+
+Declare @Dynamic_SQL Nvarchar(Max)
+Set @Dynamic_SQL = 
+	N'Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) 
+	Values (''' + dbo.Obsidian_Parameter_Binder(@Hack_Variable) + ''')'
+
+Execute sp_executesql @Dynamic_SQL;
+
+Select [Customer_Request] As [Bound_Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+Select dbo.Obsidian_Parameter_Unbinder([Customer_Request]) As [Unbound_Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+
+If Exists (Select * From Sysobjects Where Name='Injection_Hack' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Select * From dbo.Injection_Hack
+
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests
+Drop Table If Exists dbo.Injection_Hack
