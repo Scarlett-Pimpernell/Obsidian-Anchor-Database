@@ -6,11 +6,12 @@
 --If using dynamically structured code to store bound variable data, or to retern bound variable data to the user interface, please use the unbinding function beforehand.
 --The exploit in Test 01, 02, and 03, requires you to start your hack variable with the code necessary to finish off the code block where the dynamic variable is defined. Then concatenated to the right of this prepended code, you cleverly insert your hack code. Then concatenated to the right of this hack code, you end the hack variable with the code necessary to start off the code block where the dynamic variable is defined.
 --The alternative parameter binding/unbinding functions use loop techniques instead, but this becomes far less efficient/speedy in comparison to the implemented pivot techniques below, as variable string length increases.
+--To use the following functions in the real world, it will be neccessary to replace all singular or double (non-consecutive) apostrophes (string declarations), before binding, with, for singular: the string ¡¦§, and for double: the string §¦¡ (assuming you definitely won't ever get either of these truths in your injected variable unless it is a hack), and then after unbinding, it will then be necessary to replace each string ¡¦§ with an apostrophe, and each string §¦¡ with two apostrophes. The reason I have left the implementation of this feature up to you as an organisation or individual, is precisely because the bible says that "you must not boil a kid in it's mother's milk"... in other words, I am not being paid to provide you with stuff that any kid should be able to do themselves!
 
 --NOTA BENE:
 --Please remember to avoid any manipulation methods on bound strings which are intended for subsequent unbinding, otherwise the unbound parameter will most likely be incorrect.
 --The moral of the story is basically, maintain maximum security on your source-code... otherwise hackers have a free-for-all with your internet connected product or service that hasn't fully implemented parameter binding techniques on all dynamically structured method code variables.
---There are a couple of different tiny easter eggs hidden within the code below.
+--There are a few different tiny easter eggs hidden within the code of this script.
 
 
 --The following few blocks of code create a new function which is used across the Obsidian database in order to bind parameter strings, and therfore protect against SQL injection.#
