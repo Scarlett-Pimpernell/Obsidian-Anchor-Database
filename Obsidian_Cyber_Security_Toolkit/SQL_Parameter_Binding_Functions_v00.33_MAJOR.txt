@@ -47,12 +47,12 @@ Values
 Insert Into @Table_Variable_2 ([Order], [Character])
 Select
 	A.[Order] As [Order],
-	(Case When ((Min(D.[Order]) - (Min(A.[Order]) - 1)) % 2) = 0 Then '''' Else (Char(39) + Char(215) + Char(172) + Char(175)) End) As [Character]
+	(Case When ((Min(D.[Order]) - (Min(A.[Order]) - 1)) % 2) = 0 Then '''' Else (Char(215) + Char(172) + Char(175) + Char(39)) End) As [Character]
 From @Table_Variable_1 A
 Inner Join @Table_Variable_1 B
 	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(39))
 Inner Join @Table_Variable_1 C
-	On (C.[Order] >= A.[Order] And C.[Character] <> Char(39))
+	On (C.[Order] > A.[Order] And C.[Character] <> Char(39))
 Inner Join @Table_Variable_1 D
 	On (D.[Order] = (C.[Order] - 1) And D.[Character] = Char(39))
 Where A.[Character] = Char(39)
@@ -62,7 +62,7 @@ Group By A.[Order]
 Insert Into @Table_Variable_3 ([Order], [Character])
 Select
 	A.[Order],
-	(A.[Character] + (Case When B.[Character] Is Null Then '''' Else B.[Character] End)) As [Character]
+	((Case When B.[Character] Is Null Then '''' Else B.[Character] End) + A.[Character]) As [Character]
 From @Table_Variable_1 A
 Left Join @Table_Variable_2 B
 	On (B.[Order] = A.[Order])
@@ -117,20 +117,20 @@ Values
 Insert Into @Table_Variable_2 ([Order], [Character])
 Select
 	A.[Order] As [Order],
-	Char(39) As [Character]
+	Min(Char(39)) As [Character]
 From @Table_Variable_1 A
 Inner Join @Table_Variable_1 B
 	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(39))
 Inner Join @Table_Variable_1 C
-	On (C.[Order] >= A.[Order] And C.[Character] <> Char(39))
+	On (C.[Order] > A.[Order] And C.[Character] <> Char(39))
 Inner Join @Table_Variable_1 D
 	On (D.[Order] = (C.[Order] - 1) And D.[Character] = Char(39))
 Inner Join @Table_Variable_1 E
-	On (E.[Order] = (D.[Order] + 1) And E.[Character] = Char(215))
+	On (E.[Order] = (A.[Order] - 3) And E.[Character] <> Char(215))
 Inner Join @Table_Variable_1 F
-	On (F.[Order] = (D.[Order] + 2) And F.[Character] = Char(172))
+	On (F.[Order] = (A.[Order] - 2) And F.[Character] <> Char(172))
 Inner Join @Table_Variable_1 G
-	On (G.[Order] = (D.[Order] + 3) And G.[Character] = Char(175))
+	On (G.[Order] = (A.[Order] - 1) And G.[Character] <> Char(175))
 Where A.[Character] = Char(39)
 Group By A.[Order]
 
@@ -138,11 +138,10 @@ Group By A.[Order]
 Insert Into @Table_Variable_3 ([Order], [Character])
 Select
 	A.[Order],
-	Min(Case When B.[Character] Is Null Then A.[Character] Else B.[Character] End) As [Character]
+	((Case When B.[Character] Is Null Then '''' Else B.[Character] End) + A.[Character]) As [Character]
 From @Table_Variable_1 A
 Left Join @Table_Variable_2 B
 	On (B.[Order] = A.[Order])
-Group By A.[Order]
 
 --This codeblock pivots the merged character rows, so that an unbound parameter string is produced.
 Set @Unbound_Parameter = 
