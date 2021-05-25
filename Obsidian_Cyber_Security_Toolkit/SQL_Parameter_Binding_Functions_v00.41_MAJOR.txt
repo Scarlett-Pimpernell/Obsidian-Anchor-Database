@@ -45,8 +45,8 @@ Begin
 
 Declare @Unbound_Parameter Nvarchar(Max)
 Declare @Table_Variable_1 Table([Order] Int, [Character] Nvarchar(1))
-Declare @Table_Variable_2 Table([Consecutive_Apostrophe_Start_Order] Int, [Consecutive_Apostrophe_End_Order] Int)
-Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(2))
+Declare @Table_Variable_2 Table([Consecutive_Apostrophe_Start_Order] Int)
+Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(3))
 
 --The following codeblock slides across the parameter string, one position at a time, and inserts each character into a row.
 Insert Into @Table_Variable_1 ([Order], [Character]) 
@@ -64,33 +64,23 @@ Values
 (0, ''0'')
 
 --The following codeblock finds the start and end of each consecutive sub-string of apostrophe binding patterns in the bound parameter string.
-Insert Into @Table_Variable_2 ([Consecutive_Apostrophe_Start_Order], [Consecutive_Apostrophe_End_Order])
+Insert Into @Table_Variable_2 ([Consecutive_Apostrophe_Start_Order])
 Select
-	A.[Order] As [Consecutive_Apostrophe_Start_Order],
-	Min(D.[Order]) As [Consecutive_Apostrophe_End_Order]
+	A.[Order] As [Consecutive_Apostrophe_Start_Order]
 From @Table_Variable_1 A
 Inner Join @Table_Variable_1 B
 	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(175))
-Inner Join @Table_Variable_1 C
-	On (C.[Order] > A.[Order] And C.[Character] <> Char(215) Or C.[Order] > A.[Order] And C.[Character] <> Char(172) Or C.[Order] > A.[Order] And C.[Character] <> Char(175))
-Inner Join @Table_Variable_1 D
-	On (D.[Order] = (C.[Order] - 1) And D.[Character] = Char(175))
-Where 
-	A.[Character] = Char(215)
-	And D.[Character] = Char(175)
+Where A.[Character] = Char(215)
 Group By A.[Order]
 
 --The following codeblock encapsulates each consecutive sub-string of apostrophe binding patterns in the bound parameter string, with apostrophes.
 Insert Into @Table_Variable_3 ([Order], [Character])
 Select
 	A.[Order],
-	(Case When B.[Consecutive_Apostrophe_Start_Order] Is Null Then A.[Character] Else 
-	(Case When B.[Consecutive_Apostrophe_Start_Order] = A.[Order] Then (Char(39) + A.[Character]) 
-	Else (A.[Character] + Char(39)) 
-	End) End) As [Character]
+	(Case When B.[Consecutive_Apostrophe_Start_Order] Is Null Then A.[Character] Else (Char(39) + Char(39) + A.[Character]) End) As [Character]
 From @Table_Variable_1 A
 Left Join @Table_Variable_2 B
-	On (B.[Consecutive_Apostrophe_Start_Order] = A.[Order] Or B.[Consecutive_Apostrophe_End_Order] = A.[Order])
+	On (B.[Consecutive_Apostrophe_Start_Order] = A.[Order])
 
 --This codeblock pivots the encapsulated character rows, and degenerates the bound parameter string into its original unbound form.
 Set @Unbound_Parameter = 
@@ -98,8 +88,7 @@ Replace((Select
 	String_Agg([Character], '''') Within Group (Order By [Order] Asc) As [Bound_Parameter] 
 From @Table_Variable_3
 Where
-	[Character] Is Not Null
-	And [Order] <> (Len(@Bound_Parameter) + 1)
+	[Order] <> (Len(@Bound_Parameter) + 1)
 	And [Order] <> 0
 ), (Char(215) + Char(172) + Char(175)), Char(39))
 
