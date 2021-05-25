@@ -46,7 +46,7 @@ Begin
 Declare @Unbound_Parameter Nvarchar(Max)
 Declare @Table_Variable_1 Table([Order] Int, [Character] Nvarchar(1))
 Declare @Table_Variable_2 Table([Consecutive_Apostrophe_Start_Order] Int)
-Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(3))
+Declare @Table_Variable_3 Table([Order] Int, [Character] Nvarchar(2))
 
 --The following codeblock slides across the parameter string, one position at a time, and inserts each character into a row.
 Insert Into @Table_Variable_1 ([Order], [Character]) 
@@ -70,14 +70,19 @@ Select
 From @Table_Variable_1 A
 Inner Join @Table_Variable_1 B
 	On (B.[Order] = (A.[Order] - 1) And B.[Character] <> Char(175))
-Where A.[Character] = Char(215)
+Inner Join @Table_Variable_1 C
+	On (C.[Order] = (A.[Order] + 1) And C.[Character] = Char(172))
+Inner Join @Table_Variable_1 D
+	On (D.[Order] = (A.[Order] + 2) And D.[Character] = Char(175))
+Where 
+	A.[Character] = Char(215)
 Group By A.[Order]
 
 --The following codeblock encapsulates each consecutive sub-string of apostrophe binding patterns in the bound parameter string, with apostrophes.
 Insert Into @Table_Variable_3 ([Order], [Character])
 Select
 	A.[Order],
-	(Case When B.[Consecutive_Apostrophe_Start_Order] Is Null Then A.[Character] Else (Char(39) + Char(39) + A.[Character]) End) As [Character]
+	(Case When B.[Consecutive_Apostrophe_Start_Order] Is Null Then A.[Character] Else (Char(39) + A.[Character]) End) As [Character]
 From @Table_Variable_1 A
 Left Join @Table_Variable_2 B
 	On (B.[Consecutive_Apostrophe_Start_Order] = A.[Order])
@@ -107,7 +112,7 @@ Drop Table If Exists dbo.Injection_Hack
 
 Declare @Hack_Variable Nvarchar(Max)
 Set @Hack_Variable = 
-'Can I Order A Massive Bunch Of Daisies' + Char(39) + ')
+'Can I Order A Massive Bunch Of Daisies'')
 Drop Table If Exists dbo.Injection_Hack 
 Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
 Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
@@ -135,7 +140,7 @@ Drop Table If Exists dbo.Injection_Hack
 
 Declare @Hack_Variable Nvarchar(Max)
 Set @Hack_Variable = 
-'Can I Order A Massive Bunch Of Daisies' + Char(39) + ')
+'Can I Order A Massive Bunch Of Daisies'')
 Drop Table If Exists dbo.Injection_Hack 
 Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
 Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
