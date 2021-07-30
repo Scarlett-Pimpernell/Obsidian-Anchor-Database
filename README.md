@@ -1,5 +1,5 @@
 # Obsidian
-Intelligent Enterprise Architecture - Human Interaction Interface, Search Engine, Artificial Intelligence Agent, and M-Graph Database.
+ML Augmented Enterprise Architecture - Interaction Interface, Search Engine, and Generation Engine... Built On Obsidian Anchor Database Technology!
 
 Current Development Focus Is On the Core Search Engine Algorithm. I haven't thoroughly tested the queries yet, so be aware that there may be minor bugs. Also, I am now well advanced in coding v01.04, which includes the ability to understand relationships within the text of a given document. Unfortunately, once again, may have to wait a while for this one, as I need to upgrade my hardware in order to continue... also dealing with an extremely complex technique which will most probably take a few weeks to get right at current rates of development.
 
