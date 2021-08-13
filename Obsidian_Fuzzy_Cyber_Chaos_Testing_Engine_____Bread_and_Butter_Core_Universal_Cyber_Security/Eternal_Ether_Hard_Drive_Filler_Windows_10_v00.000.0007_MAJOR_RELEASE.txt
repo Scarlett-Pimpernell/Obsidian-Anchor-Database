@@ -1,5 +1,6 @@
 //COMMENTS
 //I was going to release an executable for the C++ program below... I thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.
+//Alternatively, this program could be used to bit purge a hard drive after having deleted all personal files (Non Operating System Default Files, Added By the User Since First OS Install)... You would also need to remove the page file before running the program... HOWEVER!!!... Be aware that although most hard drive bits would be purged, there would still remain certain OS artefacts, as well as some minor bit gaps or imperfectly purged edge cases.
 
 #include <iostream>
 #include <fstream>
@@ -71,16 +72,17 @@ int main()
                 std::cout << "Do not close this powershell window now that eternal ether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session." << '\n';
                 std::cout << "TO STOP THIS PROGRAM, YOU MUST FIRST KILL THE PROCESS IN THE TASK MANAGER!!!!!";
 
-
+                std::string Eternal_Ether_Module = "8888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888";
                 long y = 0;
                 std::string y_Character;
-                while (1 == 1)
+
+                while (y < 1)
                 {
                     y = (y + 1);
                     y_Character = to_string(y);
                     fstream file;
                     file.open(("Eternal_Ether" + y_Character + ".txt"), ios::out);
-                    file << "8888888888888888888888888888888888888888";
+                    file << Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module + Eternal_Ether_Module;
                     file.close();
                 }
 
