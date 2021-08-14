@@ -1,6 +1,7 @@
 //COMMENTS
-//I was going to release an executable for the C++ program below... I thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.
+//I was going to release an executable for the C++ program below... I initially thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.
 //Alternatively, this program could be used to bit purge a hard drive after having deleted all personal files (Non Operating System Default Files, Added By the User Since First OS Install)... You would also need to remove the page file before running the program... HOWEVER!!!... Be aware that although most hard drive bits would be purged, there would still remain certain OS artefacts, as well as some minor bit gaps or imperfectly purged edge cases.
+//If you are using this program as a hard drive bit purger, please be aware of the following: If you have a very large hard drive (e.g. bigger than 80TB), then you will need to copy this program into an appropriate number of folders to cover the total size of your hard drive (say 80TB per folder), and kick off one full execution of the program from each program copy, in each folder.
 
 #include <iostream>
 #include <fstream>
@@ -12,7 +13,18 @@ using namespace std;
 
 int main()
 {
-    std::cout << "WARNING!!!!!... THIS SOFTWARE PROGRAM HAS NOT BEEN FULLY TESTED!!!... DO NOT USE THIS EXECUTABLE ON YOUR FRIENDS!!!!!... MAYBE UNLESS THEY HAVE BETRAYED YOU!!!!!" << '\n';
+    std::cout << "Eternal_Ether_Hard_Drive_Filler_Windows_10... Built On C++... Unnecessarily...";
+    std::cout << '\n';
+    std::cout << '\n';
+    std::cout << "COMMENTS";
+    std::cout << '\n';
+    std::cout << "I was going to release an executable for the C++ program below... I initially thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university." << '\n';
+	std::cout << "Alternatively, this program could be used to bit purge a hard drive after having deleted all personal files(Non Operating System Default Files, Added By the User Since First OS Install)... You would also need to remove the page file before running the program... HOWEVER!!!... Be aware that although most hard drive bits would be purged, there would still remain certain OS artefacts, as well as some minor bit gaps or imperfectly purged edge cases." << '\n';
+	std::cout << "If you are using this program as a hard drive bit purger, please be aware of the following : If you have a very large hard drive(e.g.bigger than 80TB), then you will need to copy this program into an appropriate number of folders to cover the total size of your hard drive(say 80TB per folder), and kick off one full execution of the program from each program copy, in each folder.";
+    std::cout << '\n';
+    std::cout << '\n';
+    std::cout << "WARNING!!!!!... THIS SOFTWARE PROGRAM HAS NOT BEEN FULLY TESTED!!!... DO NOT USE THIS EXECUTABLE ON YOUR FRIENDS!!!!!... MAYBE UNLESS THEY HAVE BETRAYED YOU!!!!!";
+    std::cout << '\n';
     std::cout << "Please be aware that the full execution of this program may slow down a given computer (especially if multiple executions run simultaneously), and indeed, any full execution on the Windows OS root hard drive partition will likely eventually grind your computer to a halt (especially if the OS page file has been manually minimised to almost, if not nothing). Use at your own caution." << '\n';
     std::cout << "Disclaimer: This program is intended to offer a prime example to computer science students, the seriousness of the proliferation of malware through the internet, but also through human-to-human viral zeitgeist trends." << '\n';
     std::cout << "This is relatively benign malware when used responsibly." << '\n';
@@ -26,15 +38,13 @@ int main()
 
     std::cout << '\n';
     std::cout << '\n';
-    std::cout << "Eternal_Ether_Hard_Drive_Filler_Windows_10... Built On C++... Unnecessarily..." << '\n';
-    std::cout << '\n';
-    std::cout << '\n';
     std::cout << "INITIATION_STAGE" << '\n';
     std::cout << "Do you have full legal, moral, and legitimate authority over the dependencies and state of this computer? ... (input y or n, corresponding to either yes or no)" << '\n';
     std::cin >> *Initialisation_Answer;
 
     if (*Initialisation_Answer == "y")
     {
+        std::cout << '\n';
         std::cout << '\n';
         std::cout << "EXECUTION_STAGE" << '\n';
         std::cout << "... depositing a notice of the sin of betrayal on the hard drive...";
@@ -53,6 +63,7 @@ int main()
 
         string* After_Party_Answer = new string[1];
 
+        std::cout << '\n';
         std::cout << '\n';
         std::cout << "AFTERPARTY_STAGE" << '\n';
         std::cout << "... Do you happen to know the Scarlett Pimpernell by any chance? ... (input y or n, corresponding to either yes or no)" << '\n';
