@@ -10,3 +10,5 @@ Current Development Focus Is On the Core Search Engine Algorithm. I haven't thor
 Over the coming months, quarters, and years, I will gradually add to the back-end, API gateway, and front-end code, with the aim of producing an 'open'-source high-performance (usable, effective, efficient, maintainable, and reliable), feautre-rich library of configure and integrate code, and SQL Server database modules, in order for companies of any size to optimally plan, transform, and run their organisation via a robust enterprise architecture digital twin paradigm.
 
 I won't be dealing with parameter binding, indexes, or query execution plans until much later in development, when I build the UI.
+
+… The End… For Now…
