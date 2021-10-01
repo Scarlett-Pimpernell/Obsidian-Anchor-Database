@@ -1,0 +1,113 @@
+--SQL_Parameter_Binding_Function_v00.44
+
+--OVERVIEW:
+--This function works on string parameters of less than 2 billion characters in length.
+--If using the parameter binding function in dynamically structured code (i.e. where variables compiled/defined at runtime are declared in the code of a method or technique, rather than an attribute), be careful that you don't introduce side-effects into other methods in the process e.g. subsequent length methods will be incorrect after parameter binding, and must therefore be adjusted appropriately where used.
+--If using dynamically structured code to store bound variable data, or to retern bound variable data to the user interface, please use the unbinding function beforehand.
+--The exploit in Test 01 and 02, requires you to start your hack variable with the code necessary to finish off the code block where the dynamic variable is defined. Then concatenated to the right of this prepended code, you cleverly insert your hack code. Then concatenated to the right of this hack code, you end the hack variable with the code necessary to start off the code block where the dynamic variable is defined.
+
+--NOTA BENE:
+--These parameter binding functions assume that you definitely won't ever get the binding string pattern ×¬¯ in your injected variable unless it is a hack. When implementing in your own product or service, please remember to check each parameter string for this binding string pattern before binding, and take appropriate action. If this binding string pattern will be in your input data, then choose a different and more appropriate binding string pattern... possibly longer, and definitely with other and/or more binding characters.
+--Please remember to avoid any manipulation methods on bound strings which are intended for subsequent unbinding, otherwise the unbound parameter will most likely be incorrect.
+--The moral of the story is basically, maintain maximum security on your source-code... otherwise hackers have a free-for-all with your internet connected product or service that hasn't fully implemented parameter binding techniques on all dynamically structured method code variables.
+--There are five different easter eggs hidden within the code of this script.
+
+
+--The following few blocks of code create a new function which is used across the Obsidian database in order to bind parameter strings, and therfore protect against SQL injection.#
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Parameter_Binder (@Parameter Nvarchar(Max))
+Returns Nvarchar(Max)
+As
+Begin
+
+Declare @Bound_Parameter Nvarchar(Max)
+
+--This codeblock replaces all apostrophes in the parameter string with an expected completely improbable binding string pattern.
+Set @Bound_Parameter = Replace(@Parameter, Char(39), (Char(215) + Char(172) + Char(175)))
+
+Return @Bound_Parameter
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Parameter_Binder' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
+
+--The following few blocks of code create a new function which is used across the Obsidian database in order to unbind parameter strings, and therfore protect against SQL injection.
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Parameter_Unbinder (@Bound_Parameter Nvarchar(Max))
+Returns Nvarchar(Max)
+As
+Begin
+
+Declare @Unbound_Parameter Nvarchar(Max)
+
+--This codeblock replaces all binding string patterns in the bound parameter string with apostrophes.
+Set @Unbound_Parameter = Replace(@Bound_Parameter, (Char(215) + Char(172) + Char(175)), Char(39))
+
+Return @Unbound_Parameter
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Parameter_Unbinder' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
+
+--Test 01: Injection attack on dynamically structured code... TEST FAILED!
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request] Nvarchar(Max))
+Drop Table If Exists dbo.Injection_Hack
+
+Declare @Hack_Variable Nvarchar(Max)
+Set @Hack_Variable = 
+'Can I Order A Massive Bunch Of Daisies'')
+Drop Table If Exists dbo.Injection_Hack 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
+Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) Select (''The Daisy Queen thinks you are a narcissist'
+
+Declare @Dynamic_SQL Nvarchar(Max)
+Set @Dynamic_SQL = 
+	N'Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) 
+	Values (''' + @Hack_Variable + ''')'
+
+Execute sp_executesql @Dynamic_SQL;
+
+Select [Customer_Request] As [Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+
+If Exists (Select * From Sysobjects Where Name='Injection_Hack' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Select * From dbo.Injection_Hack
+
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests
+Drop Table If Exists dbo.Injection_Hack
+
+--Test 02: Injection attack on dynamically structured parameter bound code... TEST PASSED!
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request] Nvarchar(Max))
+Drop Table If Exists dbo.Injection_Hack
+
+Declare @Hack_Variable Nvarchar(Max)
+Set @Hack_Variable = 
+'Can I Order A Massive Bunch Of Daisies'')
+Drop Table If Exists dbo.Injection_Hack 
+Create Table dbo.Injection_Hack ([Message_From_Hacker] Nvarchar(Max)) 
+Insert Into dbo.Injection_Hack ([Message_From_Hacker]) Select ''You Have Been Hacked By The Scarlett Pimpernell'' As [Message_From_Hacker] 
+Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) Select (''The Daisy Queen thinks you are a narcissist'
+
+Declare @Dynamic_SQL Nvarchar(Max)
+Set @Dynamic_SQL = 
+	N'Insert Into dbo.Obsidian_Cyber_Security_Customer_Requests ([Customer_Request]) 
+	Values (''' + dbo.Obsidian_Parameter_Binder(@Hack_Variable) + ''')'
+
+Execute sp_executesql @Dynamic_SQL;
+
+Select [Customer_Request] As [Bound_Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+Select dbo.Obsidian_Parameter_Unbinder([Customer_Request]) As [Unbound_Customer_Request] From dbo.Obsidian_Cyber_Security_Customer_Requests
+
+If Exists (Select * From Sysobjects Where Name='Injection_Hack' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Select * From dbo.Injection_Hack
+
+Drop Table If Exists dbo.Obsidian_Cyber_Security_Customer_Requests
+Drop Table If Exists dbo.Injection_Hack
