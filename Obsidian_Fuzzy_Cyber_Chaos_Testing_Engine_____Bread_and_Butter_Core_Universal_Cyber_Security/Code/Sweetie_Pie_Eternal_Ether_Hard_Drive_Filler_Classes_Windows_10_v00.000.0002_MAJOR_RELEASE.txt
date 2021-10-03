@@ -1,0 +1,39 @@
+#This class returns eternal aether module constants
+class Eternal_Aether_Modules(object):
+    #Class Attributes
+    Aether: str = '0'
+
+    #Class Constructors
+    #def __init__(self):
+    #    self.Eternal_Aether = getattr(self, 'Aether')
+        
+    #Class Methods
+    def Eternal_Aether_8b_Tranche(self):
+        return (getattr(self, 'Aether'))
+
+    def Eternal_Aether_80b_Tranche(self):
+        return (self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche() + self.Eternal_Aether_8b_Tranche())
+    
+    def Eternal_Aether_800b_Tranche(self):
+        return(self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche() + self.Eternal_Aether_80b_Tranche())
+    
+    def Eternal_Aether_8Kb_Tranche(self):
+        return (self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche() + self.Eternal_Aether_800b_Tranche())
+    
+    def Eternal_Aether_40Kb_Tranche(self):
+        return (self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche() + self.Eternal_Aether_8Kb_Tranche())
+    
+    def Eternal_Aether_400Kb_Tranche(self):
+        return (self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche() + self.Eternal_Aether_40Kb_Tranche())
+    
+    def Eternal_Aether_4Mb_Tranche(self):
+        return (self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche() + self.Eternal_Aether_400Kb_Tranche())
+    
+    def Eternal_Aether_40Mb_Tranche(self):
+        return (self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche() + self.Eternal_Aether_4Mb_Tranche())
+    
+    def Eternal_Aether_400Mb_Tranche(self):
+        return (self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche() + self.Eternal_Aether_40Mb_Tranche())
+    
+    def Eternal_Aether_4Gb_Tranche(self):
+        return (self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche() + self.Eternal_Aether_400Mb_Tranche())

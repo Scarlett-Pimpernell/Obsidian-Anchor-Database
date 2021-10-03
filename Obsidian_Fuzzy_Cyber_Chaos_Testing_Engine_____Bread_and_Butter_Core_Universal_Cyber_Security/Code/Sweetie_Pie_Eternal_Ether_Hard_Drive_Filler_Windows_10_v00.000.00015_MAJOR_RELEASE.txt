@@ -1,0 +1,356 @@
+#COMMENTS
+#I was going to release an executable for the C++ program below... I initially thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.
+#Alternatively, this program could be used to bit purge a hard drive after having deleted all personal files (Non Operating System Default Files, Added By the User Since First OS Install)... You would also need to remove the page file before running the program... HOWEVER!!!... Be aware that although most hard drive bits would be purged, there would still remain certain OS artefacts, as well as some minor bit gaps or imperfectly purged edge cases.
+#If you are using this program as a hard drive bit purger, please be aware of the following: If you have a very large hard drive (e.g. bigger than 80TB), then you will need to copy this program into an appropriate number of folders to cover the total size of your hard drive (say 80TB per folder), and kick off one full execution of the program from each program copy, in each folder.
+
+
+import sys
+import datetime
+from Eternal_Aether_Modules import *
+
+
+#Global Variables
+#Executable_Path = sys.path[0]
+#Executable_Path = Executable_Path[::-1]
+#Executable_Path = Executable_Path.split('/')[0]
+#Executable_Path = (Executable_Path[::-1] + '\\')
+
+
+print('Eternal_Aether_Hard_Drive_Filler_Windows_10... Built On Sweetie Pie...')
+print('\n')
+print('\n')
+print('\n')
+print('COMMENTS')
+print('\n')
+print('I was going to release an executable for the C++ program below... I initially thought the better of it!... But there is no point in wasting an opportunity for perfectly viable code to be used purely for educative purposes, and only in a computer science cybersecurity class / lab at university.')
+print('\n')
+print('Alternatively, this program could be used to bit purge a hard drive after having deleted all personal files(Non Operating System Default Files, Added By the User Since First OS Install e.g. the files in the user directories)... It is recommended that you create a new user administrator account, and delete all other user accounts from the machine before proceeding with fully executing this program... You would also need to remove the page file before running the program... HOWEVER!!!... Be aware that although most hard drive bits will be purged, there would still remain certain OS artefacts, as well as some minor bit gaps or imperfectly purged edge cases.')
+print('\n')
+print('If you are using this program as a hard drive bit purger, please be aware of the following : If you have a very large hard drive(e.g.bigger than 80TB), then you will need to copy this program into an appropriate number of folders to cover the total size of your hard drive(say 80TB per folder), and kick off one full execution of the program from each program copy, in each folder.')
+print('\n')
+print('\n')
+print('WARNING!!!!!... THIS SOFTWARE PROGRAM HAS NOT BEEN FULLY TESTED!!!... DO NOT USE THIS EXECUTABLE ON YOUR FRIENDS!!!!!... MAYBE UNLESS THEY HAVE BETRAYED YOU!!!!!')
+print('\n')
+print('Please be aware that the full execution of this program may slow down a given computer (especially if multiple executions run simultaneously), and indeed, any full execution on the Windows OS root hard drive partition will likely eventually grind your computer to a halt (especially if the OS page file has been manually minimised to almost, if not nothing). Use at your own caution.')
+print('\n')
+print('Disclaimer: This program is intended to offer a prime example to computer science students, the seriousness of the proliferation of malware through the internet, but also through human-to-human viral zeitgeist trends.')
+print('\n')
+print('This is relatively benign \'malware\' when used responsibly.')
+print('\n')
+print('With this first non-SQL program of mine, I proudly bow out of the open source community, but with my honour held high... a parting ''duo'' of ''gifts'' if you like... on the one hand for the productive members of society to understand malware in a low danger environment... and on the other hand for the more troublemaking yet aspiring members of society (students) to test their appetite for becoming a coder... the BEANO lives on!')
+print('\n')
+print('Nota Bene: ''No'' extra carbon will be emitted into the atmosphere in the execution of this program.')
+print('\n')
+print('I actually suggest that you close this program now, before it possibly destroys someone''s life.')
+print('\n')
+print('Do not close the powershell window once eternal aether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session.')
+print('\n')
+print('You may find that you need to execute this application as administrator. To do this, right-click its icon in the file explorer, and select run as administrator.')
+print('\n')
+print('Also, please make sure you have at least 2 Gigabits of free RAM before executing the program, otherwise there will likely be a lot of extremely slow and unnecessary virtual memory IO activity.')
+print('\n')
+print('Finally, this program is meant to execute on a 64-Bit Windows OS. If executed on a 32-Bit Windows OS, maximum RAM utilisation limits will likely cause a lot of extremely slow and unnecessary virtual memory IO activity.')
+
+
+print('\n')
+print('\n')
+print('\n')
+print('INITIATION_STAGE')
+print('\n')    
+print('Do you have full legal, moral, and legitimate authority over the dependencies and state of this computer? ... (input y or n, corresponding to either yes or no)')
+
+print('\n')
+Initialisation_Answer = input()
+
+
+try:
+    if Initialisation_Answer == 'y':
+        print('\n')
+        print('\n')
+        print('\n')
+        print('EXECUTION_STAGE')
+        print('... depositing a notice of the sin of betrayal on the hard drive...')
+
+        Betrayal_Count = 0
+        while Betrayal_Count < 2:
+            Betrayal_Count = (Betrayal_Count + 1)
+            Date_Time = datetime.datetime.now()
+            Now: str = str(Date_Time).replace(':', '_')
+            Now = Now.replace(' ', '_')
+            File_Path = ('Notice_Of_Betrayal___' + str(Betrayal_Count) + '___' + Now + '.txt')
+            File = open(File_Path, 'w')
+            File.write('You betrayed me!... Double the severity!... 40 times the length!')
+            File.close()
+    else:
+        print('\n')
+        print('YOU CRIMINAL!')
+except:
+    print('\n')
+    print('... looks like there may have been an error sending the notification of betrayal')
+
+
+try:
+    print('\n')
+    print('\n')
+    print('\n')
+    print('AFTERPARTY_STAGE')
+    print('\n')
+    print('... Do you happen to know the Scarlett Pimpernell by any chance? ... (input y or n, corresponding to either yes or no)')
+        
+    print('\n')
+    After_Party_Answer = input()
+
+    if (After_Party_Answer == "y"):
+        print('\n')
+        print('Sarah and Eleanor... two tears, one either side of a drop of blood... the question is, which of the two knows how to dance?')
+        print('\n')
+        print('Do you want to continue filling up the hard drive with eternal aether? ... (input y or n, corresponding to either yes or no)')
+        
+        print('\n')
+        Continue_Answer = input()
+        
+        try:
+            if (Continue_Answer == "y"):
+                print('\n')
+                print('Do not close this powershell window now that eternal aether mode is reached... otherwise you will be unaware that your hard drive is filling up during this windows 10 session.')
+                print('\n')
+                print('TO STOP THIS PROGRAM, YOU MUST FIRST KILL THE PROCESS IN THE TASK MANAGER!!!!!')
+                
+                Eternal_Aether_Module = Eternal_Aether_Modules()
+
+                try:
+                    print('\n')
+                    print('Ether Modules Priming (~1% Complete)')
+                    _4_Gb_Count = 0
+                    Progress_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_4Gb_Tranche()
+                    while True:
+                        if ((_4_Gb_Count - Progress_Count) == 9):
+                            Progress_Count = _4_Gb_Count
+                            print('\n')
+                            print('Total 4Gb Eternal Aether Modules Deployed = ' + _4_Gb_Count + ' at ' + time.asctime(time.localtime(time.time())))
+                            print('\n')
+                            print('Cumulative Total Eternal Aether = ' + (_4_Gb_Count * 4) + 'Gb')
+                            _4_Gb_Count = (_4_Gb_Count + 1)
+                            Date_Time = datetime.datetime.now()
+                            Now: str = str(Date_Time).replace(':', '_')
+                            Now = Now.replace(' ', '_')
+                            File_Path = ('Eternal_Aether_4Gb_Tranche___' + str(_4_Gb_Count) + '___' + Now + '.txt')
+                            File = open(File_Path, 'w')
+                            File.write(File_Content)
+                            File.close()
+                        else:
+                            _4_Gb_Count = (_4_Gb_Count + 1)
+                            Date_Time = datetime.datetime.now()
+                            Now: str = str(Date_Time).replace(':', '_')
+                            Now = Now.replace(' ', '_')
+                            File_Path = ('Eternal_Aether_4Gb_Tranche___' + str(_4_Gb_Count) + '___' + Now + '.txt')
+                            File = open(File_Path, 'w')
+                            File.write(File_Content)
+                            File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 4 Gigabits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('4 Gigabits Eternal Aether Modules Deployed (Likely >50% Complete)')
+
+                try:
+                    _400Mb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_400Mb_Tranche()
+                    while True:
+                        _400Mb_Count = (_400Mb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_400Mb_Tranche___' + str(_400Mb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 400 Megabits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('400 Megabits Eternal Aether Modules Deployed (Likely >60% Complete)')
+
+                try:
+                    _40Mb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_40Mb_Tranche()
+                    while True:
+                        _40Mb_Count = (_40Mb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_40Mb_Tranche___' + str(_40Mb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 40 Megabits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('40 Megabits Eternal Aether Modules Deployed (Likely >65% Complete)')
+
+                try:
+                    _4Mb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_4Mb_Tranche()
+                    while True:
+                        _4Mb_Count = (_4Mb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_4Mb_Tranche___' + str(_4Mb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 4 Megabits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('4 Megabits Eternal Aether Modules Deployed (Likely >70% Complete)')
+
+                try:
+                    _400Kb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_400Kb_Tranche()
+                    while True:
+                        _400Kb_Count = (_400Kb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_400Kb_Tranche___' + str(_400Kb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 400 Kilobits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('400 Kilobits Eternal Aether Modules Deployed (Likely >75% Complete)')
+
+                try:
+                    _40Kb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_40Kb_Tranche()
+                    while True:
+                        _40Kb_Count = (_40Kb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_40Kb_Tranche___' + str(_40Kb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 40 Kilobits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('40 Kilobits Eternal Aether Modules Deployed (Likely >80% Complete)')
+
+                try:
+                    _8Kb_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_8Kb_Tranche()
+                    while True:
+                        _8Kb_Count = (_8Kb_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_8Kb_Tranche___' + str(_8Kb_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 8 Kilobits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('8 Kilobits Eternal Aether Modules Deployed (Likely >85% Complete)')
+
+                try:
+                    _800b_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_800b_Tranche()
+                    while True:
+                        _800b_Count = (_800b_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_800b_Tranche___' + str(_800b_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 800 bits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('800 bits Eternal Aether Modules Deployed (Likely >90% Complete)')
+
+                try:
+                    _80b_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_80b_Tranche()
+                    while True:
+                        _80b_Count = (_80b_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_80b_Tranche___' + str(_80b_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 80 bits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('80 bits Eternal Aether Modules Deployed (Likely >95% Complete)')
+
+                try:
+                    _8b_Count = 0
+                    File_Content: str = Eternal_Aether_Module.Eternal_Aether_8b_Tranche()
+                    while True:
+                        _8b_Count = (_8b_Count + 1)
+                        Date_Time = datetime.datetime.now()
+                        Now: str = str(Date_Time).replace(':', '_')
+                        Now = Now.replace(' ', '_')
+                        File_Path = ('Eternal_Aether_8b_Tranche___' + str(_8b_Count) + '___' + Now + '.txt')
+                        File = open(File_Path, 'w')
+                        File.write(File_Content)
+                        File.close()
+                except:
+                    print('\n')
+                    print('... looks like the 8 bits tranche of eternal aether modules has been fully deployed, but please check for yourself.')
+
+                del File_Content
+                print('\n')
+                print('8 bits Eternal Aether Modules Deployed (Likely 100% Complete)')
+
+                print('\n')
+                print('\n')
+                print('\n')
+                print('SHUTDOWN_STAGE')
+                print('\n')
+                print('It seems that the antichrist has been successfully and completely purged, for now... long live the Obsidian Order!')
+            else:
+                print('\n')
+                print('Then why are you wasting my time!')
+        except:
+            print('\n')
+            print('... looks like there may have been an error generating eternal aether... please make sure this program file is in a folder that you have authorisation to create files in, and try starting the program again.')
+    else:
+        print('\n')
+        print('Too Bad!')
+except:
+    print('\n')
+    print('... this is an inexplicable error')
