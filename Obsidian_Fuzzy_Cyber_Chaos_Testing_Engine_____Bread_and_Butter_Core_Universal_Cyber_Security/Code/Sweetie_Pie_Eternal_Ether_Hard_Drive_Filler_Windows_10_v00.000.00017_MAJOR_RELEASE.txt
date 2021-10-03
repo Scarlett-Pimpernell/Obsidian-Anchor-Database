@@ -125,16 +125,16 @@ try:
                     Progress_Count = 0
                     File_Content: str = Eternal_Aether_Module.Eternal_Aether_4Gb_Tranche()
                     while True:
-                        if ((_4_Gb_Count - Progress_Count) == 10):
-                            Progress_Count = _4_Gb_Count
+                        if ((_4_Gb_Count - Progress_Count) == 2):
+                            _4_Gb_Count = (_4_Gb_Count + 1)
+                            Progress_Count = (_4_Gb_Count - 1)
                             Date_Time = datetime.datetime.now()
                             Now: str = str(Date_Time).replace(':', '_')
                             Now = Now.replace(' ', '_')
                             print('\n')
-                            print('Total 4Gb Eternal Aether Modules Deployed = ' + _4_Gb_Count + ' at ' + Now)
+                            print('Total 4Gb Eternal Aether Modules Deployed = ' + str((_4_Gb_Count - 1)) + ' at ' + Now)
                             print('\n')
-                            print('Cumulative Total Eternal Aether = ' + (_4_Gb_Count * 4) + 'Gb')
-                            _4_Gb_Count = (_4_Gb_Count + 1)
+                            print('Cumulative Total Eternal Aether = ' + str(((_4_Gb_Count - 1) * 4)) + 'Gb')
                             Date_Time = datetime.datetime.now()
                             Now: str = str(Date_Time).replace(':', '_')
                             Now = Now.replace(' ', '_')
