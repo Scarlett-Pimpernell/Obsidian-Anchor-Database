@@ -125,7 +125,7 @@ try:
                     Progress_Count = 0
                     File_Content: str = Eternal_Aether_Module.Eternal_Aether_4Gb_Tranche()
                     while True:
-                        if ((_4_Gb_Count - Progress_Count) == 2):
+                        if ((_4_Gb_Count - Progress_Count) == 10):
                             _4_Gb_Count = (_4_Gb_Count + 1)
                             Progress_Count = (_4_Gb_Count - 1)
                             Date_Time = datetime.datetime.now()
