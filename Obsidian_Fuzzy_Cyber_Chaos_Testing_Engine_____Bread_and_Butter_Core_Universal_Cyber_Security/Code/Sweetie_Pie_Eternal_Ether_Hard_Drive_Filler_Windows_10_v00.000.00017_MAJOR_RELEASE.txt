@@ -47,7 +47,7 @@ print('Do not close the powershell window once eternal aether mode is reached...
 print('\n')
 print('You may find that you need to execute this application as administrator. To do this, right-click its icon in the file explorer, and select run as administrator.')
 print('\n')
-print('Also, please make sure you have at least 2 Gigabits of free RAM before executing the program, otherwise there will likely be a lot of extremely slow and unnecessary virtual memory IO activity.')
+print('Also, please make sure you have at least 10 Gigabits (1.25 Gigabytes) of free RAM before executing the program, otherwise there will likely be a lot of extremely slow and unnecessary virtual memory IO activity.')
 print('\n')
 print('Finally, this program is meant to execute on a 64-Bit Windows OS. If executed on a 32-Bit Windows OS, maximum RAM utilisation limits will likely cause a lot of extremely slow and unnecessary virtual memory IO activity.')
 
