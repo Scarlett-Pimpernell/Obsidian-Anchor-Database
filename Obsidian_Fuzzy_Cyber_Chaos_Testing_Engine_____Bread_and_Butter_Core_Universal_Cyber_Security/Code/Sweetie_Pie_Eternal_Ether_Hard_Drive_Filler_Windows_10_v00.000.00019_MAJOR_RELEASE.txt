@@ -49,7 +49,9 @@ print('You may find that you need to execute this application as administrator. 
 print('\n')
 print('Also, please make sure you have at least 10 Gigabits (1.25 Gigabytes) of free RAM before executing the program, otherwise there will likely be a lot of extremely slow and unnecessary virtual memory IO activity.')
 print('\n')
-print('Finally, this program is meant to execute on a 64-Bit Windows OS. If executed on a 32-Bit Windows OS, maximum RAM utilisation limits will likely cause a lot of extremely slow and unnecessary virtual memory IO activity.')
+print('This program is meant to execute on a 64-Bit Windows OS. If executed on a 32-Bit Windows OS, maximum RAM utilisation limits will likely cause a lot of extremely slow and unnecessary virtual memory IO activity.')
+print('\n')
+print('Finally, you may find that the program exits prematurely before the whole hard drive is filled with eternal aether. In this case, you simply need to execute the program a few times sequentially, via run as administrator, in order to overcome the Windows OS NTFS metadata and IO control instability!')
 
 
 print('\n')
