@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.0
+--Version 1.1
 
 
 --OVERVIEW:
@@ -84,9 +84,9 @@ Set @Projection_Granularity_Global_Variable_Percentage = 1
 --Please remember to sufficiently search the dataset range distribution space. Your set of scenario projection datapoints should start at the range minima, finish at the range maxima, and have no more than a 10% dataset range gap between any two members, and ideally a lot less. If you do not sufficiently search the probability space, then the resulting confidence percentages will be sub-optimal. Also, beware, if you are experiencing an exploding sigmoid curve as your dataset becomes highly polarised, then this algorithm is not suitable for your dataset. The best approach in this case, would be to use a pool-sized binary probability algorithm, which is effectively achieved via the @Limit_Normalised_Projection_Spot_Confidence_Percentage table variable transformation. The trick to ascertaining whether you have an exploding gradient is as follows. If any 2 ordered parameters have a gap between them which is at least 80% of the dataset range, then I would suppose it is likely that your model is at least starting to experience an exploding gradient issue.
 --The lower the projection granularity, the exponentially slower the algorithm. In fact, values below 0.1% are unadvisable.
 
-Declare @CSV_Column_Delimmiter Nvarchar(1)
-Set @CSV_Column_Delimmiter = ','
---A comma column delimmiter is highly recommended here, because I have not 'fully' tested with other delimmiters (although basic tests seemed to work fine with other delimmiters). If you do use a different column delimmiter other than a comma, please test thoroughly!
+Declare @CSV_Column_Delimiter Nvarchar(1)
+Set @CSV_Column_Delimiter = ','
+--A comma column Delimiter is highly recommended here, because I have not 'fully' tested with other Delimiters (although basic tests seemed to work fine with other Delimiters). If you do use a different column Delimiter other than a comma, please test thoroughly!
 
 
 
@@ -149,8 +149,8 @@ Select Value From String_Split((Select Replace([Data], ('Dataset, Parameter' + C
 Declare @Raw_Datasets_Final Table ([Dataset] Nvarchar(Max), [Parameter] Nvarchar(Max))
 Insert Into @Raw_Datasets_Final ([Dataset], [Parameter])
 Select
-	(Case When CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimmiter, Reverse([Value]), 0))), Char(10), '') End) As [Dataset],
-	(Case When CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 Then Null Else Replace(Right([Value], CharIndex(@CSV_Column_Delimmiter, Reverse([Value]), 0)), @CSV_Column_Delimmiter, '') End) As [Parameter]
+	(Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0))), Char(10), '') End) As [Dataset],
+	(Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Right([Value], CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0)), @CSV_Column_Delimiter, '') End) As [Parameter]
 From @Raw_Datasets_Intermediate
 Where [Value] <> Char(10)
 
@@ -183,14 +183,14 @@ Select
 From @Raw_Datasets_Intermediate 
 Where
 	[Value] <> Char(10)
-	And CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 --Check for presence of the designated column delimmiter on each row error.
+	And CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 --Check for presence of the designated column Delimiter on each row error.
 Union All
 Select
 	Avg(3) As [Check]
 From @Raw_Datasets_Intermediate 
 Where
 	[Value] <> Char(10)
-	And Len(Replace([Value], @CSV_Column_Delimmiter, '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra column delimmiters error.
+	And Len(Replace([Value], @CSV_Column_Delimiter, '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra column Delimiters error.
 Union All
 Select
 	Avg(4) As [Check]
@@ -225,9 +225,9 @@ Set @Data_Validation_Checks_Max = (Select Max([Check]) From @Data_Validation_Che
 If (Select Avg(1) From @Data_Validation_Checks_Table_Variable Where [Check] = 1) = 1
 Select 'CSV data input check for two correctly named and correctly column delimited columns failed. Please make sure you have not changed or deleted the original column headers from the Datasets_For_Michaelian_Probability_Analysis.csv template.' As [Data_Input_Error]
 If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 2 Or [Check] = 1) = 2 --Nominal check (Or [Check] = 1) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for presence of the designated column delimmiter on each row error. The designated CSV file column delimmiter is assigned in the global variables near the beginning of the source code of this query. Alternatively, you could change the CSV column delimiter in your input file, but this would likely involve more effort.' As [Data_Input_Error]
+Select 'CSV data input check for presence of the designated column Delimiter on each row error. The designated CSV file column Delimiter is assigned in the global variables near the beginning of the source code of this query. Alternatively, you could change the CSV column delimiter in your input file, but this would likely involve more effort.' As [Data_Input_Error]
 If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 3 Or [Check] = 1 Or [Check] = 2) = 3 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for no dataset value or parameter value extra column delimmiters failed. This algorithm does not allow column delimmiters in either the dataset or parameter column values.' As [Data_Input_Error]
+Select 'CSV data input check for no dataset value or parameter value extra column Delimiters failed. This algorithm does not allow column Delimiters in either the dataset or parameter column values.' As [Data_Input_Error]
 --(Data Checks)
 If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 4 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 4 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
 Select 'CSV data input check for no null or empty values in either column failed.' As [Data_Input_Error]
