@@ -20,7 +20,7 @@
 
 --USAGE DIRECTIONS:
 --First set appropriate global variables for your particular analysis. See the guidelines in the comments adjacent to the assignations in the source code below.
---Then check to make sure that all the values in both columns in your input CSV file, have had thousand separator commas removed (e.g. 1,750,000.33 becomes 1750000.33).
+--Then check to make sure that all the values in the parameter column in your input CSV file, have had thousand separator commas removed (e.g. 1,750,000.33 becomes 1750000.33).
 --Then copy the appropriate CSV file into the filepath folder.
 --After this, your query is ready to execute, so long as you have enabled permissions to create SQL Server functions for your SQL Server user, and also Windows permissions to open/read files from the assigned file import directory (see global variables in this query) for your Windows user.
 
@@ -44,7 +44,7 @@
 --Microsoft Azure Cloud currently (in 2021) offers 80-core Azure SQL Server Instances which would reduce this query time to most likely below 1 second for those who desire to deploy the query within high throughput applications, with minor adjustments to the source code.
 
 --NOTA BENE:
---This query is only intended for use with ASCII printable characters in the input comma-separated CSV file.
+--This query is only intended for use with ASCII printable characters in the input CSV file.
 --The original column headers from the CSV template file called Datasets_For_Michaelian_Probability_Analysis (available alongside this query on my GitHub account Scarlett-Pimpernell), must be retained within the CSV. The first column header is Dataset, and the second column header is Parameter.
 --There is a showstopper table variable joining bug in my current version of SQL Server 2019. It misses a join for >= operator. Please see comments in the source code below. As a result, I advise you, please don't deploy this algorithm to production, until Microsoft has been alerted, and the bug fixed!
 --For typical use assumed as up to 10 datasets, each with up to 1,000 parameters, this query should be pretty rapid, even on a single core.
