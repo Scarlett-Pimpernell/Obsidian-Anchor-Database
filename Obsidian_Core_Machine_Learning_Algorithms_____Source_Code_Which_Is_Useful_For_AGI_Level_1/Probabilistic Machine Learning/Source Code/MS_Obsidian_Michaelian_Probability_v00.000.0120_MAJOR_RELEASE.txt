@@ -57,7 +57,10 @@
 --Finally, the midpoint spot confidence at 50% parameter granularity will never reach 100%. The reason is referred to as the long-tail problem. Basically, the spread (different from spot) confidence at the midpoint, with a 50% parameter granularity, gives you the hopefully infinitessimal probabity that your next observation will be outside the current dataset range, and therefore is likely subject to a significantly different system of probabilistic distribution.
 
 --Necessary Initiation Setting
-Set NoExec Off --If this is not executed, the query may not complete after a CSV data input validation check fails.
+Set NoExec Off --If this is not executed, the query may under very few circumstances not complete repeat executions after a CSV data input validation check fails.
+
+
+
 
 
 --GLOBAL VARIABLES:
@@ -75,13 +78,20 @@ Declare @Parameter_Granularity_Global_Variable_Percentage Float
 Set @Parameter_Granularity_Global_Variable_Percentage = 50
 --This parameter granularity global variable must be restricted to (0 =< x <=50%), and is used in order to set the duplicate count lookup range. It thereby effectively broadens curve peaks as desired for a given application of the theory. For example, you would want wider normal distribution curve peaks if you need greater accuracy of probability. This can be achieved by using a higher parameter granularity percentage. On the other hand, you would want narrower normal distribution curve peaks if you instead need greater precision of probability. This can be achieved by using a lower parameter granularity percentage. The recommended value for this global variable is anywhere between 10% and 50%. A value of 50% would super-nominally simulate the classical normal distribution curve either side of the mean, which originates from the older Bayesian probability theory. But be aware, that the higher the parameter granularity %, the less skew your model will be able to exhibit. Also, beware that if the assigned value of this variable is less than 50%, it introduces the possibility for curve discontinuities to arise (not that much to worry about though, especially when your application requires high levels of precision).
 
-
 Declare @Projection_Granularity_Global_Variable_Percentage Float
 Set @Projection_Granularity_Global_Variable_Percentage = 1
 --This projection granularity global variable must ideally be restricted to (0.000001 =< x <= 10), with 1% being roughly optimal in order to obtain a lean analysis. This value is used in order to set the distribution mesh search transformation gap.
 --Please remember to sufficiently search the dataset range distribution space. Your set of scenario projection datapoints should start at the range minima, finish at the range maxima, and have no more than a 10% dataset range gap between any two members, and ideally a lot less. If you do not sufficiently search the probability space, then the resulting confidence percentages will be sub-optimal. Also, beware, if you are experiencing an exploding sigmoid curve as your dataset becomes highly polarised, then this algorithm is not suitable for your dataset. The best approach in this case, would be to use a pool-sized binary probability algorithm, which is effectively achieved via the @Limit_Normalised_Projection_Spot_Confidence_Percentage table variable transformation. The trick to ascertaining whether you have an exploding gradient is as follows. If any 2 ordered parameters have a gap between them which is at least 80% of the dataset range, then I would suppose it is likely that your model is at least starting to experience an exploding gradient issue.
 --The lower the projection granularity, the exponentially slower the algorithm. In fact, values below 0.1% are unadvisable.
 
+Declare @CSV_Column_Delimmiter Nvarchar(1)
+Set @CSV_Column_Delimmiter = ','
+--A comma column delimmiter is highly recommended here, because I have not 'fully' tested with other delimmiters (although basic tests seemed to work fine with other delimmiters). If you do use a different column delimmiter other than a comma, please test thoroughly!
+
+
+
+
+--FUCNTIONS:
 --The following few blocks of code create a new function which is used later on in this query in order to generate a table variable with 1 column containing increasing integers.
 Declare @Create_Function_Command Nvarchar(Max);
 Set @Create_Function_Command =
@@ -115,6 +125,7 @@ If Not Exists (Select * From Sysobjects Where Name='Element_Index_Generator_Code
 Execute sp_executesql @Create_Function_Command;
 
 
+--EXTRACTION STAGE:
 --The following codeblocks extract data from a CSV file in your previously assigned import directory (see global variables near the beginning of this query).
 Declare @File_Path Nvarchar(250)
 Set @File_Path = (@File_Directory + @File_Name)
@@ -138,8 +149,8 @@ Select Value From String_Split((Select Replace([Data], ('Dataset, Parameter' + C
 Declare @Raw_Datasets_Final Table ([Dataset] Nvarchar(Max), [Parameter] Nvarchar(Max))
 Insert Into @Raw_Datasets_Final ([Dataset], [Parameter])
 Select
-	Replace(Left([Value], (Len([Value]) - CharIndex(',', Reverse([Value]), 0))), Char(10), '') As [Dataset],
-	Replace(Right([Value], CharIndex(',', Reverse([Value]), 0)), ',', '') As [Parameter]
+	(Case When CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimmiter, Reverse([Value]), 0))), Char(10), '') End) As [Dataset],
+	(Case When CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 Then Null Else Replace(Right([Value], CharIndex(@CSV_Column_Delimmiter, Reverse([Value]), 0)), @CSV_Column_Delimmiter, '') End) As [Parameter]
 From @Raw_Datasets_Intermediate
 Where [Value] <> Char(10)
 
@@ -165,42 +176,43 @@ Insert Into @Data_Validation_Checks_Table_Variable ([Check])
 Select
 	Avg(1) As [Check]
 From @Dynamic_SQL_Intermediate_Table_Variable_1
-Where Left([Data], 20) <> ('Dataset, Parameter' + Char(13) + Char(10)) --Check for two correctly named comma delimited columns error.
+Where Left([Data], 20) <> ('Dataset, Parameter' + Char(13) + Char(10)) --Check for two correctly named and correctly column delimited columns error.
 Union All
 Select
 	Avg(2) As [Check]
 From @Raw_Datasets_Intermediate 
 Where
 	[Value] <> Char(10)
-	And Len(Replace([Value], ',', '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra commas error.
+	And CharIndex(@CSV_Column_Delimmiter, [Value], 0) = 0 --Check for presence of the designated column delimmiter on each row error.
 Union All
 Select
 	Avg(3) As [Check]
+From @Raw_Datasets_Intermediate 
+Where
+	[Value] <> Char(10)
+	And Len(Replace([Value], @CSV_Column_Delimmiter, '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra column delimmiters error.
+Union All
+Select
+	Avg(4) As [Check]
 From @Raw_Datasets_Final
 Where [Dataset] Is Null Or [Parameter] Is Null Or [Dataset] = '' Or [Parameter] = '' --Check for no null or empty values in either column error.
 Union All
 Select
-	Avg(4) As [Check]
+	Avg(5) As [Check]
 From @Raw_Datasets_Final A
 Left Join @Raw_Datasets_Final B
 	On (B.[Dataset] = A.[Dataset] And B.[Parameter] <> A.[Parameter])
 Left Join @Raw_Datasets_Final C
 	On (C.[Dataset] = A.[Dataset] And C.[Parameter] <> A.[Parameter] And C.[Parameter] <> B.[Parameter])
-Where
-	C.[Dataset] Is Null --Check for essential distribution with more than 3 unique parameter values error.
-	And CharIndex(',', A.[Dataset], 0) = 0 --Nominal check for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-	And CharIndex('"', A.[Dataset], 0) = 0 --Nominal check for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-	Or C.[Dataset] Is Null --Check for essential distribution with more than 3 unique parameter values error.
-	And CharIndex(',', A.[Parameter], 0) = 0 --Nominal check for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-	And CharIndex('"', A.[Parameter], 0) = 0 --Nominal check for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Where C.[Dataset] Is Null --Check for essential distribution with more than 3 unique parameter values error.
 Union All
 Select
-	Avg(5) As [Check]
+	Avg(6) As [Check]
 From @Raw_Datasets_Final
 Where IsNumeric([Dataset]) = 1 Or IsNumeric([Parameter]) = 0 --Check for correct data type in either column error (Dataset column should be Text, Parameter column should be Numeric).
 Union All
 Select
-	Avg(6) As [Check]
+	Avg(7) As [Check]
 From @Raw_Datasets_Final
 Where Len([Dataset]) > 250 --Check for dataset labels having less than or equal to 250 characters.
 Union All
@@ -209,19 +221,24 @@ Select 0 As [Check] --This is so that there is no null variable behaviour, which
 Declare @Data_Validation_Checks_Max TinyInt
 Set @Data_Validation_Checks_Max = (Select Max([Check]) From @Data_Validation_Checks_Table_Variable)
 
---Execution Termination
+--(Metadata Checks)
 If (Select Avg(1) From @Data_Validation_Checks_Table_Variable Where [Check] = 1) = 1
-Select 'CSV data input check for two correctly named comma delimited columns failed. Please makee sure you have not changed or deleted the original column headers from the Datasets_For_Michaelian_Probability_Analysis.csv template.' As [Data_Input_Error]
+Select 'CSV data input check for two correctly named and correctly column delimited columns failed. Please make sure you have not changed or deleted the original column headers from the Datasets_For_Michaelian_Probability_Analysis.csv template.' As [Data_Input_Error]
 If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 2 Or [Check] = 1) = 2 --Nominal check (Or [Check] = 1) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for no dataset value or parameter value extra commas failed. This algorithm does not allow commas in either the dataset or parameter columns.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 3 Or [Check] = 1) = 3 --Nominal check (Or [Check] = 1) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'CSV data input check for presence of the designated column delimmiter on each row error. The designated CSV file column delimmiter is assigned in the global variables near the beginning of the source code of this query. Alternatively, you could change the CSV column delimiter in your input file, but this would likely involve more effort.' As [Data_Input_Error]
+If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 3 Or [Check] = 1 Or [Check] = 2) = 3 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'CSV data input check for no dataset value or parameter value extra column delimmiters failed. This algorithm does not allow column delimmiters in either the dataset or parameter column values.' As [Data_Input_Error]
+--(Data Checks)
+If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 4 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 4 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
 Select 'CSV data input check for no null or empty values in either column failed.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 4 Or [Check] = 1 Or [Check] = 2) = 4 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 5 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 5 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
 Select 'CSV data input check for essential distribution with more than 3 unique parameter values per dataset failed.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 5 Or [Check] = 1 Or [Check] = 2) = 5 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 6 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 6 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
 Select 'CSV data input check for correct data type in either column failed (Dataset column should be Text, Parameter column should be Numeric).' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 6 Or [Check] = 1 Or [Check] = 2) = 6 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 7 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 7 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
 Select 'CSV data input check for dataset labels having less than or equal to 250 characters.' As [Data_Input_Error]
+
+--Execution Termination
 If @Data_Validation_Checks_Max > 0
 Set NoExec On
 
@@ -230,6 +247,10 @@ If @Data_Validation_Checks_Max = 0
 Select (@Analysis_Label + ':Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 
 
+
+
+
+--TRANSFORMATION STAGE:
 --The following codeblock loads the datasets into an ordered table variable 
 Declare @Datasets Table ([Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
 Insert Into @Datasets ([Order], [Dataset], [Parameter])
@@ -764,6 +785,11 @@ Select
 	Avg([Michaelian_Total_Dataset_Similarity]) As [Michaelian_Overall_Analysis_Similarity]
 From @Michaelian_Total_Dataset_Similarity_Matrix
 
+
+
+
+
+--LOAD STAGE:
 --The following codeblock returns all the useful data of interest from this algorithm
 Select * From @Fully_Normalised_Datasets Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
 Select * From @Limit_Normalised_Projection_Spot_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
