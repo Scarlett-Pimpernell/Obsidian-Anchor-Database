@@ -55,7 +55,9 @@
 --You could convert all table variables to memory optimised tables, in order to speed up the query, given suitable RAM resources, however otherwise, this would likely impact data volume limits.
 --This query assumes that you definitely won't ever get the string pattern ×¬¯ in your dataset names. When implementing in your own product or service, please remember to check each dataset string for this string pattern before importing, and take appropriate action. If this string pattern will be in your input data, then choose a different and more appropriate binding string pattern... possibly longer, and definitely with other and/or more binding characters.
 --You will only get a curve almost touching 100% confidence with a setting of 50% parameter granularity, when the dataset mid-range is in the parameter values. Otherwise the mid-range peak will actually be a density depression.
+--Just reminding users that they would be wise to make sure that the parameter granularity global variable is constant across analysis instances that they wish to compare in a post-hoc fashion.
 --Finally, the midpoint spot confidence at 50% parameter granularity will never reach 100%. The reason is referred to as the long-tail problem. Basically, the spread (different from spot) confidence at the midpoint, with a 50% parameter granularity, gives you the hopefully infinitessimal probabity that your next observation will be outside the current dataset range, and therefore is likely subject to a significantly different system of probabilistic distribution.
+
 
 --Necessary Initiation Setting
 Set NoExec Off --If this is not executed, the query may under very few circumstances not complete repeat executions after a CSV data input validation check fails.
