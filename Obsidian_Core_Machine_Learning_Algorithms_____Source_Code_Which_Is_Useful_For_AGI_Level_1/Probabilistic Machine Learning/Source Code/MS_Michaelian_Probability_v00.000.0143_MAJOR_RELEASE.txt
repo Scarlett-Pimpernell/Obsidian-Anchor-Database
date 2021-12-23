@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.3
+--Version 1.4
 
 
 --OVERVIEW:
@@ -93,7 +93,7 @@ Set @Projection_Granularity_Global_Variable_Percentage = 1
 --The lower the projection granularity, the exponentially slower the algorithm. In fact, values below 0.1% are unadvisable.
 
 Declare @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Float
-Set @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage = 50
+Set @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage = 80
 --This variable must be limited to within the range of values (0% < x < 80%).
 --80% upper limit, because much greater than this, and SQL Server cannot currently calculate and store the massive gradient explosion values that could otherwise result.
 --I rceommend that the value of this global variable is set to around 50% (not sure why, could be wrong, but just seems to work okay during development, but would need a scientific study to reach the optimal value) in situations where optimisation of this variable is not possible. Experience indicates that greater than this misses instances of significant gradient explosion, and less than this starts to indiscriminately limit the probability distribution curve when it is unnecessary.
@@ -755,8 +755,8 @@ Insert Into @Limit_Normalised_Projection_Datapoint_Regulariser ([Dataset], [Data
 Select
 	A.[Dataset] As [Dataset],
 	A.[Datapoint] As [Datapoint],
-	Min(Case When (((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / (Case When C.[Distribution_Mesh_Search] = 0 Then 1 Else C.[Distribution_Mesh_Search] End)) * 100) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] <= ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then B.[Distribution_Mesh_Search] Else 0 End) Else Null End) Else A.[Datapoint] End) As [Minimum_Regularised_Datapoint],
-	Max(Case When (((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / (Case When C.[Distribution_Mesh_Search] = 0 Then 1 Else C.[Distribution_Mesh_Search] End)) * 100) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] > ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then C.[Distribution_Mesh_Search] Else 0 End) Else Null End) Else A.[Datapoint] End) As [Maximum_Regularised_Datapoint]
+	Min(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] <= ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then B.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Minimum_Regularised_Datapoint],
+	Max(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] > ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then C.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Maximum_Regularised_Datapoint]
 From @Projection_Spot_Confidence_Percentage A
 Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
@@ -774,7 +774,7 @@ Select
 	B.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
 From @Limit_Normalised_Projection_Datapoint_Regulariser A
 Inner Join @Projection_Spot_Confidence_Percentage B
-	On(B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Minimum_Regularised_Datapoint] And A.[Minimum_Regularised_Datapoint] Is Not Null)
+	On(B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Minimum_Regularised_Datapoint] And A.[Minimum_Regularised_Datapoint] Is Not Null And A.[Minimum_Regularised_Datapoint] <> -1)
 Union All
 Select
 	C.[Dataset] As [Dataset],
@@ -782,7 +782,20 @@ Select
 	D.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
 From @Limit_Normalised_Projection_Datapoint_Regulariser C
 Inner Join @Projection_Spot_Confidence_Percentage D
-	On(D.[Dataset] = C.[Dataset] And D.[Datapoint] = C.[Maximum_Regularised_Datapoint] And C.[Maximum_Regularised_Datapoint] Is Not Null)
+	On(D.[Dataset] = C.[Dataset] And D.[Datapoint] = C.[Maximum_Regularised_Datapoint] And C.[Maximum_Regularised_Datapoint] Is Not Null And C.[Maximum_Regularised_Datapoint] <> -1)
+Union All
+Select
+	E.[Dataset] As [Dataset],
+	E.[Datapoint] As [Datapoint],
+	Min(H.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser E
+Inner Join @Mean_Or_Closest_Lesser_Sample F
+	On (F.[Dataset] = E.[Dataset] And F.[Datapoint] = E.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample G
+	On (G.[Dataset] = E.[Dataset] And G.[Datapoint] = E.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage H
+	On(H.[Dataset] = E.[Dataset] And H.[Datapoint] >= F.[Distribution_Mesh_Search] And H.[Datapoint] <= G.[Distribution_Mesh_Search] And E.[Minimum_Regularised_Datapoint] = -1)
+Group By E.[Dataset], E.[Datapoint]
 --There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
 
 Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
@@ -798,7 +811,7 @@ Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Da
 Select
 	A.[Dataset] As [Dataset],
 	A.[Datapoint] As [Datapoint],
-	(((Case When ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) > 1 Then 1 Else ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) End) * D.[Distribution_Mesh_Search]) + (1 - (Case When ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) > 1 Then 1 Else ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) End)) * A.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+	(Case When (Avg(C.[Distribution_Mesh_Search]) - Avg(B.[Distribution_Mesh_Search])) > @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When Avg(D.[Distribution_Mesh_Search]) = -1 Then Min(E.[Distribution_Mesh_Search]) Else Avg(D.[Distribution_Mesh_Search]) End) Else Avg(A.[Distribution_Mesh_Search]) End) As [Distribution_Mesh_Search]
 From @Projection_Spot_Confidence_Percentage A
 Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
@@ -806,6 +819,9 @@ Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
 Inner Join @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final D
 	On(D.[Dataset] = A.[Dataset] And D.[Datapoint] = A.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage E
+	On (E.[Dataset] = A.[Dataset] And E.[Datapoint] >= B.[Distribution_Mesh_Search] And E.[Datapoint] <= C.[Distribution_Mesh_Search])
+Group By A.[Dataset], A.[Datapoint]
 --This model phase transition capability enables a gradual switch between the polynomial probability gradient and ternary probability step models.
 --This table variable transformation compares the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradient.
 --There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
