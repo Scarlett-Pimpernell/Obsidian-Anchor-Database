@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.1
+--Version 1.3
 
 
 --OVERVIEW:
@@ -16,11 +16,12 @@
 --4. You can also apply the projection distribution mesh search transformations directly to raw dataset parameters, in order to get native rather than normalised probabilities, and in fact, this will probably be a more common usage for this algorithm.
 --5. It can also be used to analyse bias in ML datasets.
 --6. You could also use the fully normalised datasets table variable in this algorithm to simply correct for differential dataset contextual features such as lighting conditions across a set of video feeds, or maybe where other re-contextualised quantitative signature comparisons are needed etc.
---7. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
+--7. Multi-dimensional probabilistic optimisation, where each axial scalar pool for the input variable has its own probability metrics calculated (usually spot or spread confidence), and then the outputs are constructed into a multi-dimensional graph, where local and global minimas, maximas, and inflexions can be easily extracted.
+--8. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
 
 --USAGE DIRECTIONS:
 --First set appropriate global variables for your particular analysis. See the guidelines in the comments adjacent to the assignations in the source code below.
---Then check to make sure that all the values in both columns in your input CSV file, have had thousand separator commas removed (e.g. 1,750,000.33 becomes 1750000.33).
+--Then check to make sure that all the values in the parameter column in your input CSV file, have had thousand separator commas removed (e.g. 1,750,000.33 becomes 1750000.33).
 --Then copy the appropriate CSV file into the filepath folder.
 --After this, your query is ready to execute, so long as you have enabled permissions to create SQL Server functions for your SQL Server user, and also Windows permissions to open/read files from the assigned file import directory (see global variables in this query) for your Windows user.
 
@@ -44,9 +45,10 @@
 --Microsoft Azure Cloud currently (in 2021) offers 80-core Azure SQL Server Instances which would reduce this query time to most likely below 1 second for those who desire to deploy the query within high throughput applications, with minor adjustments to the source code.
 
 --NOTA BENE:
---This query is only intended for use with ASCII printable characters in the input comma-separated CSV file.
+--This query is only intended for use with ASCII printable characters in the input CSV file.
 --The original column headers from the CSV template file called Datasets_For_Michaelian_Probability_Analysis (available alongside this query on my GitHub account Scarlett-Pimpernell), must be retained within the CSV. The first column header is Dataset, and the second column header is Parameter.
---There is a showstopper table variable joining bug in my current version of SQL Server 2019. It misses a join for >= operator. Please see comments in the source code below. As a result, I advise you, please don't deploy this algorithm to production, until Microsoft has been alerted, and the bug fixed!
+--Beware that this algorithm includes the likely possibility for curve discontinuities to arise. This is intended behaviour in the realm of quantum michaelian probability, and especially desirable when your application requires high levels of precision.
+--There are at least 3 showstopper table variable joining bugs (they may be the same underlying bug) in my current version of SQL Server 2019. It misses a join for >= operator. Please see comments in the source code below. As a result, I advise you, please don't deploy this algorithm to production, until Microsoft has been alerted, and the bug fixed!
 --For typical use assumed as up to 10 datasets, each with up to 1,000 parameters, this query should be pretty rapid, even on a single core.
 --The datasets provided as inputs must only contain dataset labels which are text data type i.e. have at least one non-numeric character, and parameter values which are numeric (either integer or decimal).
 --The maximum usable CSV input file character count is just under 2 billion characters (not including control or extended ASCII characters). You could of course adjust the query appropriately if you have a big data application such as physics simulators or financial modellers etc, but really, you should simply be sampling your parameters properly!... and if you do use this query for very large datasets or very large numbers of datasets, it is almost necessary that you purchase an appropriate highly multi-core SQL Server license, along with appropriate hardware either in the cloud, or on premises.
@@ -54,10 +56,16 @@
 --You could convert all table variables to memory optimised tables, in order to speed up the query, given suitable RAM resources, however otherwise, this would likely impact data volume limits.
 --This query assumes that you definitely won't ever get the string pattern ×¬¯ in your dataset names. When implementing in your own product or service, please remember to check each dataset string for this string pattern before importing, and take appropriate action. If this string pattern will be in your input data, then choose a different and more appropriate binding string pattern... possibly longer, and definitely with other and/or more binding characters.
 --You will only get a curve almost touching 100% confidence with a setting of 50% parameter granularity, when the dataset mid-range is in the parameter values. Otherwise the mid-range peak will actually be a density depression.
+--Just reminding users that they would be wise to make sure that the parameter granularity global variable is constant across analysis instances that they wish to compare in a post-hoc fashion.
+--The @Limit_Normalised_Projection_Spot_Confidence_Percentage transformation is very parallel-compute and RAM intensive. If you do not have enough of these resources, execution time is exponentially increased, and indeed may never complete.
 --Finally, the midpoint spot confidence at 50% parameter granularity will never reach 100%. The reason is referred to as the long-tail problem. Basically, the spread (different from spot) confidence at the midpoint, with a 50% parameter granularity, gives you the hopefully infinitessimal probabity that your next observation will be outside the current dataset range, and therefore is likely subject to a significantly different system of probabilistic distribution.
 
---Necessary Initiation Setting
-Set NoExec Off --If this is not executed, the query may under very few circumstances not complete repeat executions after a CSV data input validation check fails.
+
+
+
+
+--INITIATION:
+Set NoExec Off --If this is not executed, the query may under some circumstances not complete repeat executions after a CSV data input validation check fails.
 
 
 
@@ -76,17 +84,25 @@ Set @File_Name = (Case When Right(@File_Name, 4) = '.csv' Then @File_Name Else (
 
 Declare @Parameter_Granularity_Global_Variable_Percentage Float
 Set @Parameter_Granularity_Global_Variable_Percentage = 50
---This parameter granularity global variable must be restricted to (0 =< x <=50%), and is used in order to set the duplicate count lookup range. It thereby effectively broadens curve peaks as desired for a given application of the theory. For example, you would want wider normal distribution curve peaks if you need greater accuracy of probability. This can be achieved by using a higher parameter granularity percentage. On the other hand, you would want narrower normal distribution curve peaks if you instead need greater precision of probability. This can be achieved by using a lower parameter granularity percentage. The recommended value for this global variable is anywhere between 10% and 50%. A value of 50% would super-nominally simulate the classical normal distribution curve either side of the mean, which originates from the older Bayesian probability theory. But be aware, that the higher the parameter granularity %, the less skew your model will be able to exhibit. Also, beware that if the assigned value of this variable is less than 50%, it introduces the possibility for curve discontinuities to arise (not that much to worry about though, especially when your application requires high levels of precision).
+--This parameter granularity global variable must be restricted to (0% =< x <=50%), and is used in order to set the duplicate count lookup range. It thereby effectively broadens curve peaks as desired for a given application of the theory. For example, you would want wider normal distribution curve peaks if you need greater accuracy of probability. This can be achieved by using a higher parameter granularity percentage. On the other hand, you would want narrower normal distribution curve peaks if you instead need greater precision of probability. This can be achieved by using a lower parameter granularity percentage. The recommended value for this global variable is anywhere between 10% and 50%. A value of 50% would super-nominally simulate the classical normal distribution curve either side of the mean, which originates from the older Bayesian probability theory. But be aware, that the higher the parameter granularity %, the less skew your model will be able to exhibit.
 
 Declare @Projection_Granularity_Global_Variable_Percentage Float
 Set @Projection_Granularity_Global_Variable_Percentage = 1
---This projection granularity global variable must ideally be restricted to (0.000001 =< x <= 10), with 1% being roughly optimal in order to obtain a lean analysis. This value is used in order to set the distribution mesh search transformation gap.
---Please remember to sufficiently search the dataset range distribution space. Your set of scenario projection datapoints should start at the range minima, finish at the range maxima, and have no more than a 10% dataset range gap between any two members, and ideally a lot less. If you do not sufficiently search the probability space, then the resulting confidence percentages will be sub-optimal. Also, beware, if you are experiencing an exploding sigmoid curve as your dataset becomes highly polarised, then this algorithm is not suitable for your dataset. The best approach in this case, would be to use a pool-sized binary probability algorithm, which is effectively achieved via the @Limit_Normalised_Projection_Spot_Confidence_Percentage table variable transformation. The trick to ascertaining whether you have an exploding gradient is as follows. If any 2 ordered parameters have a gap between them which is at least 80% of the dataset range, then I would suppose it is likely that your model is at least starting to experience an exploding gradient issue.
+--This projection granularity global variable must ideally be restricted to (0.000001% =< x <= 10%), with 1% being roughly optimal in order to obtain a lean analysis. This value is used in order to set the distribution mesh search transformation gap.
+--Please remember to sufficiently search the dataset range distribution space. Your set of scenario projection datapoints should start at the range minima, finish at the range maxima, and have no more than a 10% dataset range gap between any two members, and ideally a lot less. If you do not sufficiently search the probability space, then the resulting confidence percentages will be sub-optimal. Also, beware, if you are experiencing an exploding sigmoid curve as your dataset becomes highly polarised, then this algorithm is not suitable for your dataset. The best approach in this case, would be to use a pool-sized ternary probability algorithm, which is effectively achieved via the @Limit_Normalised_Projection_Spot_Confidence_Percentage table variable transformation. This ternary algorithm allows us to flatten any gradient explosion to the outer probability value. Ternary probability... Exploding depressions are limit normalised down to the low-density probability curve inner trough midpoint, while exploding peaks are limit normalised down to the high-density probability curve outer edge parameter. The trick to ascertaining whether you have an exploding gradient is as follows. If any 2 ordered parameters have a gap between them which is at least 80% of the dataset range, then I would suppose it is likely that your model is at least starting to experience an exploding gradient issue.
 --The lower the projection granularity, the exponentially slower the algorithm. In fact, values below 0.1% are unadvisable.
+
+Declare @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Float
+Set @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage = 50
+--This variable must be limited to within the range of values (0% < x < 80%).
+--80% upper limit, because much greater than this, and SQL Server cannot currently calculate and store the massive gradient explosion values that could otherwise result.
+--I rceommend that the value of this global variable is set to around 50% (not sure why, could be wrong, but just seems to work okay during development, but would need a scientific study to reach the optimal value) in situations where optimisation of this variable is not possible. Experience indicates that greater than this misses instances of significant gradient explosion, and less than this starts to indiscriminately limit the probability distribution curve when it is unnecessary.
+--Also I would suggest a value for this variable which is within 50% (scaled, not literal) of the parameter granularity global variable, because otherwise this creates a model variable colliding mismatch, where there is unnecessary asymmetric variable granularity. This variable asymmetry impedes the full action potential of one or the other of the variables. As I have said, I am currently unable to provide guidance on the best value for this variable given the various contextual situations that you may be modelling, and so I highly recommend that you either randomly search the allowed values for this variable for the optimal value, or it may probably be better to perform a mesh search of the allowed variable range.
 
 Declare @CSV_Column_Delimiter Nvarchar(1)
 Set @CSV_Column_Delimiter = ','
 --A comma column Delimiter is highly recommended here, because I have not 'fully' tested with other Delimiters (although basic tests seemed to work fine with other Delimiters). If you do use a different column Delimiter other than a comma, please test thoroughly!
+
 
 
 
@@ -125,6 +141,9 @@ If Not Exists (Select * From Sysobjects Where Name='Element_Index_Generator_Code
 Execute sp_executesql @Create_Function_Command;
 
 
+
+
+
 --EXTRACTION STAGE:
 --The following codeblocks extract data from a CSV file in your previously assigned import directory (see global variables near the beginning of this query).
 Declare @File_Path Nvarchar(250)
@@ -152,7 +171,10 @@ Select
 	(Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0))), Char(10), '') End) As [Dataset],
 	(Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Right([Value], CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0)), @CSV_Column_Delimiter, '') End) As [Parameter]
 From @Raw_Datasets_Intermediate
-Where [Value] <> Char(10)
+Where
+	(Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0))), Char(10), '') End) <> 'Dataset'
+	And (Case When CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 Then Null Else Replace(Left([Value], (Len([Value]) - CharIndex(@CSV_Column_Delimiter, Reverse([Value]), 0))), Char(10), '') End) <> 'Parameter'
+	And [Value] <> Char(10)
 
 
 --The following codeblock aggregates the datasets into multiple rows, which correspond to the parameter count transformation
@@ -171,34 +193,37 @@ Set @Analysis_Label = (Select String_Agg([Dataset], '_') Within Group (Order By 
 
 
 --The following codeblocks, perform data input validation checks, to reduce later algorithm errors, and terminates the current query instance if a check fails... otherwise the query proceeds to analyse Michaelian probabilities
-Declare @Data_Validation_Checks_Table_Variable Table ([Check] TinyInt)
-Insert Into @Data_Validation_Checks_Table_Variable ([Check])
-Select
-	Avg(1) As [Check]
-From @Dynamic_SQL_Intermediate_Table_Variable_1
-Where Left([Data], 20) <> ('Dataset, Parameter' + Char(13) + Char(10)) --Check for two correctly named and correctly column delimited columns error.
-Union All
+Declare @Validation_Checks_Table_Variable Table ([Check] TinyInt)
+Insert Into @Validation_Checks_Table_Variable ([Check])
+Values ((Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage <= 80 Then (Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage >= 0 Then Null Else 1 End) Else 1 End)) --Check for @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable inside of allowed range of values.
+
+Insert Into @Validation_Checks_Table_Variable ([Check])
 Select
 	Avg(2) As [Check]
-From @Raw_Datasets_Intermediate 
-Where
-	[Value] <> Char(10)
-	And CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 --Check for presence of the designated column Delimiter on each row error.
+From @Dynamic_SQL_Intermediate_Table_Variable_1
+Where Left([Data], 19) <> ('Dataset,Parameter' + Char(13) + Char(10)) --Check for two correctly named and correctly column delimited columns error.
 Union All
 Select
 	Avg(3) As [Check]
 From @Raw_Datasets_Intermediate 
 Where
 	[Value] <> Char(10)
-	And Len(Replace([Value], @CSV_Column_Delimiter, '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra column Delimiters error.
+	And CharIndex(@CSV_Column_Delimiter, [Value], 0) = 0 --Check for presence of the designated column Delimiter on each row error.
 Union All
 Select
 	Avg(4) As [Check]
+From @Raw_Datasets_Intermediate 
+Where
+	[Value] <> Char(10)
+	And Len(Replace([Value], @CSV_Column_Delimiter, '')) <> (Len([Value]) - 1) --Check for no dataset value or parameter value extra column Delimiters error.
+Union All
+Select
+	Avg(5) As [Check]
 From @Raw_Datasets_Final
 Where [Dataset] Is Null Or [Parameter] Is Null Or [Dataset] = '' Or [Parameter] = '' --Check for no null or empty values in either column error.
 Union All
 Select
-	Avg(5) As [Check]
+	Avg(6) As [Check]
 From @Raw_Datasets_Final A
 Left Join @Raw_Datasets_Final B
 	On (B.[Dataset] = A.[Dataset] And B.[Parameter] <> A.[Parameter])
@@ -207,36 +232,39 @@ Left Join @Raw_Datasets_Final C
 Where C.[Dataset] Is Null --Check for essential distribution with more than 3 unique parameter values error.
 Union All
 Select
-	Avg(6) As [Check]
+	Avg(7) As [Check]
 From @Raw_Datasets_Final
 Where IsNumeric([Dataset]) = 1 Or IsNumeric([Parameter]) = 0 --Check for correct data type in either column error (Dataset column should be Text, Parameter column should be Numeric).
 Union All
 Select
-	Avg(7) As [Check]
+	Avg(8) As [Check]
 From @Raw_Datasets_Final
 Where Len([Dataset]) > 250 --Check for dataset labels having less than or equal to 250 characters.
 Union All
 Select 0 As [Check] --This is so that there is no null variable behaviour, which can lead to obscure bugs later on.
 
 Declare @Data_Validation_Checks_Max TinyInt
-Set @Data_Validation_Checks_Max = (Select Max([Check]) From @Data_Validation_Checks_Table_Variable)
+Set @Data_Validation_Checks_Max = (Select Max([Check]) From @Validation_Checks_Table_Variable)
 
+--(Global Variable Checks)
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 1) = 1
+Select 'Global variable check for @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable inside of allowed range of values failed. Please make sure you have set this variable, which is near the start of the source code of this query, to a value which is between 0% (not inclusive) and 80% (inclusive).' As [Data_Input_Error]
 --(Metadata Checks)
-If (Select Avg(1) From @Data_Validation_Checks_Table_Variable Where [Check] = 1) = 1
-Select 'CSV data input check for two correctly named and correctly column delimited columns failed. Please make sure you have not changed or deleted the original column headers from the Datasets_For_Michaelian_Probability_Analysis.csv template.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 2 Or [Check] = 1) = 2 --Nominal check (Or [Check] = 1) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for presence of the designated column Delimiter on each row error. The designated CSV file column Delimiter is assigned in the global variables near the beginning of the source code of this query. Alternatively, you could change the CSV column delimiter in your input file, but this would likely involve more effort.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 3 Or [Check] = 1 Or [Check] = 2) = 3 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for no dataset value or parameter value extra column Delimiters failed. This algorithm does not allow column Delimiters in either the dataset or parameter column values.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 2) = 2
+Select 'Input/Source CSV metadata check for two correctly named and correctly column delimited columns failed. Please make sure you have not changed or deleted the original column headers from the Datasets_For_Michaelian_Probability_Analysis.csv template. You may also need to check for invisible extra spaces.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 3 Or [Check] = 1 Or [Check] = 2) = 3 --Nominal check (Or [Check] = 1 Or [Check] = 2) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV metadata check for presence of the designated column Delimiter on each row error. The designated CSV file column Delimiter is assigned in the global variables near the beginning of the source code of this query. Alternatively, you could change the CSV column delimiter in your input file, but this would likely involve more effort.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 4 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 4 --Nominal check (Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV metadata check for no dataset value or parameter value extra column Delimiters failed. This algorithm does not allow column Delimiters in either the dataset or parameter column values.' As [Data_Input_Error]
 --(Data Checks)
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 4 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 4 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for no null or empty values in either column failed.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 5 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 5 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for essential distribution with more than 3 unique parameter values per dataset failed.' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 6 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 6 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for correct data type in either column failed (Dataset column should be Text, Parameter column should be Numeric).' As [Data_Input_Error]
-If (Select Min([Check]) From @Data_Validation_Checks_Table_Variable Where [Check] = 7 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) = 7 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
-Select 'CSV data input check for dataset labels having less than or equal to 250 characters.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 5 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) = 5 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV data check for no null or empty values in either column failed.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 6 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) = 6 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV data check for essential distribution with more than 3 unique parameter values per dataset failed.' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 7 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) = 7 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV data check for correct data type in either column failed (Dataset column should be Text, Parameter column should be Numeric).' As [Data_Input_Error]
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 8 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) = 8 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Input/Source CSV data check for dataset labels having less than or equal to 250 characters.' As [Data_Input_Error]
 
 --Execution Termination
 If @Data_Validation_Checks_Max > 0
@@ -416,12 +444,6 @@ Select Distinct
 	A.[Fully_Normalised_Parameter] As [Fully_Normalised_Parameter],
 	A.[Scale_Granularised_Duplicate_Count] As [Scale_Granularised_Duplicate_Count]
 From @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Intermediate A
-
-Select * From @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
-
-
-
-
 
 
 --The following codeblock determines the number of sub-ranges generated for the distribution mesh search projection.
@@ -728,21 +750,73 @@ Inner Join @Split_Polarity_Of_Density_Depression G
 Inner Join @Dataset_Fully_Normalised_Parameter_Ranges H
 	On (H.[Dataset] = A.[Dataset])
 
-Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Limit_Normalised_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Declare @Limit_Normalised_Projection_Datapoint_Regulariser Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Minimum_Regularised_Datapoint] Float, [Maximum_Regularised_Datapoint] Float)
+Insert Into @Limit_Normalised_Projection_Datapoint_Regulariser ([Dataset], [Datapoint], [Minimum_Regularised_Datapoint], [Maximum_Regularised_Datapoint])
 Select
+	A.[Dataset] As [Dataset],
+	A.[Datapoint] As [Datapoint],
+	Min(Case When (((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / (Case When C.[Distribution_Mesh_Search] = 0 Then 1 Else C.[Distribution_Mesh_Search] End)) * 100) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] <= ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then B.[Distribution_Mesh_Search] Else 0 End) Else Null End) Else A.[Datapoint] End) As [Minimum_Regularised_Datapoint],
+	Max(Case When (((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / (Case When C.[Distribution_Mesh_Search] = 0 Then 1 Else C.[Distribution_Mesh_Search] End)) * 100) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] > ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then C.[Distribution_Mesh_Search] Else 0 End) Else Null End) Else A.[Datapoint] End) As [Maximum_Regularised_Datapoint]
+From @Projection_Spot_Confidence_Percentage A
+Inner Join @Mean_Or_Closest_Lesser_Sample B
+	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample C
+	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage D
+	On(D.[Dataset] = A.[Dataset] And D.[Datapoint] >= B.[Distribution_Mesh_Search] And D.[Datapoint] <= C.[Distribution_Mesh_Search])
+Group By A.[Dataset], A.[Datapoint]
+
+Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
+Insert Into @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Select
+	A.[Dataset] As [Dataset],
+	A.[Datapoint] As [Datapoint],
+	B.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser A
+Inner Join @Projection_Spot_Confidence_Percentage B
+	On(B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Minimum_Regularised_Datapoint] And A.[Minimum_Regularised_Datapoint] Is Not Null)
+Union All
+Select
+	C.[Dataset] As [Dataset],
+	C.[Datapoint] As [Datapoint],
+	D.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser C
+Inner Join @Projection_Spot_Confidence_Percentage D
+	On(D.[Dataset] = C.[Dataset] And D.[Datapoint] = C.[Maximum_Regularised_Datapoint] And C.[Maximum_Regularised_Datapoint] Is Not Null)
+--There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
+
+Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
+Insert Into @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Select Distinct
 	[Dataset] As [Dataset],
 	[Datapoint] As [Datapoint],
-	(Case When [Distribution_Mesh_Search] < 0 Then 0 Else (Case When [Distribution_Mesh_Search] > 100 Then 100 Else [Distribution_Mesh_Search] End) End) As [Distribution_Mesh_Search]
-From @Projection_Spot_Confidence_Percentage
+	[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates
 
-Declare @Limit_Normalised_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Limit_Normalised_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Select
+	A.[Dataset] As [Dataset],
+	A.[Datapoint] As [Datapoint],
+	(((Case When ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) > 1 Then 1 Else ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) End) * D.[Distribution_Mesh_Search]) + (1 - (Case When ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) > 1 Then 1 Else ((C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) / @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage) End)) * A.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+From @Projection_Spot_Confidence_Percentage A
+Inner Join @Mean_Or_Closest_Lesser_Sample B
+	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample C
+	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
+Inner Join @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final D
+	On(D.[Dataset] = A.[Dataset] And D.[Datapoint] = A.[Datapoint])
+--This model phase transition capability enables a gradual switch between the polynomial probability gradient and ternary probability step models.
+--This table variable transformation compares the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradient.
+--There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
+
+Declare @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
 Select
 	[Dataset] As [Dataset],
 	[Datapoint] As [Datapoint],
 	(100 - [Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Spot_Confidence_Percentage
+From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage
 --Some scientists would refer to spread confidence as 'Energy/Entropy Level' instead.
 
 
@@ -756,8 +830,8 @@ Select
 	B.[Datapoint] As [Y_Datapoint],
 	A.[Distribution_Mesh_Search] As [X_Distribution_Mesh_Search],
 	B.[Distribution_Mesh_Search] As [Y_Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Spot_Confidence_Percentage A
-Cross Join @Limit_Normalised_Projection_Spot_Confidence_Percentage B
+From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage A
+Cross Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage B
 
 Declare @Michaelian_Pair_Dataset_Similarity_Matrix Table ([X_Dataset] Nvarchar(250), [Y_Dataset] Nvarchar(250), [Michaelian_X_Dataset_Similarity] Float)
 Insert Into @Michaelian_Pair_Dataset_Similarity_Matrix ([X_Dataset], [Y_Dataset], [Michaelian_X_Dataset_Similarity])
@@ -792,8 +866,8 @@ From @Michaelian_Total_Dataset_Similarity_Matrix
 --LOAD STAGE:
 --The following codeblock returns all the useful data of interest from this algorithm
 Select * From @Fully_Normalised_Datasets Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
-Select * From @Limit_Normalised_Projection_Spot_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
-Select * From @Limit_Normalised_Projection_Spread_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
+Select * From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
+Select * From @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
 Select * From @Michaelian_Pair_Dataset_Similarity_Matrix Order By [X_Dataset] Asc, [Y_Dataset] Asc
 Select * From @Michaelian_Total_Dataset_Similarity_Matrix Order By [Dataset] Asc 
 Select * From @Michaelian_Overall_Analysis_Similarity_Matrix
@@ -801,3 +875,4 @@ Select * From @Michaelian_Overall_Analysis_Similarity_Matrix
 --Finished Progress Report
 Select (@Analysis_Label + ':Finished At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 Select 'If this analysis has taken too much time to execute with regards to your needs, please consider increasing the assigned value of the global variable called @Projection_Granularity_Global_Variable_Percentage, which can be found near the start of the source code for this query.'
+Select 'ALL GLORY TO GOD!'
