@@ -1,23 +1,25 @@
 --HEADER:
---MS Obsidian Michaelian Probability Algorithm
+--MS Obsidian Michaelian Pseudo-Quantum Probability Distribution Algorithm (Called a Variational Auto-Encoder)
 --SQL Server 2019
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.4
+--Version 1.5
 
 
 --OVERVIEW:
---Traditional Bayesian probability theory assumes an 'un-skewed' normal distribution. This outdated Bayesian probability theory also omits the reality of parameter density, and so can't accommodate multi-modality either. As such, my following Michaelian probability theory is superior. It both handles distribution skew and density with ease, and should outperform traditional Bayesian probability on the vast majority of applied real-world solutions, which usually deal with skewed and mostly sparse datasets!
---The following Michaelian distribution probability algorithm, can be used advantageously for numerous purposes, some of which include:
+--TraditFional Bayesian probability theory assumes an 'un-skewed' normal distribution. This outdated Bayesian probability theory also omits the reality of parameter density, and so can't accommodate multi-modality either. As such, my following Michaelian pseudo-quantum probability theory is superior. It both handles distribution skew and density with ease, and should outperform traditional Bayesian probability on the vast majority of applied real-world solutions, which usually deal with skewed and mostly sparse datasets!
+--The following Michaelian pseudo-quantum probability distribution algorithm, can be used advantageously for numerous purposes, some of which include:
 --1. As part of the core AGI Level 1 corpus of machine learning theory and research that I have made available on Amazon (Michael Sinyangwe) and GitHub (Scarlett-Pimpernell).
 --2. If you are looking to use an existing machine learning model in order to solve a problem in your domain, which has its own unique population characteristics, it is often beneficial to comparatively analyse a representative sample from both populations, before re-purposing and deployment, in order to ascertain an understanding of dataset (‘population’) similarity.
 --3. Checking dataset similarity in order to sample only the weights and embeddings of a trained machine learning model that are most ideal for re-use with your dataset (and therefore problem space), and thereby reduces time-to-solution, cost-of-solution, and pollution-from-solution, while most likely improving effectiveness. 
 --4. You can also apply the projection distribution mesh search transformations directly to raw dataset parameters, in order to get native rather than normalised probabilities, and in fact, this will probably be a more common usage for this algorithm.
---5. It can also be used to analyse bias in ML datasets.
---6. You could also use the fully normalised datasets table variable in this algorithm to simply correct for differential dataset contextual features such as lighting conditions across a set of video feeds, or maybe where other re-contextualised quantitative signature comparisons are needed etc.
+--5. Michaelian similarities can also be used to analyse bias in ML datasets.
+--6. You could also use the fully normalised datasets table variable in this algorithm to simply correct for differential dataset contextual features such as lighting conditions across a set of different video feeds, or maybe where other re-contextualised quantitative signature comparisons are needed etc.
 --7. Multi-dimensional probabilistic optimisation, where each axial scalar pool for the input variable has its own probability metrics calculated (usually spot or spread confidence), and then the outputs are constructed into a multi-dimensional graph, where local and global minimas, maximas, and inflexions can be easily extracted.
---8. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
+--8. You could turn this query into a SQL Server function, and then build Michaelian Pseudo-Quantum Probability Distribution Deep Neural Nets with it... just an option.... I call this concept the Feed-Upward Neural Network
+--9. The similarity matrices can be easily utilised for semi-supervised auto-labelling of, for example, graph traces, or images/photos.
+--10. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
 
 --USAGE DIRECTIONS:
 --First set appropriate global variables for your particular analysis. See the guidelines in the comments adjacent to the assignations in the source code below.
@@ -47,8 +49,8 @@
 --NOTA BENE:
 --This query is only intended for use with ASCII printable characters in the input CSV file.
 --The original column headers from the CSV template file called Datasets_For_Michaelian_Probability_Analysis (available alongside this query on my GitHub account Scarlett-Pimpernell), must be retained within the CSV. The first column header is Dataset, and the second column header is Parameter.
---Beware that this algorithm includes the likely possibility for curve discontinuities to arise. This is intended behaviour in the realm of quantum michaelian probability, and especially desirable when your application requires high levels of precision.
---There are at least 3 showstopper table variable joining bugs (they may be the same underlying bug) in my current version of SQL Server 2019. It misses a join for >= operator. Please see comments in the source code below. As a result, I advise you, please don't deploy this algorithm to production, until Microsoft has been alerted, and the bug fixed!
+--Beware that this algorithm includes the likely possibility for curve discontinuities to arise. This is intended behaviour in the realm of pseudo-quantum michaelian probability, and especially desirable when your application requires high levels of precision.
+--There are at least 3 showstopper table variable joining bugs (they may be the same underlying bug) in my current version of SQL Server 2019. It misses a join for >= operator. Also, there are 2 grouped aggregate count having clause showstopper bugs also in the core SQL Server 2019 engine. Please see comments in the source code below. As a result, I advise you, please don't deploy this algorithm to production, until Microsoft has been alerted, and the bug fixed!
 --For typical use assumed as up to 10 datasets, each with up to 1,000 parameters, this query should be pretty rapid, even on a single core.
 --The datasets provided as inputs must only contain dataset labels which are text data type i.e. have at least one non-numeric character, and parameter values which are numeric (either integer or decimal).
 --The maximum usable CSV input file character count is just under 2 billion characters (not including control or extended ASCII characters). You could of course adjust the query appropriately if you have a big data application such as physics simulators or financial modellers etc, but really, you should simply be sampling your parameters properly!... and if you do use this query for very large datasets or very large numbers of datasets, it is almost necessary that you purchase an appropriate highly multi-core SQL Server license, along with appropriate hardware either in the cloud, or on premises.
@@ -82,9 +84,23 @@ Set @File_Name = 'Datasets_For_Michaelian_Probability_Analysis'
 Set @File_Name = (Case When Right(@File_Name, 4) = '.csv' Then @File_Name Else (@File_Name + '.csv') End) --The case statement is used in order to always make sure that the file name includes a trailing extension (.csv).
 --This file name variable tells the query what file you wish to import for analysis.
 
+Declare @Outlier_Threshold_Percentage Float
+Set @Outlier_Threshold_Percentage = 50
+--This outlier threshold global variable must be restricted to (0% < x <= 100%).
+--It determines outlier band exclusions later on.
+--Essentially if there are not at least two other parameters within the outlier percentage threshold of a given parameter, the parameter is excluded from the analysis.
+--Ideally, you want to set this global variable to around 50% in my opinion, but could vary this depending on the application.
+
+Declare @Target_Deepset_Training_Significance Float
+Set @Target_Deepset_Training_Significance = 33.33
+--This significance global variable must be restricted to (0% < x <= 33.33%).
+--It is used in an observation/parameter reduction technique later on, in order to improve computational speed/efficiency. Afterall, it is not necessary to include all parameters in the training/transformation stage, because this algorithm is an interpolating generative optimiser... It can estimate the parameter gaps/blanks with a high degree of fidelity.
+--Essentially, the percentage value assigned here, decides the Significance of the analysis, in accord with the sigma scale outlined in my Data Science Theory book, which is published on Amazon.
+--Ideally, you want to set this global variable to a lean significance of between 1% (most speedy/efficient) and 0.000001 (least speedy/efficient).
+
 Declare @Parameter_Granularity_Global_Variable_Percentage Float
 Set @Parameter_Granularity_Global_Variable_Percentage = 50
---This parameter granularity global variable must be restricted to (0% =< x <=50%), and is used in order to set the duplicate count lookup range. It thereby effectively broadens curve peaks as desired for a given application of the theory. For example, you would want wider normal distribution curve peaks if you need greater accuracy of probability. This can be achieved by using a higher parameter granularity percentage. On the other hand, you would want narrower normal distribution curve peaks if you instead need greater precision of probability. This can be achieved by using a lower parameter granularity percentage. The recommended value for this global variable is anywhere between 10% and 50%. A value of 50% would super-nominally simulate the classical normal distribution curve either side of the mean, which originates from the older Bayesian probability theory. But be aware, that the higher the parameter granularity %, the less skew your model will be able to exhibit.
+--This parameter granularity global variable must be restricted to (0% =< x <= 50%), and is used in order to set the duplicate count lookup range. It thereby effectively broadens curve peaks as desired for a given application of the theory. For example, you would want wider normal distribution curve peaks if you need greater accuracy of probability. This can be achieved by using a higher parameter granularity percentage. On the other hand, you would want narrower normal distribution curve peaks if you instead need greater precision of probability. This can be achieved by using a lower parameter granularity percentage. The recommended value for this global variable is anywhere between 10% and 50%. A value of 50% would super-nominally simulate the classical normal distribution curve either side of the mean, which originates from the older Bayesian probability theory. But be aware, that the higher the parameter granularity %, the less skew your model will be able to exhibit.
 
 Declare @Projection_Granularity_Global_Variable_Percentage Float
 Set @Projection_Granularity_Global_Variable_Percentage = 1
@@ -93,11 +109,13 @@ Set @Projection_Granularity_Global_Variable_Percentage = 1
 --The lower the projection granularity, the exponentially slower the algorithm. In fact, values below 0.1% are unadvisable.
 
 Declare @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Float
-Set @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage = 80
---This variable must be limited to within the range of values (0% < x < 80%).
---80% upper limit, because much greater than this, and SQL Server cannot currently calculate and store the massive gradient explosion values that could otherwise result.
---I rceommend that the value of this global variable is set to around 50% (not sure why, could be wrong, but just seems to work okay during development, but would need a scientific study to reach the optimal value) in situations where optimisation of this variable is not possible. Experience indicates that greater than this misses instances of significant gradient explosion, and less than this starts to indiscriminately limit the probability distribution curve when it is unnecessary.
+Set @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage = 50
+--This variable must be limited to within the range of values (0% < x < 92%).
+--92% upper limit, because much greater than this, and SQL Server cannot currently calculate and store the massive gradient explosion values that could otherwise result. This inherent lacking in SQL Server might dismay some black hole theoretical physicists!
+--I rceommend that the value of this global variable is initially set to somewhere around 50% (not sure why, could be wrong, but just seems to work okay during development, but would need a scientific study to reach the optimal value) in situations where optimisation of this variable is not possible. Experience indicates that greater than this starts to miss instances of significant gradient explosion, and less than this starts to indiscriminately limit the probability distribution curve when it is unnecessary.
 --Also I would suggest a value for this variable which is within 50% (scaled, not literal) of the parameter granularity global variable, because otherwise this creates a model variable colliding mismatch, where there is unnecessary asymmetric variable granularity. This variable asymmetry impedes the full action potential of one or the other of the variables. As I have said, I am currently unable to provide guidance on the best value for this variable given the various contextual situations that you may be modelling, and so I highly recommend that you either randomly search the allowed values for this variable for the optimal value, or it may probably be better to perform a mesh search of the allowed variable range.
+--As far as I can tell, setting this global variable for gradient explosion limits, below 20% would be superfluous.
+--If you want a 'maximally' smoothed curve, then set this exploding gradient limit global variable to 92%.
 
 Declare @CSV_Column_Delimiter Nvarchar(1)
 Set @CSV_Column_Delimiter = ','
@@ -160,7 +178,7 @@ Insert Into @Dynamic_SQL_Intermediate_Table_Variable_1 ([Data])
 Execute sp_executesql @Dynamic_SQL_1, @Dynamic_SQL_Parameter_Definition_1, @Parameter_1 = @File_Path
 
 
---The following codeblocks transform data from the CSV file into inputs for the Michaelian probability analysis
+--The following codeblocks transform data from the CSV file into inputs for the Michaelian pseudo-quantum probability analysis
 Declare @Raw_Datasets_Intermediate Table ([Value] Nvarchar(Max))
 Insert Into @Raw_Datasets_Intermediate ([Value])
 Select Value From String_Split((Select Replace([Data], ('Dataset, Parameter' + Char(13)), '') From @Dynamic_SQL_Intermediate_Table_Variable_1), Char(13))
@@ -195,7 +213,7 @@ Set @Analysis_Label = (Select String_Agg([Dataset], '_') Within Group (Order By 
 --The following codeblocks, perform data input validation checks, to reduce later algorithm errors, and terminates the current query instance if a check fails... otherwise the query proceeds to analyse Michaelian probabilities
 Declare @Validation_Checks_Table_Variable Table ([Check] TinyInt)
 Insert Into @Validation_Checks_Table_Variable ([Check])
-Values ((Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage <= 80 Then (Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage >= 0 Then Null Else 1 End) Else 1 End)) --Check for @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable inside of allowed range of values.
+Values ((Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage <= 80 Then (Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage > 0 Then Null Else 1 End) Else 1 End)) --Check for @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable inside of allowed range of values.
 
 Insert Into @Validation_Checks_Table_Variable ([Check])
 Select
@@ -278,138 +296,364 @@ Select (@Analysis_Label + ':Started At Around:' + Cast(GetDate() As Nvarchar(Max
 
 
 
---TRANSFORMATION STAGE:
---The following codeblock loads the datasets into an ordered table variable 
-Declare @Datasets Table ([Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
-Insert Into @Datasets ([Order], [Dataset], [Parameter])
-Select
-	Row_Number() Over(Order By (Select NULL) Asc) As [Order],
+--SAMPLING STAGE:
+--The core of the deepset partitioning algorithm involves an initial unique dataset-parameter sampling round, which is followed by an additive impartial dataset-parameter sampling round, if more samples are still needed. In both cases, we use what I call the Round-Rand-Robin sampling technique, which utilises a loop that keeps reassigning triple-compound rand values to remaining parameters until every parameter in a given dataset has a unique triple-compound rand value. This random ordering of parameters in a dataset can then be used in order to sample to a given degree of statistical significance, as required by the user (global variable).
+--The following codeblock simply corrects column data types.
+Declare @Data_Type_Corrected_Datasets Table ([Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Data_Type_Corrected_Datasets ([Dataset], [Parameter])
+Select Distinct
 	[Dataset] As [Dataset],
 	Cast([Parameter] As Float) As [Parameter]
 From @Raw_Datasets_Final
 
 
+--The following codeblock loads the raw datasets into a table variable, which corresponds to the dataset range transformation
+Declare @Dataset_Ranges Table ([Dataset] Nvarchar(250), [Range] Float)
+Insert Into @Dataset_Ranges ([Dataset], [Range])
+Select
+	[Dataset] As [Dataset],
+	(Max([Parameter]) - Min([Parameter])) As [Range]
+From @Data_Type_Corrected_Datasets
+Group By [Dataset]
+
+
+--The following codeblock allows us to compensate for parameter sampling uniqueness later on.
+Declare @Dataset_Parameter_Duplicate_Counts Table ([Dataset] Nvarchar(250), [Parameter] Float, [Duplicate_Count] BigInt)
+Insert Into @Dataset_Parameter_Duplicate_Counts ([Dataset], [Parameter], [Duplicate_Count])
+Select Distinct
+	[Dataset] As [Dataset],
+	[Parameter] As [Parameter],
+	Count(*) As [Duplicate_Count]
+From @Data_Type_Corrected_Datasets
+Group By [Dataset], [Parameter]
+
+
+--The following codeblock allows us to later remove outliers from the dataset observations.
+Declare @Datasets_Outlier_Augmented Table ([Dataset] Nvarchar(250), [Parameter] Float, [Outlier_Threshold_Count] BigInt)
+Insert Into @Datasets_Outlier_Augmented ([Dataset], [Parameter], [Outlier_Threshold_Count])
+Select
+	A.[Dataset] As [Dataset],
+	A.[Parameter] As [Parameter],
+	Count(*) As [Outlier_Threshold_Count]
+From @Data_Type_Corrected_Datasets A
+Inner Join @Dataset_Ranges B
+	On (B.[Dataset] = A.[Dataset])
+Inner Join @Raw_Datasets_Final C
+	On (C.[Dataset] = A.[Dataset] And C.[Parameter] >= (A.[Parameter] - (B.[Range] * (@Outlier_Threshold_Percentage / 100))) And C.[Parameter] <= (A.[Parameter] + (B.[Range] * (@Outlier_Threshold_Percentage / 100))))
+Group By A.[Dataset], A.[Parameter]
+
+
+--The following codeblock adds an order column to the deepsets in order to maintain uniqueness later on
+Declare @Deepset_Partitions_Intermediate Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepset_Partitions_Intermediate ([Unique_Order], [Dataset], [Parameter])
+Select
+	Row_Number() Over(Order By (Select Null) Asc) As [Unique_Order],
+	[Dataset] As [Dataset],
+	[Parameter] As [Parameter]
+From @Datasets_Outlier_Augmented
+Where [Outlier_Threshold_Count] > 2 --You could turn the second term after the operator here into another global variable... but, for me, I follow Jesus Christ, and the bible clearly states that 3 witnesses are sufficient to prove any claim.
+
+
+--The following codeblock produces a minimum unique order dataset-parameter grouped table variable
+Declare @Deepset_Partitions_Intermediate_Minimum_Unique_Order  Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepset_Partitions_Intermediate_Minimum_Unique_Order ([Unique_Order], [Dataset], [Parameter])
+Select
+	Min([Unique_Order]) As [Unique_Order],
+	[Dataset] As [Dataset],
+	[Parameter] As [Parameter]
+From @Deepset_Partitions_Intermediate
+Group By [Dataset], [Parameter]
+
+
+--The following codeblocks split individual observations into multiple different deepset partitions (optimal sample groups).
+--(((Initial Unique Sampling Round)))
+Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_A Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Declare @Loop_Count BigInt
+Set @Loop_Count = 0
+
+--(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
+While (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Group By [Rand_1], [Rand_2], [Rand_3]) Is Null Then (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B) < (Select Sum([Duplicate_Count]) From @Dataset_Parameter_Duplicate_Counts Where [Duplicate_Count] = 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else 0 End) Else 0 End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+Begin
+	
+	Set @Loop_Count = (@Loop_Count + 1)
+	
+	Delete From @Deepset_Partitions_Intermediate_Initial_Unique_Round_A
+	Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_A ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+	Select
+		A.[Unique_Order] As [Unique_Order],
+		A.[Dataset] As [Dataset],
+		Rand() As [Rand_1],
+		Rand() As [Rand_2],
+		Rand() As [Rand_3]
+	From @Deepset_Partitions_Intermediate A
+	Inner Join @Deepset_Partitions_Intermediate_Minimum_Unique_Order B --The parameter duplicate count allows us to perform a unique first round-rand-robin sampling technique, before later on, simply randomly sampling each dataset's parameters. This is necessary, in order to maintain essential dataset distribution (at least 3 unique parameters).
+		On (B.[Unique_Order] = A.[Unique_Order])
+	Left Outer Join @Deepset_Partitions_Intermediate_Initial_Unique_Round_B C
+		On (C.[Unique_Order] = A.[Unique_Order])
+	Where C.[Unique_Order] Is Null
+
+	Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_B ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+	Select
+		Min([Unique_Order]) As [Unique_Order], --Eventually the loop will work through all dataset-round-rand-robin duplicates.
+		[Dataset] As [Dataset],
+		[Rand_1] As [Rand_1],
+		[Rand_2] As [Rand_2],
+		[Rand_3] As [Rand_3]
+	From @Deepset_Partitions_Intermediate_Initial_Unique_Round_A
+	Group By [Dataset], [Rand_1], [Rand_2], [Rand_3]
+	Having Count(*) = 1 --There seems to be a showstopper bug in the core SQL Server 2019 engine here... The having clause does not return grouped rows where the aggregate count is 1!
+	
+End
+
+Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_C Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float, [Rand_1] Float, [Rand_2] Float, [Rand_3] Float, [Initial_Order] BigInt)
+Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_C ([Unique_Order], [Dataset], [Parameter], [Rand_1], [Rand_2], [Rand_3], [Initial_Order])
+Select
+	A.[Unique_Order] As [Unique_Order],
+	B.[Dataset] As [Dataset],
+	B.[Parameter] As [Parameter],
+	A.[Rand_1] As [Rand_1],
+	A.[Rand_2] As [Rand_2],
+	A.[Rand_3] As [Rand_3],
+	Row_Number() Over(Order By (Select Null) Asc) As [Initial_Order]
+From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B A
+Inner Join @Deepset_Partitions_Intermediate B
+	On (B.[Unique_Order] = A.[Unique_Order])
+Order By [Rand_1] Asc, [Rand_2] Asc, [Rand_3] Asc
+
+Declare @Deepset_Partitions_Final Table ([Deepset_Partition] Nvarchar(250), [Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepset_Partitions_Final ([Deepset_Partition], [Unique_Order], [Dataset], [Parameter])
+Select
+	(Case When [Initial_Order] <= Ceiling((100 / @Target_Deepset_Training_Significance)) Then '1-Training' Else '2-Other' End) As [Deepset_Partition], --Ceiling(), because you want at least the target significance... You could add other partitions here, as desired, using the same technique.... and even maybe route the partitions off to different parallel models and/or compute engines.
+	[Unique_Order] As [Unique_Order],
+	[Dataset] As [Dataset],
+	[Parameter] As [Parameter]
+From @Deepset_Partitions_Intermediate_Initial_Unique_Round_C
+
+Declare @Deepset_Initial_Unique_Sampling_Round_Counts Table ([Dataset] Nvarchar(250), [Sample_Count] BigInt)
+Insert Into @Deepset_Initial_Unique_Sampling_Round_Counts ([Dataset], [Sample_Count])
+Select
+	[Dataset] As [Dataset],
+	Count(*) As [Sample_Count]
+From @Deepset_Partitions_Final
+Where [Deepset_Partition] = '1-Training'
+Group By [Dataset]
+
+--(((Additive Impartial Sampling Round)))
+Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Set @Loop_Count = 0
+
+--(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
+While (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Group By [Rand_1], [Rand_2], [Rand_3]) Is Null Then (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B) < ((Select Count(*) From @Data_Type_Corrected_Datasets) - (Select Sum([Duplicate_Count]) From @Dataset_Parameter_Duplicate_Counts Where [Duplicate_Count] = 1)) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else 0 End) Else 0 End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+Begin
+	
+	Set @Loop_Count = (@Loop_Count + 1)
+
+	Delete From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A
+	Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+	Select
+		A.[Unique_Order] As [Unique_Order],
+		A.[Dataset] As [Dataset],
+		Rand() As [Rand_1],
+		Rand() As [Rand_2],
+		Rand() As [Rand_3]
+	From @Deepset_Partitions_Intermediate A
+	Left Outer Join @Deepset_Partitions_Final B --This join excludes already partitioned parameters from the initial unique sampling round.
+		On (B.[Unique_Order] = A.[Unique_Order])
+	Left Outer Join @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B C
+		On (C.[Unique_Order] = A.[Unique_Order])
+	Where
+		B.[Unique_Order] Is Null
+		And C.[Unique_Order] Is Null
+
+	Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+	Select
+		Min([Unique_Order]) As [Unique_Order], --Eventually the loop will work through all dataset-round-rand-robin duplicates.
+		[Dataset] As [Dataset],
+		[Rand_1] As [Rand_1],
+		[Rand_2] As [Rand_2],
+		[Rand_3] As [Rand_3]
+	From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A
+	Group By [Dataset], [Rand_1], [Rand_2], [Rand_3]
+	Having Count(*) = 1 --There seems to be a showstopper bug in the core SQL Server 2019 engine here... The having clause does not return grouped rows where the aggregate count is 1!
+
+End
+
+Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_C Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float, [Rand_1] Float, [Rand_2] Float, [Rand_3] Float, [Additive_Order] BigInt)
+Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_C ([Unique_Order], [Dataset], [Parameter], [Rand_1], [Rand_2], [Rand_3], [Additive_Order])
+Select
+	A.[Unique_Order] As [Unique_Order],
+	B.[Dataset] As [Dataset],
+	B.[Parameter] As [Parameter],
+	A.[Rand_1] As [Rand_1],
+	A.[Rand_2] As [Rand_2],
+	A.[Rand_3] As [Rand_3],
+	Row_Number() Over(Order By (Select Null) Asc) As [Additive_Order]
+From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B A
+Inner Join @Deepset_Partitions_Intermediate B
+	On (B.[Unique_Order] = A.[Unique_Order])
+Order By [Rand_1] Asc, [Rand_2] Asc, [Rand_3] Asc
+
+Insert Into @Deepset_Partitions_Final ([Deepset_Partition], [Unique_Order], [Dataset], [Parameter])
+Select
+	(Case When A.[Additive_Order] <= (Ceiling((100 / @Target_Deepset_Training_Significance)) - B.[Sample_Count]) Then '1-Training' Else '2-Other' End) As [Deepset_Partition], --Ceiling(), because you want at least the target significance... You could add other partitions here, as desired, using the same technique.... and even maybe route the partitions off to different parallel models or compute engines.
+	A.[Unique_Order] As [Unique_Order],
+	A.[Dataset] As [Dataset],
+	A.[Parameter] As [Parameter]
+From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_C A
+Inner Join @Deepset_Initial_Unique_Sampling_Round_Counts B --This join is used in the [Deepset_Partition] column, in order to correct augment the @Target_Deepset_Training_Significance variable method for limiting training sample rows.
+	On (B.[Dataset] = A.[Dataset])
+
+
+--The following codeblock transforms the deepsets into statistical significance sigma-bands 
+Declare @Deepset_Statistical_Significance_Sigma_Bands Table ([Dataset] Nvarchar(250), [Post_Sampling_Sigma_Band] Nvarchar(250))
+Insert Into @Deepset_Statistical_Significance_Sigma_Bands ([Dataset], [Post_Sampling_Sigma_Band])
+Select
+	[Dataset] As [Dataset],
+	(Case When Count(*) < 100 Then 'Loose' Else (Case When Count(*) < 1000 Then 'Lean' Else (Case When Count(*) < 10000 Then '1-Sigma' Else (Case When Count(*) < 100000 Then '2-Sigma' Else (Case When Count(*) < 1000000 Then '3-Sigma' Else (Case When Count(*) < 10000000 Then '4-Sigma' Else (Case When Count(*) < 100000000 Then '5-Sigma' Else (Case When Count(*) < 1000000000 Then '6-Sigma' Else 'Statistically Unnecessary Significance' End) End) End) End) End) End) End) End) As [Post_Sampling_Sigma_Band]
+From @Deepset_Partitions_Final
+Where [Deepset_Partition] = 'Training'
+Group By [Dataset]
+
+
+--The following codeblock loads the deepsets into an ordered deepset table variable 
+Declare @Deepsets Table ([Order] BigInt, [Deepset_Partition] Nvarchar(250), [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepsets ([Order], [Deepset_Partition], [Dataset], [Parameter])
+Select
+	Row_Number() Over(Order By (Select Null) Asc) As [Order],
+	[Deepset_Partition] As [Deepset_Partition],
+	[Dataset] As [Dataset],
+	[Parameter] As [Parameter]
+From @Deepset_Partitions_Final
+
+
+
+
+
+--TRANSFORMATION STAGE:
 --The following codeblock loads the parameter count transformation into a variable, which corresponds to the minimum cross-normalisation row count transformation
-Declare @Minimum_Dataset_Parameter_Count BigInt
-Set @Minimum_Dataset_Parameter_Count = (Select Min([Parameter_Count]) From @Dataset_Parameter_Counts)
+Declare @Minimum_Deepset_Parameter_Count BigInt
+Set @Minimum_Deepset_Parameter_Count = (Select Min([Parameter_Count]) From @Dataset_Parameter_Counts)
 
 
---The following codeblock loads the datasets into a table variable, which corresponds to the cross-normalisation transformation
-Declare @Dataset_Cross_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Cross_Normalised_Parameter] Float)
-Insert Into @Dataset_Cross_Normalisations ([Order], [Dataset], [Cross_Normalised_Parameter])
+--The following codeblock loads the deepsets into a table variable, which corresponds to the cross-normalisation transformation
+Declare @Deepset_Cross_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Cross_Normalised_Parameter] Float)
+Insert Into @Deepset_Cross_Normalisations ([Order], [Dataset], [Cross_Normalised_Parameter])
 Select
 	A.[Order] As [Order],
 	A.[Dataset] As [Dataset],
-	Sum((((A.[Parameter] * C.[Parameter_Count]) / B.[Parameter_Count]) / @Minimum_Dataset_Parameter_Count) * B.[Parameter_Count]) As [Cross_Normalised_Parameter]
-From @Datasets A
+	Sum((((A.[Parameter] * C.[Parameter_Count]) / B.[Parameter_Count]) / @Minimum_Deepset_Parameter_Count) * B.[Parameter_Count]) As [Cross_Normalised_Parameter]
+From @Deepsets A
 Inner Join @Dataset_Parameter_Counts B
-	On (B.[Dataset] = A.[Dataset])
+	On (B.[Dataset] = A.[Dataset] And A.[Deepset_Partition] = 'Training')
 Inner Join @Dataset_Parameter_Counts C
-	On (C.[Dataset] <> A.[Dataset])
+	On (C.[Dataset] <> A.[Dataset] And A.[Deepset_Partition] = 'Training')
 Group By A.[Dataset], A.[Order]
 --To cross-normalise a dataset significance, you need to: (((multiply the current dataset significance by the sum of all other dataset parameter counts), divide by the sum of the current dataset parameter count), and finally divide by the minimum dataset parameter count).
 
---The following codeblock loads the cross-normalisation datasets into a table variable, which corresponds to the cross-normalisation range transformation
-Declare @Dataset_Cross_Normalisation_Ranges Table ([Dataset] Nvarchar(250), [Range] Float)
-Insert Into @Dataset_Cross_Normalisation_Ranges ([Dataset], [Range])
+
+--The following codeblock loads the cross-normalisation deepsets into a table variable, which corresponds to the cross-normalisation range transformation
+Declare @Deepset_Cross_Normalisation_Ranges Table ([Dataset] Nvarchar(250), [Range] Float)
+Insert Into @Deepset_Cross_Normalisation_Ranges ([Dataset], [Range])
 Select
 	[Dataset] As [Dataset],
 	(Max([Cross_Normalised_Parameter]) - Min([Cross_Normalised_Parameter])) As [Range]
-From @Dataset_Cross_Normalisations
+From @Deepset_Cross_Normalisations
 Group By [Dataset]
 
 
 --The following codeblocks loads the cross-normalisation range transformation into a variable, which corresponds to the maximum cross-normalisation range transformation
-Declare @Dataset_Cross_Normalisation_Maximum_Range Float
-Set @Dataset_Cross_Normalisation_Maximum_Range = (Select Max([Range]) From @Dataset_Cross_Normalisation_Ranges)
+Declare @Deepset_Cross_Normalisation_Maximum_Range Float
+Set @Deepset_Cross_Normalisation_Maximum_Range = (Select Max([Range]) From @Deepset_Cross_Normalisation_Ranges)
 
 
---The following codeblock loads the cross-normalised datasets into a table variable, which corresponds to the proportional-normalisation transformation
-Declare @Dataset_Proportional_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Proportional_Normalised_Parameter] Float)
-Insert Into @Dataset_Proportional_Normalisations ([Order], [Dataset], [Proportional_Normalised_Parameter])
+--The following codeblock loads the cross-normalised deepsets into a table variable, which corresponds to the proportional-normalisation transformation
+Declare @Deepset_Proportional_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Proportional_Normalised_Parameter] Float)
+Insert Into @Deepset_Proportional_Normalisations ([Order], [Dataset], [Proportional_Normalised_Parameter])
 Select
 	A.[Order] As [Order],
 	A.[Dataset] As [Dataset],
-	(A.[Cross_Normalised_Parameter] / (B.[Range] / @Dataset_Cross_Normalisation_Maximum_Range)) As [Proportional_Normalised_Parameter]
-From @Dataset_Cross_Normalisations A
-Inner Join @Dataset_Cross_Normalisation_Ranges B
+	(A.[Cross_Normalised_Parameter] / (B.[Range] / @Deepset_Cross_Normalisation_Maximum_Range)) As [Proportional_Normalised_Parameter]
+From @Deepset_Cross_Normalisations A
+Inner Join @Deepset_Cross_Normalisation_Ranges B
 	On (B.[Dataset] = A.[Dataset])
 
 
---The following codeblock loads the proportional-normalisation tranformation into a table variable, which corresponds to the proportional-normalisation dataset minimum parameter transformation
-Declare @Dataset_Proportional_Normalisation_Parameter_Minimum Table ([Dataset] Nvarchar(250), [Proportional_Parameter_Minimum] Float)
-Insert Into @Dataset_Proportional_Normalisation_Parameter_Minimum ([Dataset], [Proportional_Parameter_Minimum])
+--The following codeblock loads the proportional-normalisation tranformation into a table variable, which corresponds to the proportional-normalisation deepset minimum parameter transformation
+Declare @Deepset_Proportional_Normalisation_Parameter_Minimum Table ([Dataset] Nvarchar(250), [Proportional_Parameter_Minimum] Float)
+Insert Into @Deepset_Proportional_Normalisation_Parameter_Minimum ([Dataset], [Proportional_Parameter_Minimum])
 Select
 	[Dataset] As [Dataset],
 	Min([Proportional_Normalised_Parameter]) As [Proportional_Parameter_Minimum]
-From @Dataset_Proportional_Normalisations
+From @Deepset_Proportional_Normalisations
 Group By [Dataset]
 
 
 --The following codeblock loads the proportional-normalised transformation into a table variable, which corresponds to the scale-normalisation transformation
-Declare @Dataset_Scale_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Scale_Normalised_Parameter] Float)
-Insert Into @Dataset_Scale_Normalisations ([Order], [Dataset], [Scale_Normalised_Parameter])
+Declare @Deepset_Scale_Normalisations Table ([Order] BigInt, [Dataset] Nvarchar(250), [Scale_Normalised_Parameter] Float)
+Insert Into @Deepset_Scale_Normalisations ([Order], [Dataset], [Scale_Normalised_Parameter])
 Select
 	A.[Order] As [Order],
 	A.[Dataset] As [Dataset],
 	(A.[Proportional_Normalised_Parameter] - B.[Proportional_Parameter_Minimum]) As [Scale_Normalised_Parameter]
-From @Dataset_Proportional_Normalisations A
-Inner Join @Dataset_Proportional_Normalisation_Parameter_Minimum B
+From @Deepset_Proportional_Normalisations A
+Inner Join @Deepset_Proportional_Normalisation_Parameter_Minimum B
 	On (B.[Dataset] = A.[Dataset])
 
 
 --The following codeblock loads the scale-normalisation transformation into a variable, which corresponds to the scale-normalisation maximum parameter transformation
 Declare @Scale_Normalisation_Maximum_Parameter Float
-Set @Scale_Normalisation_Maximum_Parameter = (Select Max([Scale_Normalised_Parameter]) From @Dataset_Scale_Normalisations)
+Set @Scale_Normalisation_Maximum_Parameter = (Select Max([Scale_Normalised_Parameter]) From @Deepset_Scale_Normalisations)
 
 
---The following codeblock loads the datasets into a table variable, which corresponds to the fully normalised parameter transformation
-Declare @Fully_Normalised_Datasets Table ([Order] BigInt, [Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float)
-Insert Into @Fully_Normalised_Datasets ([Order], [Dataset], [Fully_Normalised_Parameter])
+--The following codeblock loads the deepsets into a table variable, which corresponds to the fully normalised parameter transformation
+Declare @Fully_Normalised_Deepsets Table ([Order] BigInt, [Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float)
+Insert Into @Fully_Normalised_Deepsets ([Order], [Dataset], [Fully_Normalised_Parameter])
 Select
 	[Order] As [Order],
 	[Dataset] As [Dataset],
 	(([Scale_Normalised_Parameter] / @Scale_Normalisation_Maximum_Parameter) * 100) As [Fully_Normalised_Parameter]
-From @Dataset_Scale_Normalisations
+From @Deepset_Scale_Normalisations
 
 
---The following codeblock finds the fully normalised dataset parameter minimas
---Declare @Dataset_Fully_Normalised_Parameter_Minimum Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---Set @Dataset_Fully_Normalised_Parameter_Minimum = 0 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---The following codeblock aggregates the datasets into multiple rows, which correspond to the fully normalised dataset parameter minimum transformation
-Declare @Dataset_Fully_Normalised_Parameter_Minimas Table ([Dataset] Nvarchar(250), [Parameter_Minimum] Float)
-Insert Into @Dataset_Fully_Normalised_Parameter_Minimas ([Dataset], [Parameter_Minimum])
+--The following codeblock finds the fully normalised deepset parameter minimas
+--Declare @Deepset_Fully_Normalised_Parameter_Minimum Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--Set @Deepset_Fully_Normalised_Parameter_Minimum = 0 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--The following codeblock aggregates the deepsets into multiple rows, which correspond to the fully normalised deepset parameter minimum transformation
+Declare @Deepset_Fully_Normalised_Parameter_Minimas Table ([Dataset] Nvarchar(250), [Parameter_Minimum] Float)
+Insert Into @Deepset_Fully_Normalised_Parameter_Minimas ([Dataset], [Parameter_Minimum])
 Select
 	[Dataset] As [Dataset],
 	Min([Fully_Normalised_Parameter]) As [Parameter_Minimum]
-From @Fully_Normalised_Datasets
+From @Fully_Normalised_Deepsets
 Group By [Dataset]
 
 
---The following codeblock finds the fully normalised dataset parameter maximas
---Declare @Dataset_Fully_Normalised_Parameter_Maximum Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---Set @Dataset_Fully_Normalised_Parameter_Maximum = 100 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---The following codeblock aggregates the datasets into multiple rows, which correspond to the fully normalised dataset parameter maximum transformation
-Declare @Dataset_Fully_Normalised_Parameter_Maximas Table ([Dataset] Nvarchar(250), [Parameter_Maximum] Float)
-Insert Into @Dataset_Fully_Normalised_Parameter_Maximas ([Dataset], [Parameter_Maximum])
+--The following codeblock finds the fully normalised deepset parameter maximas
+--Declare @Deepset_Fully_Normalised_Parameter_Maximum Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--Set @Deepset_Fully_Normalised_Parameter_Maximum = 100 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--The following codeblock aggregates the deepsets into multiple rows, which correspond to the fully normalised deepset parameter maximum transformation
+Declare @Deepset_Fully_Normalised_Parameter_Maximas Table ([Dataset] Nvarchar(250), [Parameter_Maximum] Float)
+Insert Into @Deepset_Fully_Normalised_Parameter_Maximas ([Dataset], [Parameter_Maximum])
 Select
 	[Dataset] As [Dataset],
 	Max([Fully_Normalised_Parameter]) As [Parameter_Maximum]
-From @Fully_Normalised_Datasets
+From @Fully_Normalised_Deepsets
 Group By [Dataset]
 
 
 --The following codeblock finds the fully normalised dataset parameter ranges
---Declare @Dataset_Fully_Normalised_Parameter_Range Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---Set @Dataset_Fully_Normalised_Parameter_Range = 100 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
---The following codeblock aggregates the datasets into multiple rows, which correspond to the fully normalised dataset parameter range transformation
-Declare @Dataset_Fully_Normalised_Parameter_Ranges Table ([Dataset] Nvarchar(250), [Parameter_Range] Float)
-Insert Into @Dataset_Fully_Normalised_Parameter_Ranges ([Dataset], [Parameter_Range])
+--Declare @Deepset_Fully_Normalised_Parameter_Range Float (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--Set @Deepset_Fully_Normalised_Parameter_Range = 100 (You could fudge this transformation for a slight speed gain under some circumstances, but would need to tweak following source code references.)
+--The following codeblock aggregates the deepsets into multiple rows, which correspond to the fully normalised deepset parameter range transformation
+Declare @Deepset_Fully_Normalised_Parameter_Ranges Table ([Dataset] Nvarchar(250), [Parameter_Range] Float)
+Insert Into @Deepset_Fully_Normalised_Parameter_Ranges ([Dataset], [Parameter_Range])
 Select
 	A.[Dataset] As [Dataset],
 	Avg(B.[Parameter_Maximum] - A.[Parameter_Minimum]) As [Parameter_Range]
-From @Dataset_Fully_Normalised_Parameter_Minimas A
-Inner Join @Dataset_Fully_Normalised_Parameter_Maximas B
+From @Deepset_Fully_Normalised_Parameter_Minimas A
+Inner Join @Deepset_Fully_Normalised_Parameter_Maximas B
 	On (B.[Dataset] = A.[Dataset])
 Group By A.[Dataset]
 
@@ -422,28 +666,28 @@ Declare @Projection_Sub_Range_Count Float
 Set @Projection_Sub_Range_Count = (100 / @Projection_Granularity_Global_Variable_Percentage)
 
 
---The following codeblocks load the data from the fully normalised datasets into a table variable, which corresponds to the granularised duplicate count transformation
-Declare @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Intermediate Table ([Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float, [Scale_Granularised_Duplicate_Count] BigInt)
-Insert Into @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Intermediate ([Dataset], [Fully_Normalised_Parameter], [Scale_Granularised_Duplicate_Count])
+--The following codeblocks load the data from the fully normalised deepsets into a table variable, which corresponds to the granularised duplicate count transformation
+Declare @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Intermediate Table ([Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float, [Scale_Granularised_Duplicate_Count] BigInt)
+Insert Into @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Intermediate ([Dataset], [Fully_Normalised_Parameter], [Scale_Granularised_Duplicate_Count])
 Select
 	A.[Dataset] As [Dataset],
 	A.[Fully_Normalised_Parameter] As [Fully_Normalised_Parameter],
 	Count(*) As [Scale_Granularised_Duplicate_Count]
-From @Fully_Normalised_Datasets A
-Inner Join @Fully_Normalised_Datasets B
+From @Fully_Normalised_Deepsets A
+Inner Join @Fully_Normalised_Deepsets B
 	On (B.[Dataset] = A.[Dataset] And B.[Fully_Normalised_Parameter] >= (A.[Fully_Normalised_Parameter] - @Parameter_Granularity_Global_Variable_Percentage) And B.[Fully_Normalised_Parameter] <= (A.[Fully_Normalised_Parameter] + @Parameter_Granularity_Global_Variable_Percentage))
 Inner Join @Dataset_Parameter_Counts C
 	On (C.[Dataset] = A.[Dataset])
 Group By A.[Order], A.[Dataset], A.[Fully_Normalised_Parameter]
 --The scale-granularised duplicate count column calculates parameter duplicate counts within a previously set parameter granularity percentage range either side of the parameter.
 
-Declare @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final Table ([Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float, [Scale_Granularised_Duplicate_Count] BigInt)
-Insert Into @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final ([Dataset], [Fully_Normalised_Parameter], [Scale_Granularised_Duplicate_Count])
+Declare @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final Table ([Dataset] Nvarchar(250), [Fully_Normalised_Parameter] Float, [Scale_Granularised_Duplicate_Count] BigInt)
+Insert Into @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final ([Dataset], [Fully_Normalised_Parameter], [Scale_Granularised_Duplicate_Count])
 Select Distinct
 	A.[Dataset] As [Dataset],
 	A.[Fully_Normalised_Parameter] As [Fully_Normalised_Parameter],
 	A.[Scale_Granularised_Duplicate_Count] As [Scale_Granularised_Duplicate_Count]
-From @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Intermediate A
+From @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Intermediate A
 
 
 --The following codeblock determines the number of sub-ranges generated for the distribution mesh search projection.
@@ -480,7 +724,7 @@ From @Obsidian_Element_Index A
 Cross Join @Dataset_Parameter_Counts B
 
 
---The following codeblocks load the projection datapoint scaffolds into multiple table variables, which correspond to the distribution mesh search transformations
+--The following codeblocks load the projection datapoint scaffolds into multiple table variables, which correspond to the baseline distribution mesh search transformations
 --(100% is the core value you must calculate from. In addition to this, you need to assign a mean or closest lesser sample, and a mean or closest greater sample to each projection datapoint, in order to deal with duplicate values properly. As you can see, the synthesis of the duplicate data requires the application of a sample parameter duplication granularity range. On top of this, you must apply a total of 11 complex concave and convex sigmoid methods in order to generate smooth s-curve confidence percentages for projection datapoints which are not contained within the sample dataset. You must naturalise these sigmoid confidence percentages. Make sure to also include depression softening within the raw confidence method, which relies on the relationship between depression range and dataset range, given a polarised boundary minima and maxima confidence. Additionally, you need to split polarise these convex and concave spot confidence methods, so that they form curves across density depression ranges where there are no sample parameters present.)
 Declare @Mean_Or_Closest_Lesser_Sample Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
 Insert Into @Mean_Or_Closest_Lesser_Sample ([Dataset], [Datapoint], [Distribution_Mesh_Search])
@@ -489,7 +733,7 @@ Select
 	A.[Datapoint] As [Datapoint],
 	Max(B.[Fully_Normalised_Parameter]) As [Distribution_Mesh_Search]
 From @Obsidian_Distribution_Mesh_Search A
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final B
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final B
 	On (B.[Dataset] = A.[Dataset] And B.[Fully_Normalised_Parameter] <= A.[Datapoint])
 Group By A.[Dataset], A.[Datapoint]
 
@@ -500,7 +744,7 @@ Select
 	A.[Datapoint] As [Datapoint],
 	Min(B.[Fully_Normalised_Parameter]) As [Distribution_Mesh_Search]
 From @Obsidian_Distribution_Mesh_Search A
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final B
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final B
 	On (B.[Dataset] = A.[Dataset] And B.[Fully_Normalised_Parameter] >= A.[Datapoint]) --It seems there is a showstopper bug here in my current version of the SQL Server engine (2019). There is a valid join missing for the >= operator for A.[Datapoint] = 100, and also the >= join feature is missing the lower end of the join range for A.[Datapoint] = 50 (which should join to another 50 in the B alias table but doesn't)!
 Group By A.[Dataset], A.[Datapoint]
 
@@ -515,7 +759,7 @@ Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
 Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final D
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final D
 	On (D.[Dataset] = A.[Dataset] And D.[Fully_Normalised_Parameter] = B.[Distribution_Mesh_Search])
 Inner Join @Dataset_Parameter_Counts E
 	On (E.[Dataset] = A.[Dataset])
@@ -531,7 +775,7 @@ Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
 Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final D
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final D
 	On (D.[Dataset] = A.[Dataset] And D.[Fully_Normalised_Parameter] = C.[Distribution_Mesh_Search])
 Inner Join @Dataset_Parameter_Counts E
 	On (E.[Dataset] = A.[Dataset])
@@ -547,7 +791,7 @@ Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
 Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final D
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final D
 	On (D.[Dataset] = A.[Dataset] And D.[Fully_Normalised_Parameter] = B.[Distribution_Mesh_Search])
 Inner Join @Dataset_Parameter_Counts E
 	On (E.[Dataset] = A.[Dataset])
@@ -563,7 +807,7 @@ Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
 Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
-Inner Join @Fully_Normalised_Datasets_With_Granularised_Duplicate_Counts_Final D
+Inner Join @Fully_Normalised_Deepsets_With_Granularised_Duplicate_Counts_Final D
 	On (D.[Dataset] = A.[Dataset] And D.[Fully_Normalised_Parameter] = C.[Distribution_Mesh_Search])
 Inner Join @Dataset_Parameter_Counts E
 	On (E.[Dataset] = A.[Dataset])
@@ -747,84 +991,78 @@ Inner Join @Projection_Concave_Spot_Confidence_Percentage F
 	On (F.[Dataset] = A.[Dataset] And F.[Datapoint] = A.[Datapoint])
 Inner Join @Split_Polarity_Of_Density_Depression G
 	On (G.[Dataset] = A.[Dataset] And G.[Datapoint] = A.[Datapoint])
-Inner Join @Dataset_Fully_Normalised_Parameter_Ranges H
+Inner Join @Deepset_Fully_Normalised_Parameter_Ranges H
 	On (H.[Dataset] = A.[Dataset])
 
-Declare @Limit_Normalised_Projection_Datapoint_Regulariser Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Minimum_Regularised_Datapoint] Float, [Maximum_Regularised_Datapoint] Float)
-Insert Into @Limit_Normalised_Projection_Datapoint_Regulariser ([Dataset], [Datapoint], [Minimum_Regularised_Datapoint], [Maximum_Regularised_Datapoint])
+
+--The following codeblocks load the baseline distribution mesh search into multiple table variables, which correspond to the compositional model-phase transition probability inference transformations
+Declare @Limit_Normalised_Projection_Datapoint_Regulariser Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Minimum_Regularised_Datapoint] Float, [Middle_Regularised_Datapoint] Float, [Maximum_Regularised_Datapoint] Float)
+Insert Into @Limit_Normalised_Projection_Datapoint_Regulariser ([Dataset], [Datapoint], [Minimum_Regularised_Datapoint], [Middle_Regularised_Datapoint], [Maximum_Regularised_Datapoint])
 Select
 	A.[Dataset] As [Dataset],
 	A.[Datapoint] As [Datapoint],
-	Min(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] <= ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then B.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Minimum_Regularised_Datapoint],
-	Max(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) >= @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] > ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then C.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Maximum_Regularised_Datapoint]
+	Min(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) > @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] < ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then B.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Minimum_Regularised_Datapoint],
+	Avg(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) > @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] = ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then /*Regularised Trough -->*/ -1 Else Null End) Else A.[Datapoint] End) As [Middle_Regularised_Datapoint],
+	Max(Case When (C.[Distribution_Mesh_Search] - B.[Distribution_Mesh_Search]) > @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When A.[Datapoint] > ((C.[Distribution_Mesh_Search] + B.[Distribution_Mesh_Search]) / 2) Then (Case When A.[Distribution_Mesh_Search] > D.[Distribution_Mesh_Search] Then C.[Distribution_Mesh_Search] Else /*Regularised Trough -->*/ -1 End) Else Null End) Else A.[Datapoint] End) As [Maximum_Regularised_Datapoint]
 From @Projection_Spot_Confidence_Percentage A
 Inner Join @Mean_Or_Closest_Lesser_Sample B
 	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
 Inner Join @Mean_Or_Closest_Greater_Sample C
 	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
 Inner Join @Projection_Spot_Confidence_Percentage D
-	On(D.[Dataset] = A.[Dataset] And D.[Datapoint] >= B.[Distribution_Mesh_Search] And D.[Datapoint] <= C.[Distribution_Mesh_Search])
+	On (D.[Dataset] = A.[Dataset] And D.[Datapoint] >= B.[Distribution_Mesh_Search] And D.[Datapoint] <= C.[Distribution_Mesh_Search])
 Group By A.[Dataset], A.[Datapoint]
-
-Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates ([Dataset], [Datapoint], [Distribution_Mesh_Search])
-Select
-	A.[Dataset] As [Dataset],
-	A.[Datapoint] As [Datapoint],
-	B.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Datapoint_Regulariser A
-Inner Join @Projection_Spot_Confidence_Percentage B
-	On(B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Minimum_Regularised_Datapoint] And A.[Minimum_Regularised_Datapoint] Is Not Null And A.[Minimum_Regularised_Datapoint] <> -1)
-Union All
-Select
-	C.[Dataset] As [Dataset],
-	C.[Datapoint] As [Datapoint],
-	D.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Datapoint_Regulariser C
-Inner Join @Projection_Spot_Confidence_Percentage D
-	On(D.[Dataset] = C.[Dataset] And D.[Datapoint] = C.[Maximum_Regularised_Datapoint] And C.[Maximum_Regularised_Datapoint] Is Not Null And C.[Maximum_Regularised_Datapoint] <> -1)
-Union All
-Select
-	E.[Dataset] As [Dataset],
-	E.[Datapoint] As [Datapoint],
-	Min(H.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Datapoint_Regulariser E
-Inner Join @Mean_Or_Closest_Lesser_Sample F
-	On (F.[Dataset] = E.[Dataset] And F.[Datapoint] = E.[Datapoint])
-Inner Join @Mean_Or_Closest_Greater_Sample G
-	On (G.[Dataset] = E.[Dataset] And G.[Datapoint] = E.[Datapoint])
-Inner Join @Projection_Spot_Confidence_Percentage H
-	On(H.[Dataset] = E.[Dataset] And H.[Datapoint] >= F.[Distribution_Mesh_Search] And H.[Datapoint] <= G.[Distribution_Mesh_Search] And E.[Minimum_Regularised_Datapoint] = -1)
-Group By E.[Dataset], E.[Datapoint]
---There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
-
-Declare @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final ([Dataset], [Datapoint], [Distribution_Mesh_Search])
-Select Distinct
-	[Dataset] As [Dataset],
-	[Datapoint] As [Datapoint],
-	[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
-From @Limit_Normalised_Projection_Spot_Confidence_Percentage_With_Range_Limit_Duplicates
+--This table variable transformation regularises the baseline probabilities in order to find exploding gradient datapoints.
 
 Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
 Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
-Select
-	A.[Dataset] As [Dataset],
-	A.[Datapoint] As [Datapoint],
-	(Case When (Avg(C.[Distribution_Mesh_Search]) - Avg(B.[Distribution_Mesh_Search])) > @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage Then (Case When Avg(D.[Distribution_Mesh_Search]) = -1 Then Min(E.[Distribution_Mesh_Search]) Else Avg(D.[Distribution_Mesh_Search]) End) Else Avg(A.[Distribution_Mesh_Search]) End) As [Distribution_Mesh_Search]
-From @Projection_Spot_Confidence_Percentage A
-Inner Join @Mean_Or_Closest_Lesser_Sample B
-	On (B.[Dataset] = A.[Dataset] And B.[Datapoint] = A.[Datapoint])
-Inner Join @Mean_Or_Closest_Greater_Sample C
-	On (C.[Dataset] = A.[Dataset] And C.[Datapoint] = A.[Datapoint])
-Inner Join @Limit_Normalised_Projection_Spot_Confidence_Percentage_Final D
-	On(D.[Dataset] = A.[Dataset] And D.[Datapoint] = A.[Datapoint])
-Inner Join @Projection_Spot_Confidence_Percentage E
-	On (E.[Dataset] = A.[Dataset] And E.[Datapoint] >= B.[Distribution_Mesh_Search] And E.[Datapoint] <= C.[Distribution_Mesh_Search])
-Group By A.[Dataset], A.[Datapoint]
---This model phase transition capability enables a gradual switch between the polynomial probability gradient and ternary probability step models.
---This table variable transformation compares the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradient.
---There is another SQL Server (2019) table variable joining feature showstopper bug which is affecting this table variable transformation... It may be the same bug mentioned earlier.
+Select --Coalesce sub-liminal peak exploding gradient datapoints.
+	A1.[Dataset] As [Dataset],
+	A1.[Datapoint] As [Datapoint],
+	D1.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser A1
+Inner Join @Mean_Or_Closest_Lesser_Sample B1
+	On (B1.[Dataset] = A1.[Dataset] And B1.[Datapoint] = A1.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample C1
+	On (C1.[Dataset] = A1.[Dataset] And C1.[Datapoint] = A1.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage D1 --I believe that there is a showstopper critical SQL Server 2019 engine bug here. There are (And D1.[Datapoint] = A1.[Minimum_Regularised_Datapoint]) joins missing.
+	On (D1.[Dataset] = A1.[Dataset] And D1.[Datapoint] = A1.[Minimum_Regularised_Datapoint] And A1.[Datapoint] < ((B1.[Distribution_Mesh_Search] + C1.[Distribution_Mesh_Search]) / 2) And A1.[Minimum_Regularised_Datapoint] <> -1 And A1.[Middle_Regularised_Datapoint] Is Null And A1.[Maximum_Regularised_Datapoint] Is Null)
+Union All
+Select --Coalesce super-liminal peak exploding gradient datapoints.
+	A2.[Dataset] As [Dataset],
+	A2.[Datapoint] As [Datapoint],
+	D2.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser A2
+Inner Join @Mean_Or_Closest_Lesser_Sample B2
+	On (B2.[Dataset] = A2.[Dataset] And B2.[Datapoint] = A2.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample C2
+	On (C2.[Dataset] = A2.[Dataset] And C2.[Datapoint] = A2.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage D2 --I believe that there is a showstopper critical SQL Server 2019 engine bug here. There are (And D1.[Datapoint] = A2.[Maximum_Regularised_Datapoint]) joins missing... This is probably the same bug mentioned earlier in this coalesced union all selection, for sub-liminal peak exploding gradient datapoints.
+	On (D2.[Dataset] = A2.[Dataset] And D2.[Datapoint] = A2.[Maximum_Regularised_Datapoint] And A2.[Datapoint] > ((B2.[Distribution_Mesh_Search] + C2.[Distribution_Mesh_Search]) / 2) And A2.[Maximum_Regularised_Datapoint] <> -1 And A2.[Minimum_Regularised_Datapoint] Is Null And A2.[Middle_Regularised_Datapoint] Is Null)
+Union All
+Select --Coalesce sub-liminal, mid-liminal, and super-liminal trough imploding gradient datapoints.
+	A3.[Dataset] As [Dataset],
+	A3.[Datapoint] As [Datapoint],
+	Min(D3.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser A3
+Inner Join @Mean_Or_Closest_Lesser_Sample B3
+	On (B3.[Dataset] = A3.[Dataset] And B3.[Datapoint] = A3.[Datapoint])
+Inner Join @Mean_Or_Closest_Greater_Sample C3
+	On (C3.[Dataset] = A3.[Dataset] And C3.[Datapoint] = A3.[Datapoint])
+Inner Join @Projection_Spot_Confidence_Percentage D3
+	On (D3.[Dataset] = A3.[Dataset] And D3.[Datapoint] >= B3.[Distribution_Mesh_Search] And D3.[Datapoint] <= C3.[Distribution_Mesh_Search] And A3.[Minimum_Regularised_Datapoint] = -1 Or D3.[Dataset] = A3.[Dataset] And D3.[Datapoint] >= B3.[Distribution_Mesh_Search] And D3.[Datapoint] <= C3.[Distribution_Mesh_Search] And A3.[Middle_Regularised_Datapoint] = -1 Or D3.[Dataset] = A3.[Dataset] And D3.[Datapoint] >= B3.[Distribution_Mesh_Search] And D3.[Datapoint] <= C3.[Distribution_Mesh_Search] And A3.[Maximum_Regularised_Datapoint] = -1)
+Group By A3.[Dataset], A3.[Datapoint]
+Union All
+Select --Coalesce non-exploding/non-imploding gradient datapoints.
+	A4.[Dataset] As [Dataset],
+	A4.[Datapoint] As [Datapoint],
+	B4.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+From @Limit_Normalised_Projection_Datapoint_Regulariser A4
+Inner Join @Projection_Spot_Confidence_Percentage B4
+	On (B4.[Dataset] = A4.[Dataset] And B4.[Datapoint] = A4.[Datapoint] And A4.[Datapoint] = A4.[Minimum_Regularised_Datapoint] And A4.[Datapoint] = A4.[Middle_Regularised_Datapoint] And A4.[Datapoint] = A4.[Maximum_Regularised_Datapoint])
+--This table variable transforms the regularised probability datapoints into confidence percentages.
+--It implements a model phase transition capability which enables a gradual switch between the polynomial probability gradient and the ternary probability step models.
+--It achieves this by comparing the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradients.
 
 Declare @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
 Insert Into @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
@@ -857,7 +1095,7 @@ Select
 	Avg((Case When [X_Dataset] = [Y_Dataset] Then 100 Else ((Case When [X_Distribution_Mesh_Search] = 0 Then (Case When [Y_Distribution_Mesh_Search] = 0 Then 1 Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) * 100) End)) As [Michaelian_X_Dataset_Similarity]
 From @Michaelian_Similarity_Matrix_Cross_Join
 Group By [X_Dataset], [Y_Dataset]
---Any two identical datasets should be 100% similar, and any two swapped datasets (i.e. the x-axis dataset swapped for the y-axis dataset) should be inverse.
+--Any two identical deepsets should be 100% similar, and any two swapped deepsets (i.e. the x-axis dataset swapped for the y-axis dataset) should be inverse.
 
 Declare @Michaelian_Total_Dataset_Similarity_Matrix Table ([Dataset] Nvarchar(250), [Michaelian_Total_Dataset_Similarity] Float)
 Insert Into @Michaelian_Total_Dataset_Similarity_Matrix ([Dataset], [Michaelian_Total_Dataset_Similarity])
@@ -881,7 +1119,9 @@ From @Michaelian_Total_Dataset_Similarity_Matrix
 
 --LOAD STAGE:
 --The following codeblock returns all the useful data of interest from this algorithm
-Select * From @Fully_Normalised_Datasets Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
+Select * From @Deepset_Statistical_Significance_Sigma_Bands Order By [Dataset] Asc, [Post_Sampling_Sigma_Band] Asc
+Select * From @Deepsets Order By [Deepset_Partition] Asc, [Dataset] Asc
+Select * From @Fully_Normalised_Deepsets Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
 Select * From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
 Select * From @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
 Select * From @Michaelian_Pair_Dataset_Similarity_Matrix Order By [X_Dataset] Asc, [Y_Dataset] Asc
