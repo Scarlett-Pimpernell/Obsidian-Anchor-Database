@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.5
+--Version 1.7
 
 
 --OVERVIEW:
@@ -68,7 +68,7 @@
 
 --INITIATION:
 Set NoExec Off --If this is not executed, the query may under some circumstances not complete repeat executions after a CSV data input validation check fails.
-
+Select ('Query Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 
 
 
@@ -92,8 +92,8 @@ Set @Outlier_Threshold_Percentage = 50
 --Ideally, you want to set this global variable to around 50% in my opinion, but could vary this depending on the application.
 
 Declare @Target_Deepset_Training_Significance Float
-Set @Target_Deepset_Training_Significance = 33.33
---This significance global variable must be restricted to (0% < x <= 33.33%).
+Set @Target_Deepset_Training_Significance = 1
+--This significance global variable must be restricted to (0% < x <= 33.33%)... Alternatively, convert this global variable to Sigma-Band Labels instead (may be more intuitive for the end-user, but you sacrifice useful specificity).
 --It is used in an observation/parameter reduction technique later on, in order to improve computational speed/efficiency. Afterall, it is not necessary to include all parameters in the training/transformation stage, because this algorithm is an interpolating generative optimiser... It can estimate the parameter gaps/blanks with a high degree of fidelity.
 --Essentially, the percentage value assigned here, decides the Significance of the analysis, in accord with the sigma scale outlined in my Data Science Theory book, which is published on Amazon.
 --Ideally, you want to set this global variable to a lean significance of between 1% (most speedy/efficient) and 0.000001 (least speedy/efficient).
@@ -125,7 +125,7 @@ Set @CSV_Column_Delimiter = ','
 
 
 
---FUCNTIONS:
+--TYPES, VIEWS, AND FUNCTIONS:
 --The following few blocks of code create a new function which is used later on in this query in order to generate a table variable with 1 column containing increasing integers.
 Declare @Create_Function_Command Nvarchar(Max);
 Set @Create_Function_Command =
@@ -163,6 +163,8 @@ Execute sp_executesql @Create_Function_Command;
 
 
 --EXTRACTION STAGE:
+Select ('Extraction Stage Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
+
 --The following codeblocks extract data from a CSV file in your previously assigned import directory (see global variables near the beginning of this query).
 Declare @File_Path Nvarchar(250)
 Set @File_Path = (@File_Directory + @File_Name)
@@ -210,7 +212,11 @@ Declare @Analysis_Label Nvarchar(Max)
 Set @Analysis_Label = (Select String_Agg([Dataset], '_') Within Group (Order By [Dataset] Asc) From @Dataset_Parameter_Counts)
 
 
---The following codeblocks, perform data input validation checks, to reduce later algorithm errors, and terminates the current query instance if a check fails... otherwise the query proceeds to analyse Michaelian probabilities
+
+
+
+--VALIDATION STAGE PART ONE
+--The following codeblocks, perform data input validation checks, to reduce later algorithm errors, and terminates the current query instance if a check fails... otherwise the query proceeds to analyse Michaelian probabilities... There is one more validation check separated to later on in the query, because the sampling technique augments the input data to remove outliers.
 Declare @Validation_Checks_Table_Variable Table ([Check] TinyInt)
 Insert Into @Validation_Checks_Table_Variable ([Check])
 Values ((Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage <= 80 Then (Case When @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage > 0 Then Null Else 1 End) Else 1 End)) --Check for @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable inside of allowed range of values.
@@ -290,7 +296,7 @@ Set NoExec On
 
 --Execution Progression
 If @Data_Validation_Checks_Max = 0
-Select (@Analysis_Label + ':Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
+Select (@Analysis_Label + ':Sampling Stage Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 
 
 
@@ -301,7 +307,7 @@ Select (@Analysis_Label + ':Started At Around:' + Cast(GetDate() As Nvarchar(Max
 --The following codeblock simply corrects column data types.
 Declare @Data_Type_Corrected_Datasets Table ([Dataset] Nvarchar(250), [Parameter] Float)
 Insert Into @Data_Type_Corrected_Datasets ([Dataset], [Parameter])
-Select Distinct
+Select
 	[Dataset] As [Dataset],
 	Cast([Parameter] As Float) As [Parameter]
 From @Raw_Datasets_Final
@@ -315,17 +321,6 @@ Select
 	(Max([Parameter]) - Min([Parameter])) As [Range]
 From @Data_Type_Corrected_Datasets
 Group By [Dataset]
-
-
---The following codeblock allows us to compensate for parameter sampling uniqueness later on.
-Declare @Dataset_Parameter_Duplicate_Counts Table ([Dataset] Nvarchar(250), [Parameter] Float, [Duplicate_Count] BigInt)
-Insert Into @Dataset_Parameter_Duplicate_Counts ([Dataset], [Parameter], [Duplicate_Count])
-Select Distinct
-	[Dataset] As [Dataset],
-	[Parameter] As [Parameter],
-	Count(*) As [Duplicate_Count]
-From @Data_Type_Corrected_Datasets
-Group By [Dataset], [Parameter]
 
 
 --The following codeblock allows us to later remove outliers from the dataset observations.
@@ -348,32 +343,46 @@ Declare @Deepset_Partitions_Intermediate Table ([Unique_Order] BigInt, [Dataset]
 Insert Into @Deepset_Partitions_Intermediate ([Unique_Order], [Dataset], [Parameter])
 Select
 	Row_Number() Over(Order By (Select Null) Asc) As [Unique_Order],
-	[Dataset] As [Dataset],
-	[Parameter] As [Parameter]
-From @Datasets_Outlier_Augmented
-Where [Outlier_Threshold_Count] > 2 --You could turn the second term after the operator here into another global variable... but, for me, I follow Jesus Christ, and the bible clearly states that 3 witnesses are sufficient to prove any claim.
+	A.[Dataset] As [Dataset],
+	A.[Parameter] As [Parameter]
+From @Data_Type_Corrected_Datasets A 
+Inner Join @Datasets_Outlier_Augmented B
+	On (B.[Dataset] = A.[Dataset] And B.[Parameter] = A.[Parameter] And B.[Outlier_Threshold_Count] > 2) --You could turn the second term after the operator here into another global variable... but, for me, I follow Jesus Christ, and the bible clearly states that 3 witnesses are sufficient to prove any claim.
 
 
---The following codeblock produces a minimum unique order dataset-parameter grouped table variable
-Declare @Deepset_Partitions_Intermediate_Minimum_Unique_Order  Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
-Insert Into @Deepset_Partitions_Intermediate_Minimum_Unique_Order ([Unique_Order], [Dataset], [Parameter])
+--The following codeblock produces initial unique parameter pool
+Declare @Deepset_Partitions_Initial_Unique_Sampling_Round_Parameter_Pool  Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepset_Partitions_Initial_Unique_Sampling_Round_Parameter_Pool ([Unique_Order], [Dataset], [Parameter])
 Select
 	Min([Unique_Order]) As [Unique_Order],
 	[Dataset] As [Dataset],
 	[Parameter] As [Parameter]
 From @Deepset_Partitions_Intermediate
-Group By [Dataset], [Parameter]
+Group By [Dataset], [Parameter] --The minimum unique order grouping allows us to perform a unique first round-rand-robin sampling technique, before later on, simply randomly sampling each dataset's parameters. This initial unique sampling round is necessary, in order to maintain essential dataset distribution (at least 3 unique parameters).
+
+
+--The following codeblock produces the additive impartial parameter pool
+Declare @Deepset_Partitions_Additive_Impartial_Sampling_Round_Parameter_Pool  Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
+Insert Into @Deepset_Partitions_Additive_Impartial_Sampling_Round_Parameter_Pool ([Unique_Order], [Dataset], [Parameter])
+Select
+	A.[Unique_Order] As [Unique_Order],
+	A.[Dataset] As [Dataset],
+	A.[Parameter] As [Parameter]
+From @Deepset_Partitions_Intermediate A
+Left Outer Join @Deepset_Partitions_Initial_Unique_Sampling_Round_Parameter_Pool B
+	On (B.[Unique_Order] = A.[Unique_Order]) --This join excludes already partitioned parameters handled within the initial unique sampling round.
+Where B.[Unique_Order] Is Null
 
 
 --The following codeblocks split individual observations into multiple different deepset partitions (optimal sample groups).
 --(((Initial Unique Sampling Round)))
 Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_A Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
-Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Table ([Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float, [Count] BigInt)
 Declare @Loop_Count BigInt
 Set @Loop_Count = 0
 
 --(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
-While (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Group By [Rand_1], [Rand_2], [Rand_3]) Is Null Then (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B) < (Select Sum([Duplicate_Count]) From @Dataset_Parameter_Duplicate_Counts Where [Duplicate_Count] = 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else 0 End) Else 0 End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
 Begin
 	
 	Set @Loop_Count = (@Loop_Count + 1)
@@ -381,29 +390,25 @@ Begin
 	Delete From @Deepset_Partitions_Intermediate_Initial_Unique_Round_A
 	Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_A ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
 	Select
-		A.[Unique_Order] As [Unique_Order],
-		A.[Dataset] As [Dataset],
-		Rand() As [Rand_1],
-		Rand() As [Rand_2],
-		Rand() As [Rand_3]
-	From @Deepset_Partitions_Intermediate A
-	Inner Join @Deepset_Partitions_Intermediate_Minimum_Unique_Order B --The parameter duplicate count allows us to perform a unique first round-rand-robin sampling technique, before later on, simply randomly sampling each dataset's parameters. This is necessary, in order to maintain essential dataset distribution (at least 3 unique parameters).
-		On (B.[Unique_Order] = A.[Unique_Order])
-	Left Outer Join @Deepset_Partitions_Intermediate_Initial_Unique_Round_B C
-		On (C.[Unique_Order] = A.[Unique_Order])
-	Where C.[Unique_Order] Is Null
-
-	Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_B ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+		[Unique_Order] As [Unique_Order],
+		[Dataset] As [Dataset],
+		Rand(CheckSum(NewID())) As [Rand_1],
+		Rand(CheckSum(NewID())) As [Rand_2],
+		Rand(CheckSum(NewID())) As [Rand_3]
+	From @Deepset_Partitions_Initial_Unique_Sampling_Round_Parameter_Pool
+	
+	Delete From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B
+	Insert Into @Deepset_Partitions_Intermediate_Initial_Unique_Round_B ([Dataset], [Rand_1], [Rand_2], [Rand_3], [Count])
 	Select
-		Min([Unique_Order]) As [Unique_Order], --Eventually the loop will work through all dataset-round-rand-robin duplicates.
 		[Dataset] As [Dataset],
 		[Rand_1] As [Rand_1],
 		[Rand_2] As [Rand_2],
-		[Rand_3] As [Rand_3]
+		[Rand_3] As [Rand_3],
+		Count(*) As [Count]
 	From @Deepset_Partitions_Intermediate_Initial_Unique_Round_A
 	Group By [Dataset], [Rand_1], [Rand_2], [Rand_3]
-	Having Count(*) = 1 --There seems to be a showstopper bug in the core SQL Server 2019 engine here... The having clause does not return grouped rows where the aggregate count is 1!
-	
+	--Eventually the loop will work through all dataset-round-rand-robin duplicates until all triple-compound rand values are unique. 
+
 End
 
 Declare @Deepset_Partitions_Intermediate_Initial_Unique_Round_C Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float, [Rand_1] Float, [Rand_2] Float, [Rand_3] Float, [Initial_Order] BigInt)
@@ -415,11 +420,10 @@ Select
 	A.[Rand_1] As [Rand_1],
 	A.[Rand_2] As [Rand_2],
 	A.[Rand_3] As [Rand_3],
-	Row_Number() Over(Order By (Select Null) Asc) As [Initial_Order]
-From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B A
+	Row_Number() Over(Partition By B.[Dataset] Order By A.[Rand_1] Asc, A.[Rand_2] Asc, A.[Rand_3] Asc) As [Initial_Order]
+From @Deepset_Partitions_Intermediate_Initial_Unique_Round_A A
 Inner Join @Deepset_Partitions_Intermediate B
 	On (B.[Unique_Order] = A.[Unique_Order])
-Order By [Rand_1] Asc, [Rand_2] Asc, [Rand_3] Asc
 
 Declare @Deepset_Partitions_Final Table ([Deepset_Partition] Nvarchar(250), [Unique_Order] BigInt, [Dataset] Nvarchar(250), [Parameter] Float)
 Insert Into @Deepset_Partitions_Final ([Deepset_Partition], [Unique_Order], [Dataset], [Parameter])
@@ -441,11 +445,11 @@ Group By [Dataset]
 
 --(((Additive Impartial Sampling Round)))
 Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
-Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Table ([Unique_Order] BigInt, [Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float)
+Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Table ([Dataset] Nvarchar(250), [Rand_1] Float, [Rand_2] Float, [Rand_3] Float, [Count] BigInt)
 Set @Loop_Count = 0
 
 --(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
-While (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Group By [Rand_1], [Rand_2], [Rand_3]) Is Null Then (Case When (Select Count(*) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B) < ((Select Count(*) From @Data_Type_Corrected_Datasets) - (Select Sum([Duplicate_Count]) From @Dataset_Parameter_Duplicate_Counts Where [Duplicate_Count] = 1)) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else 0 End) Else 0 End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
 Begin
 	
 	Set @Loop_Count = (@Loop_Count + 1)
@@ -453,30 +457,24 @@ Begin
 	Delete From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A
 	Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
 	Select
-		A.[Unique_Order] As [Unique_Order],
-		A.[Dataset] As [Dataset],
-		Rand() As [Rand_1],
-		Rand() As [Rand_2],
-		Rand() As [Rand_3]
-	From @Deepset_Partitions_Intermediate A
-	Left Outer Join @Deepset_Partitions_Final B --This join excludes already partitioned parameters from the initial unique sampling round.
-		On (B.[Unique_Order] = A.[Unique_Order])
-	Left Outer Join @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B C
-		On (C.[Unique_Order] = A.[Unique_Order])
-	Where
-		B.[Unique_Order] Is Null
-		And C.[Unique_Order] Is Null
-
-	Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B ([Unique_Order], [Dataset], [Rand_1], [Rand_2], [Rand_3])
+		[Unique_Order] As [Unique_Order],
+		[Dataset] As [Dataset],
+		Rand(CheckSum(NewID())) As [Rand_1],
+		Rand(CheckSum(NewID())) As [Rand_2],
+		Rand(CheckSum(NewID())) As [Rand_3]
+	From @Deepset_Partitions_Additive_Impartial_Sampling_Round_Parameter_Pool
+	
+	Delete From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B
+	Insert Into @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B ([Dataset], [Rand_1], [Rand_2], [Rand_3], [Count])
 	Select
-		Min([Unique_Order]) As [Unique_Order], --Eventually the loop will work through all dataset-round-rand-robin duplicates.
 		[Dataset] As [Dataset],
 		[Rand_1] As [Rand_1],
 		[Rand_2] As [Rand_2],
-		[Rand_3] As [Rand_3]
+		[Rand_3] As [Rand_3],
+		Count(*) As [Count]
 	From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A
 	Group By [Dataset], [Rand_1], [Rand_2], [Rand_3]
-	Having Count(*) = 1 --There seems to be a showstopper bug in the core SQL Server 2019 engine here... The having clause does not return grouped rows where the aggregate count is 1!
+	--Eventually the loop will work through all dataset-round-rand-robin duplicates until all triple-compound rand values are unique. 
 
 End
 
@@ -489,11 +487,10 @@ Select
 	A.[Rand_1] As [Rand_1],
 	A.[Rand_2] As [Rand_2],
 	A.[Rand_3] As [Rand_3],
-	Row_Number() Over(Order By (Select Null) Asc) As [Additive_Order]
-From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B A
+	Row_Number() Over(Partition By B.[Dataset] Order By A.[Rand_1] Asc, A.[Rand_2] Asc, A.[Rand_3] Asc) As [Additive_Order]
+From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_A A
 Inner Join @Deepset_Partitions_Intermediate B
 	On (B.[Unique_Order] = A.[Unique_Order])
-Order By [Rand_1] Asc, [Rand_2] Asc, [Rand_3] Asc
 
 Insert Into @Deepset_Partitions_Final ([Deepset_Partition], [Unique_Order], [Dataset], [Parameter])
 Select
@@ -506,15 +503,24 @@ Inner Join @Deepset_Initial_Unique_Sampling_Round_Counts B --This join is used i
 	On (B.[Dataset] = A.[Dataset])
 
 
---The following codeblock transforms the deepsets into statistical significance sigma-bands 
+--The following codeblocks transform the deepsets into statistical significance sigma-bands for all datasets
 Declare @Deepset_Statistical_Significance_Sigma_Bands Table ([Dataset] Nvarchar(250), [Post_Sampling_Sigma_Band] Nvarchar(250))
 Insert Into @Deepset_Statistical_Significance_Sigma_Bands ([Dataset], [Post_Sampling_Sigma_Band])
 Select
 	[Dataset] As [Dataset],
 	(Case When Count(*) < 100 Then 'Loose' Else (Case When Count(*) < 1000 Then 'Lean' Else (Case When Count(*) < 10000 Then '1-Sigma' Else (Case When Count(*) < 100000 Then '2-Sigma' Else (Case When Count(*) < 1000000 Then '3-Sigma' Else (Case When Count(*) < 10000000 Then '4-Sigma' Else (Case When Count(*) < 100000000 Then '5-Sigma' Else (Case When Count(*) < 1000000000 Then '6-Sigma' Else 'Statistically Unnecessary Significance' End) End) End) End) End) End) End) End) As [Post_Sampling_Sigma_Band]
 From @Deepset_Partitions_Final
-Where [Deepset_Partition] = 'Training'
+Where [Deepset_Partition] = '1-Training'
 Group By [Dataset]
+
+Insert Into @Deepset_Statistical_Significance_Sigma_Bands ([Dataset], [Post_Sampling_Sigma_Band])
+Select
+	A.[Dataset] As [Dataset],
+	'Every Parameter Is An Outlier' As [Post_Sampling_Sigma_Band] --Sometimes a dataset will be totally excluded from analysis, because all of its parameters have been classified as outliers.
+From @Dataset_Parameter_Counts A
+Left Outer Join @Deepset_Statistical_Significance_Sigma_Bands B
+	On (B.[Dataset] = A.[Dataset])
+Where B.[Dataset] Is Null
 
 
 --The following codeblock loads the deepsets into an ordered deepset table variable 
@@ -526,6 +532,36 @@ Select
 	[Dataset] As [Dataset],
 	[Parameter] As [Parameter]
 From @Deepset_Partitions_Final
+
+
+
+
+
+--VALIDATION STAGE PART TWO
+--The following codeblocks, continue data input validation checks, to reduce later algorithm errors, and terminates the current query instance if a check fails... otherwise the query proceeds to analyse Michaelian probabilities... This is the extra validation check separated to later on in the query, because the sampling technique augments the input data to remove outliers.
+Insert Into @Validation_Checks_Table_Variable ([Check])
+Select
+	Avg(9) As [Check]
+From @Deepsets A
+Left Join @Deepsets B
+	On (B.[Dataset] = A.[Dataset] And B.[Parameter] <> A.[Parameter])
+Left Join @Deepsets C
+	On (C.[Dataset] = A.[Dataset] And C.[Parameter] <> A.[Parameter] And C.[Parameter] <> B.[Parameter])
+Where C.[Dataset] Is Null --Check for essential distribution with more than 3 unique parameter values error.
+
+Set @Data_Validation_Checks_Max = (Select Max([Check]) From @Validation_Checks_Table_Variable)
+
+--(Data Checks)
+If (Select Min([Check]) From @Validation_Checks_Table_Variable Where [Check] = 9 Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) = 9 --Nominal check ( Or [Check] = 1 Or [Check] = 2 Or [Check] = 3 Or [Check] = 4) for colliding validation effects (One data validation error, can inadvertently cause multiple validation errors which were not in the source data.)
+Select 'Sampled deepset data check for essential distribution with more than 3 unique parameter values per dataset failed... It could be that some parameters have been removed by the sampling stage because they were classified as outliers. If so, please either omit the appropriate dataset, which can be found in the @Deepset_Statistical_Significance_Sigma_Bands table variable, or, if appropriate for your analytical requirements, please amend the global variable near the start of the source code of this query, called @Outlier_Threshold_Percentage.' As [Data_Input_Error]
+
+--Execution Termination
+If @Data_Validation_Checks_Max > 0
+Set NoExec On
+
+--Execution Progression
+If @Data_Validation_Checks_Max = 0
+Select (@Analysis_Label + ':Transformation Stage Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 
 
 
@@ -546,9 +582,9 @@ Select
 	Sum((((A.[Parameter] * C.[Parameter_Count]) / B.[Parameter_Count]) / @Minimum_Deepset_Parameter_Count) * B.[Parameter_Count]) As [Cross_Normalised_Parameter]
 From @Deepsets A
 Inner Join @Dataset_Parameter_Counts B
-	On (B.[Dataset] = A.[Dataset] And A.[Deepset_Partition] = 'Training')
+	On (B.[Dataset] = A.[Dataset] And A.[Deepset_Partition] = '1-Training')
 Inner Join @Dataset_Parameter_Counts C
-	On (C.[Dataset] <> A.[Dataset] And A.[Deepset_Partition] = 'Training')
+	On (C.[Dataset] <> A.[Dataset] And A.[Deepset_Partition] = '1-Training')
 Group By A.[Dataset], A.[Order]
 --To cross-normalise a dataset significance, you need to: (((multiply the current dataset significance by the sum of all other dataset parameter counts), divide by the sum of the current dataset parameter count), and finally divide by the minimum dataset parameter count).
 
@@ -1014,12 +1050,12 @@ Inner Join @Projection_Spot_Confidence_Percentage D
 Group By A.[Dataset], A.[Datapoint]
 --This table variable transformation regularises the baseline probabilities in order to find exploding gradient datapoints.
 
-Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spot_Confidence] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Spot_Confidence])
 Select --Coalesce sub-liminal peak exploding gradient datapoints.
 	A1.[Dataset] As [Dataset],
 	A1.[Datapoint] As [Datapoint],
-	D1.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+	D1.[Distribution_Mesh_Search] As [Spot_Confidence]
 From @Limit_Normalised_Projection_Datapoint_Regulariser A1
 Inner Join @Mean_Or_Closest_Lesser_Sample B1
 	On (B1.[Dataset] = A1.[Dataset] And B1.[Datapoint] = A1.[Datapoint])
@@ -1031,7 +1067,7 @@ Union All
 Select --Coalesce super-liminal peak exploding gradient datapoints.
 	A2.[Dataset] As [Dataset],
 	A2.[Datapoint] As [Datapoint],
-	D2.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+	D2.[Distribution_Mesh_Search] As [Spot_Confidence]
 From @Limit_Normalised_Projection_Datapoint_Regulariser A2
 Inner Join @Mean_Or_Closest_Lesser_Sample B2
 	On (B2.[Dataset] = A2.[Dataset] And B2.[Datapoint] = A2.[Datapoint])
@@ -1043,7 +1079,7 @@ Union All
 Select --Coalesce sub-liminal, mid-liminal, and super-liminal trough imploding gradient datapoints.
 	A3.[Dataset] As [Dataset],
 	A3.[Datapoint] As [Datapoint],
-	Min(D3.[Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+	Min(D3.[Distribution_Mesh_Search]) As [Spot_Confidence]
 From @Limit_Normalised_Projection_Datapoint_Regulariser A3
 Inner Join @Mean_Or_Closest_Lesser_Sample B3
 	On (B3.[Dataset] = A3.[Dataset] And B3.[Datapoint] = A3.[Datapoint])
@@ -1056,7 +1092,7 @@ Union All
 Select --Coalesce non-exploding/non-imploding gradient datapoints.
 	A4.[Dataset] As [Dataset],
 	A4.[Datapoint] As [Datapoint],
-	B4.[Distribution_Mesh_Search] As [Distribution_Mesh_Search]
+	B4.[Distribution_Mesh_Search] As [Spot_Confidence]
 From @Limit_Normalised_Projection_Datapoint_Regulariser A4
 Inner Join @Projection_Spot_Confidence_Percentage B4
 	On (B4.[Dataset] = A4.[Dataset] And B4.[Datapoint] = A4.[Datapoint] And A4.[Datapoint] = A4.[Minimum_Regularised_Datapoint] And A4.[Datapoint] = A4.[Middle_Regularised_Datapoint] And A4.[Datapoint] = A4.[Maximum_Regularised_Datapoint])
@@ -1064,12 +1100,12 @@ Inner Join @Projection_Spot_Confidence_Percentage B4
 --It implements a model phase transition capability which enables a gradual switch between the polynomial probability gradient and the ternary probability step models.
 --It achieves this by comparing the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradients.
 
-Declare @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Distribution_Mesh_Search] Float)
-Insert Into @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Distribution_Mesh_Search])
+Declare @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spread_Confidence] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Spread_Confidence])
 Select
 	[Dataset] As [Dataset],
 	[Datapoint] As [Datapoint],
-	(100 - [Distribution_Mesh_Search]) As [Distribution_Mesh_Search]
+	(100 - [Spot_Confidence]) As [Spread_Confidence]
 From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage
 --Some scientists would refer to spread confidence as 'Energy/Entropy Level' instead.
 
@@ -1082,8 +1118,8 @@ Select
 	B.[Dataset] As [Y_Dataset],
 	A.[Datapoint] As [X_Datapoint],
 	B.[Datapoint] As [Y_Datapoint],
-	A.[Distribution_Mesh_Search] As [X_Distribution_Mesh_Search],
-	B.[Distribution_Mesh_Search] As [Y_Distribution_Mesh_Search]
+	A.[Spot_Confidence] As [X_Distribution_Mesh_Search],
+	B.[Spot_Confidence] As [Y_Distribution_Mesh_Search]
 From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage A
 Cross Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage B
 
@@ -1118,6 +1154,8 @@ From @Michaelian_Total_Dataset_Similarity_Matrix
 
 
 --LOAD STAGE:
+Select (@Analysis_Label + ':Load Stage Started At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
+
 --The following codeblock returns all the useful data of interest from this algorithm
 Select * From @Deepset_Statistical_Significance_Sigma_Bands Order By [Dataset] Asc, [Post_Sampling_Sigma_Band] Asc
 Select * From @Deepsets Order By [Deepset_Partition] Asc, [Dataset] Asc
@@ -1129,6 +1167,6 @@ Select * From @Michaelian_Total_Dataset_Similarity_Matrix Order By [Dataset] Asc
 Select * From @Michaelian_Overall_Analysis_Similarity_Matrix
 
 --Finished Progress Report
-Select (@Analysis_Label + ':Finished At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
+Select ('Query Finished At Around:' + Cast(GetDate() As Nvarchar(Max))) As [Execution_Progress]
 Select 'If this analysis has taken too much time to execute with regards to your needs, please consider increasing the assigned value of the global variable called @Projection_Granularity_Global_Variable_Percentage, which can be found near the start of the source code for this query.'
 Select 'ALL GLORY TO GOD!'
