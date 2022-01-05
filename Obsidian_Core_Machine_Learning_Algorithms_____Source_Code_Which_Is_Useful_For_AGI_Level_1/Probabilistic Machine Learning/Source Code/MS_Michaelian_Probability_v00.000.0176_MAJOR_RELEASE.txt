@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.8
+--Version 1.9
 
 
 --OVERVIEW:
@@ -43,8 +43,8 @@
 --As sample dataset becomes more diverse (i.e. as significance increases), so total integral should increase, because the distribution is essentially spreading out more, and therefore covering a greater 2-dimensional area.
 --Zero confidence dataset range when only two unique parameter values exist across the samples (pseudo-binary probability), because fundamentally there is not really a distribution unless you have a minimum of 3 unique parameter values.
 --Your code produces the same values as those in the tables above, given the same variable parameters as the input dataset, and the same global variables, because I am correct.
---Estimated query execution time with my 8GB RAM, 8-core 2.0 Base GHz: 4.0 Boost GHz laptop, with an install of SQL Server Express where the licence is restricting execution to a single core with 1GB RAM, using typical global variables of 50% for @Parameter_Granularity_Global_Variable_Percentage and 1% for @Projection_Granularity_Global_Variable_Percentage, on an input CSV file with 5 datasets, each with 100 parameters: IS 13 SECONDS.
---Microsoft Azure Cloud currently (in 2021) offers 80-core Azure SQL Server Instances which would reduce this query time to most likely below 1 second for those who desire to deploy the query within high throughput applications, with minor adjustments to the source code.
+--Estimated query execution time with my SSD, 8GB RAM, 8-core 2.0 Base GHz: 4.0 Boost GHz laptop, with an install of SQL Server Express where the licence is restricting execution to a single core with 1GB RAM, using typical global variables of 1% for @Target_Deepset_Training_Significance, 50% for @Parameter_Granularity_Global_Variable_Percentage, and 1% for @Projection_Granularity_Global_Variable_Percentage, on an input CSV file with 5 datasets, each with 200 parameters: IS ABOUT 1 MINUTE.
+--Microsoft Azure Cloud currently (in 2021) offers SSD, 80-core Azure SQL Server Instances which would reduce this query time to most likely below 5 seconds for those who desire to deploy the query within high throughput applications, with minor adjustments to the source code.
 
 --NOTA BENE:
 --This query is only intended for use with ASCII printable characters in the input CSV file.
@@ -96,7 +96,7 @@ Set @Target_Deepset_Training_Significance = 1
 --This significance global variable must be restricted to (0% < x <= 33.33%)... Alternatively, convert this global variable to Sigma-Band Labels instead (may be more intuitive for the end-user, but you sacrifice useful specificity).
 --It is used in an observation/parameter reduction technique later on, in order to improve computational speed/efficiency. Afterall, it is not necessary to include all parameters in the training/transformation stage, because this algorithm is an interpolating generative optimiser... It can estimate the parameter gaps/blanks with a high degree of fidelity.
 --Essentially, the percentage value assigned here, decides the Significance of the analysis, in accord with the sigma scale outlined in my Data Science Theory book, which is published on Amazon.
---Ideally, you want to set this global variable to a lean significance of between 1% (most speedy/efficient) and 0.000001 (least speedy/efficient).
+--Ideally, you want to set this global variable to a significance of between 1% (most speedy/efficient) and 0.000001% (least speedy/efficient).
 
 Declare @Parameter_Granularity_Global_Variable_Percentage Float
 Set @Parameter_Granularity_Global_Variable_Percentage = 50
@@ -384,7 +384,7 @@ Declare @Loop_Count BigInt
 Set @Loop_Count = 0
 
 --(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
-While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Initial_Unique_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!)... !!!!!BUT!!!!! it would be far preferable in computational terms for you to simply add more rand columns to the round-rand-robin technique instead.
 Begin
 	
 	Set @Loop_Count = (@Loop_Count + 1)
@@ -451,7 +451,7 @@ Declare @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Table ([Data
 Set @Loop_Count = 0
 
 --(In this loop below, in order to maintain sampling symmetry we make sure that each dataset-parameter pairing has its own unique triple-compound rand value... Otherwise, in some cases (where there are multiple different parameter values with the same [Rand] value) the row ordering would favour the lower parameter value over the greater parameter value, or vice-versa.)
-While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!).
+While (Case When Exists(Select (1) From @Deepset_Partitions_Intermediate_Additive_Impartial_Round_B Where [Count] > 1) Then (Case When @Loop_Count < 1000 Then 1 Else 0 End) Else (Case When @Loop_Count = 0 Then 1 Else 0 End) End) > 0 --Option (Maxrecursion 1000)... Limited sampling rounds for loop safety reasons... You may want to increase this, if you have hyper-scale datasets of more than a billion parameters per dataset... Please handle exceptions yourself (when the max recursion limit is breached!)... !!!!!BUT!!!!! it would be far preferable in computational terms for you to simply add more rand columns to the round-rand-robin technique instead.
 Begin
 	
 	Set @Loop_Count = (@Loop_Count + 1)
