@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.9
+--Version 1.91
 
 
 --OVERVIEW:
@@ -305,6 +305,7 @@ Select (@Analysis_Label + ':Sampling Stage Started At Around:' + Cast(GetDate() 
 
 
 --SAMPLING STAGE:
+--You can remove the sampling stage altogether where appropriate (in most cases), and experience a significant query speed boost. This approach is called bootstrapping, and should be almost mandatory seeing as future algorithms will likely need to over-whelmingly be of the real-time kind!
 --The core of the deepset partitioning algorithm involves an initial unique dataset-parameter sampling round, which is followed by an additive impartial dataset-parameter sampling round, if more samples are still needed. In both cases, we use what I call the Round-Rand-Robin sampling technique, which utilises a loop that keeps reassigning triple-compound rand values to remaining parameters until every parameter in a given dataset has a unique triple-compound rand value. This random ordering of parameters in a dataset can then be used in order to sample to a given degree of statistical significance, as required by the user (global variable).
 --The following codeblock simply corrects column data types.
 Declare @Data_Type_Corrected_Datasets Table ([Dataset] Nvarchar(250), [Parameter] Float)
