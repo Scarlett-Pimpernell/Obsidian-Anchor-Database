@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.91
+--Version 1.92
 
 
 --OVERVIEW:
@@ -19,7 +19,8 @@
 --7. Multi-dimensional probabilistic optimisation, where each axial scalar pool for the input variable has its own probability metrics calculated (usually spot or spread confidence), and then the outputs are constructed into a multi-dimensional graph, where local and global minimas, maximas, and inflexions can be easily extracted.
 --8. You could turn this query into a SQL Server function, and then build Michaelian Pseudo-Quantum Probability Distribution Deep Neural Nets with it... just an option.... I call this concept the Feed-Upward Neural Network
 --9. The similarity matrices can be easily utilised for semi-supervised auto-labelling of, for example, graph traces, or images/photos.
---10. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
+--10. A digital reliability twin of the enterprise... Tracking one or more performance metrics per unit of tech asset (hardware or software), in terms of confidence and significance probabilities... As a manager, I would like to know for example the real-time power consumption of a computer server or factory machine, so that I can spot exceptional operating behaviour which could lead to an issue, problem, or failure (maybe also aggregating into MTBI, MTBP, and MTBF)... In this way, I can avoid unnecessary costs to the enterprise.
+--11. A forward stimulus for the attention of fame and money hungry machine learning enthusiasts... Future forms of causal machine learning will almost certainly include this Michaelian distribution similarity metric as part of their algorithm!
 
 --USAGE DIRECTIONS:
 --First set appropriate global variables for your particular analysis. See the guidelines in the comments adjacent to the assignations in the source code below.
