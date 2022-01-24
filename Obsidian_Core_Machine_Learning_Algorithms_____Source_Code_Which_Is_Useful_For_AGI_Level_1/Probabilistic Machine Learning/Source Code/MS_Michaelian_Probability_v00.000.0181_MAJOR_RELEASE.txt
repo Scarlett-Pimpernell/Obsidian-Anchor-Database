@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.93
+--Version 1.94
 
 
 --OVERVIEW:
@@ -90,7 +90,7 @@ Set @Outlier_Threshold_Percentage = 50
 --This outlier threshold global variable must be restricted to (0% < x <= 100%).
 --It determines outlier band exclusions later on.
 --Essentially if there are not at least two other parameters within the outlier percentage threshold of a given parameter, the parameter is excluded from the analysis.
---Ideally, you want to set this global variable to around 50% in my opinion, but could vary this depending on the application.
+--Ideally, you want to set this global variable to around 50% in my opinion, but could vary this to at least as low as 20% depending on the application.
 
 Declare @Target_Deepset_Training_Significance Float
 Set @Target_Deepset_Training_Significance = 1
@@ -1066,8 +1066,8 @@ Inner Join @Projection_Spot_Confidence_Percentage D
 Group By A.[Dataset], A.[Datapoint]
 --This table variable transformation regularises the baseline probabilities in order to find exploding gradient datapoints.
 
-Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spot_Confidence] Float)
-Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage ([Dataset], [Datapoint], [Spot_Confidence])
+Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Intermediate Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spot_Confidence] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Intermediate ([Dataset], [Datapoint], [Spot_Confidence])
 Select --Coalesce sub-liminal peak exploding gradient datapoints.
 	A1.[Dataset] As [Dataset],
 	A1.[Datapoint] As [Datapoint],
@@ -1116,28 +1116,35 @@ Inner Join @Projection_Spot_Confidence_Percentage B4
 --It implements a model phase transition capability which enables a gradual switch between the polynomial probability gradient and the ternary probability step models.
 --It achieves this by comparing the size of each parameter density depression, with the @Exploding_Probability_Gradient_Dataset_Range_Limit_Percentage global variable, in order to rectify every exploding probability curve gradients.
 
+Declare @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spot_Confidence] Float)
+Insert Into @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final ([Dataset], [Datapoint], [Spot_Confidence])
+Select
+	[Dataset] As [Dataset],
+	[Datapoint] As [Datapoint],
+	(Case When [Spot_Confidence] > 100 Then 100 Else (Case When [Spot_Confidence] < 0 Then 0 Else [Spot_Confidence] End) End) As [Spot_Confidence]
+From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Intermediate
+
 Declare @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Table ([Dataset] Nvarchar(250), [Datapoint] Float, [Spread_Confidence] Float)
 Insert Into @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage ([Dataset], [Datapoint], [Spread_Confidence])
 Select
 	[Dataset] As [Dataset],
 	[Datapoint] As [Datapoint],
 	(100 - [Spot_Confidence]) As [Spread_Confidence]
-From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage
+From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final
 --Some scientists would refer to spread confidence as 'Energy/Entropy Level' instead.
 
 
 --The following codeblocks load the distribution mesh search table variable into various matrices, which correspond to the Michaelian similarity transformation
-Declare @Michaelian_Similarity_Matrix_Cross_Join Table ([X_Dataset] Nvarchar(250), [Y_Dataset] Nvarchar(250), [X_Datapoint] Float, [Y_Datapoint] Float, [X_Distribution_Mesh_Search] Float, [Y_Distribution_Mesh_Search] Float)
-Insert Into @Michaelian_Similarity_Matrix_Cross_Join ([X_Dataset], [Y_Dataset], [X_Datapoint], [Y_Datapoint], [X_Distribution_Mesh_Search], [Y_Distribution_Mesh_Search])
+Declare @Michaelian_Similarity_Matrix_Cross_Join Table ([X_Dataset] Nvarchar(250), [Y_Dataset] Nvarchar(250), [X_Distribution_Mesh_Search] Float, [Y_Distribution_Mesh_Search] Float)
+Insert Into @Michaelian_Similarity_Matrix_Cross_Join ([X_Dataset], [Y_Dataset], [X_Distribution_Mesh_Search], [Y_Distribution_Mesh_Search])
 Select
 	A.[Dataset] As [X_Dataset],
 	B.[Dataset] As [Y_Dataset],
-	A.[Datapoint] As [X_Datapoint],
-	B.[Datapoint] As [Y_Datapoint],
 	A.[Spot_Confidence] As [X_Distribution_Mesh_Search],
 	B.[Spot_Confidence] As [Y_Distribution_Mesh_Search]
-From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage A
-Cross Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage B
+From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final A
+Cross Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final B
+Where B.[Datapoint] = A.[Datapoint]
 
 Declare @Michaelian_Pair_Dataset_Similarity_Matrix Table ([X_Dataset] Nvarchar(250), [Y_Dataset] Nvarchar(250), [Michaelian_X_Dataset_Similarity] Float)
 Insert Into @Michaelian_Pair_Dataset_Similarity_Matrix ([X_Dataset], [Y_Dataset], [Michaelian_X_Dataset_Similarity])
@@ -1176,7 +1183,7 @@ Select (@Analysis_Label + ':Load Stage Part Two Started At Around:' + Cast(GetDa
 --Already loaded --->>> Select * From @Deepset_Statistical_Significance_Sigma_Bands Order By [Dataset] Asc, [Post_Sampling_Sigma_Band] Asc
 Select * From @Deepsets Order By [Deepset_Partition] Asc, [Dataset] Asc
 Select * From @Fully_Normalised_Deepsets Order By [Dataset] Asc, [Fully_Normalised_Parameter] Asc
-Select * From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
+Select * From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final Order By [Dataset] Asc, [Datapoint] Asc
 Select * From @Model_Phase_Transitioned_Projection_Spread_Confidence_Percentage Order By [Dataset] Asc, [Datapoint] Asc
 Select * From @Michaelian_Pair_Dataset_Similarity_Matrix Order By [X_Dataset] Asc, [Y_Dataset] Asc
 Select * From @Michaelian_Total_Dataset_Similarity_Matrix Order By [Dataset] Asc 
