@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.94
+--Version 1.95
 
 
 --OVERVIEW:
@@ -1143,8 +1143,8 @@ Select
 	A.[Spot_Confidence] As [X_Distribution_Mesh_Search],
 	B.[Spot_Confidence] As [Y_Distribution_Mesh_Search]
 From @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final A
-Cross Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final B
-Where B.[Datapoint] = A.[Datapoint]
+Inner Join @Model_Phase_Transitioned_Projection_Spot_Confidence_Percentage_Limit_Normalised_Final B
+	On (B.[Datapoint] = A.[Datapoint])
 
 Declare @Michaelian_Pair_Dataset_Similarity_Matrix Table ([X_Dataset] Nvarchar(250), [Y_Dataset] Nvarchar(250), [Michaelian_X_Dataset_Similarity] Float)
 Insert Into @Michaelian_Pair_Dataset_Similarity_Matrix ([X_Dataset], [Y_Dataset], [Michaelian_X_Dataset_Similarity])
