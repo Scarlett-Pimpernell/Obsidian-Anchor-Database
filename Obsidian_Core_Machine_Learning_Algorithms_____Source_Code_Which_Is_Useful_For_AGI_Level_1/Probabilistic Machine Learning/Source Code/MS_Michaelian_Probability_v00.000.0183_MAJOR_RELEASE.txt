@@ -4,7 +4,7 @@
 --T-SQL
 --Collation: Latin1_General_CI_AS
 --Initial Operating Capability
---Version 1.95
+--Version 1.96
 
 
 --OVERVIEW:
@@ -1151,7 +1151,7 @@ Insert Into @Michaelian_Pair_Dataset_Similarity_Matrix ([X_Dataset], [Y_Dataset]
 Select
 	[X_Dataset],
 	[Y_Dataset],
-	Avg((Case When [X_Dataset] = [Y_Dataset] Then 100 Else ((Case When [X_Distribution_Mesh_Search] = 0 Then (Case When [Y_Distribution_Mesh_Search] = 0 Then 1 Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) * 100) End)) As [Michaelian_X_Dataset_Similarity]
+	Avg((Case When [X_Dataset] = [Y_Dataset] Then Null Else ((Case When [X_Distribution_Mesh_Search] = 0 Then (Case When [Y_Distribution_Mesh_Search] = 0 Then 1 Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) Else (Case When [X_Distribution_Mesh_Search] = [Y_Distribution_Mesh_Search] Then 1 Else (Case When [X_Distribution_Mesh_Search] > [Y_Distribution_Mesh_Search] Then (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [X_Distribution_Mesh_Search]) Else (([X_Distribution_Mesh_Search] - [Y_Distribution_Mesh_Search]) / [Y_Distribution_Mesh_Search]) End) End) End) * 100) End)) As [Michaelian_X_Dataset_Similarity]
 From @Michaelian_Similarity_Matrix_Cross_Join
 Group By [X_Dataset], [Y_Dataset]
 --Any two identical deepsets should be 100% similar, and any two swapped deepsets (i.e. the x-axis dataset swapped for the y-axis dataset) should be inverse.
@@ -1162,6 +1162,7 @@ Select
 	[X_Dataset] As [Dataset],
 	Avg(Sqrt(Power([Michaelian_X_Dataset_Similarity], 2))) As [Michaelian_Total_Dataset_Similarity]
 From @Michaelian_Pair_Dataset_Similarity_Matrix
+Where [Michaelian_X_Dataset_Similarity] Is Not Null
 Group By [X_Dataset]
 --Beware that this metric should always be positive, because there is no pairwise comparison anymore, but rather multi-comparison.
 
