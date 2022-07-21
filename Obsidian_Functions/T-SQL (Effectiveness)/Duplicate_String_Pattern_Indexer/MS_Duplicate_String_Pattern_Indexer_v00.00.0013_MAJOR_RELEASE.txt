@@ -1,0 +1,111 @@
+--The following few blocks of code create a new stored procedure which is used later on in this query in order to index string pattern duplicates.
+Declare @Create_Stored_Procedure_Command Nvarchar(Max)
+Set @Create_Stored_Procedure_Command =
+	N'Create Procedure dbo.Obsidian_Index_Delimited_String_Duplicates
+		@Data Nvarchar(Max),
+		@Duplicate_Pattern Nvarchar(Max),
+		@Duplicate_Pattern_Order BigInt  
+	
+	
+	As
+		
+		
+		Set NoCount On; 
+		
+
+		--Internal Variables:
+		Declare @Index_Count BigInt
+		Set @Index_Count = Len(@Data)
+
+
+		--Data Validation Checks For Out Of Scope Parameters
+		--(@Data)
+		If @Data = Null GoTo Invalid_Data_Parameter_Return_Value
+		If Len(Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Data_Parameter_Return_Value
+		If @Data = '' ''  GoTo Invalid_Data_Parameter_Return_Value
+		If @Data = ''''  GoTo Invalid_Data_Parameter_Return_Value
+
+		--(@Duplicate_Pattern)
+		If @Duplicate_Pattern = Null GoTo Invalid_Duplicate_Pattern_Return_Value
+		If Len(Cast(@Duplicate_Pattern As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
+		If @Duplicate_Pattern = '' ''  GoTo Invalid_Duplicate_Pattern_Return_Value
+		If @Duplicate_Pattern = ''''  GoTo Invalid_Duplicate_Pattern_Return_Value
+		If Patindex(''%'' + Cast(@Duplicate_Pattern As Nvarchar(Max)) + ''%'', Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
+
+		--(@Duplicate_Pattern_Order)
+		If @Duplicate_Pattern_Order = Null GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If Len(Cast(@Duplicate_Pattern_Order As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If @Duplicate_Pattern_Order = '' '' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If @Duplicate_Pattern_Order = '''' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If ((Len(Cast(@Data As Nvarchar(Max))) - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Duplicate_Pattern As Nvarchar(Max)), ''''))) / Len(Cast(@Duplicate_Pattern As Nvarchar(Max)))) < @Duplicate_Pattern_Order GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+
+
+		--The following codeblocks produce dynamically structured code in order to transform the @Data variable into a delimited character table.
+		Declare @Dynamic_SQL_1 Nvarchar(Max)
+		Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Code(@Parameter_1))''
+
+		Declare @Dynamic_SQL_Parameter_Definition_1 Nvarchar(Max)
+		Set @Dynamic_SQL_Parameter_Definition_1 = N''@Parameter_1 BigInt''
+
+		Declare @Dynamic_SQL_Intermediate_Table_Variable_1 Table ([Intermediate_SQL] Nvarchar(Max))
+		Insert Into @Dynamic_SQL_Intermediate_Table_Variable_1 ([Intermediate_SQL])
+		Execute sp_executesql @Dynamic_SQL_1, @Dynamic_SQL_Parameter_Definition_1, @Parameter_1 = @Index_Count
+
+		Declare @Dynamic_SQL_Data_Intermediate_Variable Nvarchar(Max)
+		Set @Dynamic_SQL_Data_Intermediate_Variable = (Select Replace([Intermediate_SQL], ''@Index_Count'', @Index_Count) From @Dynamic_SQL_Intermediate_Table_Variable_1)
+
+		Declare @Obsidian_Data_Element_Index Table ([Element_Index] BigInt)
+		Insert Into @Obsidian_Data_Element_Index ([Element_Index]) --You could just use an existing table of integers here, which would greatly speed up the query for big data applications where for example billions, trillions, or quadrillions of integers are needed on a daily basis.
+		Execute (@Dynamic_SQL_Data_Intermediate_Variable)
+
+		Declare @Data_Pattern_Delimit Table ([Pattern_Index] BigInt, [Pattern] Nvarchar(Max))
+		Insert Into @Data_Pattern_Delimit ([Pattern_Index], [Pattern])
+		Select
+			[Element_Index] As [Pattern_Index],
+			Right(Left(@Data, (([Element_Index] + Len(@Duplicate_Pattern)) - 1)), Len(@Duplicate_Pattern)) As [Pattern]
+		From @Obsidian_Data_Element_Index
+	
+	
+		--The following codeblocks use the @Order variable in order to index specific string pattern duplicate members. 	
+		Declare @Data_Pattern_Match_Intermediate Table ([Pattern_Index] BigInt, [Duplicate_Pattern_Match_Boolean] TinyInt)
+		Insert Into @Data_Pattern_Match_Intermediate ([Pattern_Index], [Duplicate_Pattern_Match_Boolean])
+		Select
+			[Pattern_Index] As [Pattern_Index],
+			(Case When [Pattern] Like @Duplicate_Pattern Then 1 Else 0 End) As [Duplicate_Pattern_Match_Boolean]
+		From @Data_Pattern_Delimit
+
+		Declare @Data_Pattern_Match_Final Table ([Order] BigInt, [Pattern_Index] BigInt, [Duplicate_Pattern_Match_Boolean] TinyInt)
+		Insert Into @Data_Pattern_Match_Final ([Order], [Pattern_Index], [Duplicate_Pattern_Match_Boolean])
+		Select
+			Row_Number() Over (Order By [Pattern_Index] Asc) As [Order],
+			[Pattern_Index] As [Pattern_Index],
+			[Duplicate_Pattern_Match_Boolean] As [Duplicate_Pattern_Match_Boolean]
+		From @Data_Pattern_Match_Intermediate
+		Where [Duplicate_Pattern_Match_Boolean] = 1
+
+
+		--The following codeblocks return useful data from the stored procedure regarding either errors or duplicate string pattern indexes.
+		Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order
+		Return
+
+
+		Invalid_Data_Parameter_Return_Value:
+		Select ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.''
+		Return
+
+
+		Invalid_Duplicate_Pattern_Return_Value:
+		Select ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).''
+		Return
+
+
+		Invalid_Duplicate_Pattern_Order_Return_Value:
+		Select ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).''
+		Return
+
+
+		';
+
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Index_Delimited_String_Duplicates' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Stored_Procedure_Command;

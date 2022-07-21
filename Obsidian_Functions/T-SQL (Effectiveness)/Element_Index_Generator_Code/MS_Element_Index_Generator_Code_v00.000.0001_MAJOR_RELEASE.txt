@@ -1,0 +1,31 @@
+--The following few blocks of code create a new function which is used later on in this query in order to generate a table variable with 1 column containing increasing integers.
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Element_Index_Generator_Code(@Index_Count BigInt)
+Returns Nvarchar(Max)
+With Returns Null On Null Input
+As
+Begin
+
+Declare @Element_Index_Generator_Code Nvarchar(Max)
+
+Set @Element_Index_Generator_Code = 
+(Case When @Index_Count < 1 Then ''Null''
+Else (Case When @Index_Count > 999999999 Then ''Null''
+Else (Case When @Index_Count <= 9 Then ''Select Singles.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n) Where Singles.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99 Then ''Select Singles.n + 10*Tens.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n) Where Singles.n + 10*Tens.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 9999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenThousands(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 999999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) HundredThousands(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 9999999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) HundredThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Millions(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99999999 Then ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n + 10000000*TenMillions.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) HundredThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Millions(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenMillions(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n + 10000000*TenMillions.n Between 1 And @Index_Count''
+Else ''Select Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n + 10000000*TenMillions.n + 100000000*HundredMillions.n As [Element_Index] From (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Thousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) HundredThousands(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Millions(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) TenMillions(n), (Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) HundredMillions(n) Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n + 10000*TenThousands.n + 100000*HundredThousands.n + 1000000*Millions.n + 10000000*TenMillions.n + 100000000*HundredMillions.n Between 1 And @Index_Count''
+End) End) End) End) End) End) End) End) End) End)
+	
+Return @Element_Index_Generator_Code
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Element_Index_Generator_Code' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Quantum Encryption repository.
+Execute sp_executesql @Create_Function_Command;
