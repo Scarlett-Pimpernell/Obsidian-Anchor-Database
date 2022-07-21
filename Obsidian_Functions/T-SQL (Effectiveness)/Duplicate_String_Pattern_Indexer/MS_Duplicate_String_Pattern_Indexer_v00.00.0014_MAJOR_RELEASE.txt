@@ -1,7 +1,7 @@
 --The following few blocks of code create a new stored procedure which is used later on in this query in order to index string pattern duplicates.
 Declare @Create_Stored_Procedure_Command Nvarchar(Max)
 Set @Create_Stored_Procedure_Command =
-	N'Create Procedure dbo.Obsidian_Index_Delimited_String_Duplicates
+	N'Create Procedure dbo.Obsidian_Duplicate_String_Pattern_Indexer
 		@Data Nvarchar(Max),
 		@Duplicate_Pattern Nvarchar(Max),
 		@Duplicate_Pattern_Order BigInt  
@@ -14,30 +14,34 @@ Set @Create_Stored_Procedure_Command =
 		
 
 		--Internal Variables:
-		Declare @Index_Count BigInt
-		Set @Index_Count = Len(@Data)
+		Declare @Data_String_Length BigInt
+		Set @Data_String_Length = Len(Cast(@Data As Nvarchar(Max)))
+		Declare @Duplicate_Pattern_String_Length BigInt
+		Set @Duplicate_Pattern_String_Length = Len(Cast(@Duplicate_Pattern As Nvarchar(Max)))
+		Declare @Duplicate_Pattern_Order_String_Length BigInt
+		Set @Duplicate_Pattern_Order_String_Length = Len(Cast(@Duplicate_Pattern_Order As Nvarchar(Max)))
 
 
 		--Data Validation Checks For Out Of Scope Parameters
 		--(@Data)
-		If @Data = Null GoTo Invalid_Data_Parameter_Return_Value
-		If Len(Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Data_Parameter_Return_Value
+		If @Data Is Null GoTo Invalid_Data_Parameter_Return_Value
+		If @Data_String_Length = 0 GoTo Invalid_Data_Parameter_Return_Value
 		If @Data = '' ''  GoTo Invalid_Data_Parameter_Return_Value
 		If @Data = ''''  GoTo Invalid_Data_Parameter_Return_Value
 
 		--(@Duplicate_Pattern)
-		If @Duplicate_Pattern = Null GoTo Invalid_Duplicate_Pattern_Return_Value
-		If Len(Cast(@Duplicate_Pattern As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
+		If @Duplicate_Pattern Is Null GoTo Invalid_Duplicate_Pattern_Return_Value
+		If @Duplicate_Pattern_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
 		If @Duplicate_Pattern = '' ''  GoTo Invalid_Duplicate_Pattern_Return_Value
 		If @Duplicate_Pattern = ''''  GoTo Invalid_Duplicate_Pattern_Return_Value
 		If Patindex(''%'' + Cast(@Duplicate_Pattern As Nvarchar(Max)) + ''%'', Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
 
 		--(@Duplicate_Pattern_Order)
-		If @Duplicate_Pattern_Order = Null GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-		If Len(Cast(@Duplicate_Pattern_Order As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If @Duplicate_Pattern_Order Is Null GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If @Duplicate_Pattern_Order_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Order_Return_Value
 		If @Duplicate_Pattern_Order = '' '' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
 		If @Duplicate_Pattern_Order = '''' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-		If ((Len(Cast(@Data As Nvarchar(Max))) - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Duplicate_Pattern As Nvarchar(Max)), ''''))) / Len(Cast(@Duplicate_Pattern As Nvarchar(Max)))) < @Duplicate_Pattern_Order GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+		If ((@Data_String_Length - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Duplicate_Pattern As Nvarchar(Max)), ''''))) / @Duplicate_Pattern_String_Length) < @Duplicate_Pattern_Order GoTo Invalid_Duplicate_Pattern_Order_Return_Value
 
 
 		--The following codeblocks produce dynamically structured code in order to transform the @Data variable into a delimited character table.
@@ -49,10 +53,10 @@ Set @Create_Stored_Procedure_Command =
 
 		Declare @Dynamic_SQL_Intermediate_Table_Variable_1 Table ([Intermediate_SQL] Nvarchar(Max))
 		Insert Into @Dynamic_SQL_Intermediate_Table_Variable_1 ([Intermediate_SQL])
-		Execute sp_executesql @Dynamic_SQL_1, @Dynamic_SQL_Parameter_Definition_1, @Parameter_1 = @Index_Count
+		Execute sp_executesql @Dynamic_SQL_1, @Dynamic_SQL_Parameter_Definition_1, @Parameter_1 = @Data_String_Length
 
 		Declare @Dynamic_SQL_Data_Intermediate_Variable Nvarchar(Max)
-		Set @Dynamic_SQL_Data_Intermediate_Variable = (Select Replace([Intermediate_SQL], ''@Index_Count'', @Index_Count) From @Dynamic_SQL_Intermediate_Table_Variable_1)
+		Set @Dynamic_SQL_Data_Intermediate_Variable = (Select Replace([Intermediate_SQL], ''@Index_Count'', @Data_String_Length) From @Dynamic_SQL_Intermediate_Table_Variable_1)
 
 		Declare @Obsidian_Data_Element_Index Table ([Element_Index] BigInt)
 		Insert Into @Obsidian_Data_Element_Index ([Element_Index]) --You could just use an existing table of integers here, which would greatly speed up the query for big data applications where for example billions, trillions, or quadrillions of integers are needed on a daily basis.
@@ -107,5 +111,5 @@ Set @Create_Stored_Procedure_Command =
 		';
 
 
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Index_Delimited_String_Duplicates' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Duplicate_String_Pattern_Indexer' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
 Execute sp_executesql @Create_Stored_Procedure_Command;
