@@ -4,7 +4,8 @@ Set @Create_Stored_Procedure_Command =
 	N'Create Procedure dbo.Obsidian_Duplicate_String_Pattern_Indexer
 		@Data Nvarchar(Max),
 		@Duplicate_Pattern Nvarchar(Max),
-		@Duplicate_Pattern_Order BigInt  
+		@Duplicate_Pattern_Order BigInt,
+		@Duplicate_Pattern_Index BigInt Output
 	
 	
 	As
@@ -89,7 +90,7 @@ Set @Create_Stored_Procedure_Command =
 
 
 		--The following codeblocks return useful data from the stored procedure regarding either errors or duplicate string pattern indexes.
-		Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order
+		Set @Duplicate_Pattern_Index = (Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order)
 		Return
 
 
