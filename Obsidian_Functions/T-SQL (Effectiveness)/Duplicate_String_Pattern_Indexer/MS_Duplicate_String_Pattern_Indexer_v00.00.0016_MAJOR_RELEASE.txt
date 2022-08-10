@@ -5,7 +5,7 @@ Set @Create_Stored_Procedure_Command =
 		@Data Nvarchar(Max),
 		@Duplicate_Pattern Nvarchar(Max),
 		@Duplicate_Pattern_Order BigInt,
-		@Duplicate_Pattern_Index BigInt Output
+		@Duplicate_Pattern_Index Nvarchar(Max) Output
 	
 	
 	As
@@ -90,22 +90,22 @@ Set @Create_Stored_Procedure_Command =
 
 
 		--The following codeblocks return useful data from the stored procedure regarding either errors or duplicate string pattern indexes.
-		Set @Duplicate_Pattern_Index = (Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order)
+		Set @Duplicate_Pattern_Index = Cast((Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order) As Nvarchar(Max))
 		Return
 
 
 		Invalid_Data_Parameter_Return_Value:
-		Select ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.''
+		Set @Duplicate_Pattern_Index = (Select ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.'')
 		Return
 
 
 		Invalid_Duplicate_Pattern_Return_Value:
-		Select ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).''
+		Set @Duplicate_Pattern_Index = (Select ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).'')
 		Return
 
 
 		Invalid_Duplicate_Pattern_Order_Return_Value:
-		Select ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).''
+		Set @Duplicate_Pattern_Index = (Select ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).'')
 		Return
 
 
