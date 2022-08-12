@@ -69,7 +69,7 @@ Declare @Data_Pattern_Delimit Table ([Pattern_Index] BigInt, [Pattern] Nvarchar(
 Insert Into @Data_Pattern_Delimit ([Pattern_Index], [Pattern])
 Select
 	[Element_Index] As [Pattern_Index],
-	Right(Left(@Data, (([Element_Index] + Len(@Duplicate_Pattern)) - 1)), Len(@Duplicate_Pattern)) As [Pattern]
+	Substring(@Data, [Element_Index], Len(@Duplicate_Pattern)) As [Pattern]
 From @Obsidian_Data_Element_Index
 	
 	
