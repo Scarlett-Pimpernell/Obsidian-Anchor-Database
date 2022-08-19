@@ -2,6 +2,10 @@
 
 Declare @Output Nvarchar(Max)
 
-Execute dbo.Obsidian_Duplicate_String_Pattern_Indexer @Data = '1abc2abc3abc', @Duplicate_Pattern = 'ab', @Duplicate_Pattern_Order = 2, @Duplicate_Pattern_Index = @Output Output;
+Execute dbo.Obsidian_Duplicate_String_Pattern_Indexer
+@Data = '1abc2abc3abc',
+@Duplicate_Pattern = 'ab',
+@Duplicate_Pattern_Order = 2,
+@Duplicate_Pattern_Index = @Output Output;
 
 Select @Output
