@@ -1,0 +1,11 @@
+--Just to be clear, that for any real world use outside of a slowish table row loop one-by-one column cell assignation, we absolutely need the ability to either use Dynamic SQL in user-defined functions, or we need to be able to use stored procedures in table column assignations. Please as many people as is possible, get on to Microsoft about this SQL Server shortcoming, so that a critical mass can build up for this product feature. It is absolutely essential going forward, and to be honest, I'm actually a little shocked that it seems to not already be available in the product!
+
+Declare @Output Nvarchar(Max)
+
+Execute dbo.Obsidian_Duplicate_Character_Cleaner_Parallel
+@Data = '!!abdos!!jr!gbj!!!!!!c!!!!abdos!!jr!gbj!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!cccccccccc',
+@Duplicate_Character = '!',
+@Maximum_Target_Processor_Parallel_Core_Count = 100,
+@Cleaned_Data = @Output Output;
+
+Select @Output
