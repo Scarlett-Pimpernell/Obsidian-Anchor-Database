@@ -2,7 +2,7 @@
 
 Declare @Output Nvarchar(Max)
 
-Execute dbo.Obsidian_Duplicate_String_Pattern_Indexer
+Execute dbo.Obsidian_Duplicate_String_Pattern_Indexer_Parallel_Super_Fast
 @Data = '1abc2abc3abc',
 @Duplicate_Pattern = 'ab',
 @Duplicate_Pattern_Order = 2,

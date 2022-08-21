@@ -1,7 +1,7 @@
 --The following few blocks of code create a new stored procedure which is used later on in this query in order to index string pattern duplicates.
 Declare @Create_Stored_Procedure_Command Nvarchar(Max)
 Set @Create_Stored_Procedure_Command =
-N'Create Procedure dbo.Obsidian_Duplicate_String_Pattern_Indexer
+N'Create Procedure dbo.Obsidian_Duplicate_String_Pattern_Indexer_Parallel_Super_Fast
 @Data Nvarchar(Max),
 @Duplicate_Pattern Nvarchar(Max),
 @Duplicate_Pattern_Order BigInt,
@@ -111,5 +111,5 @@ Return
 ';
 
 
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Duplicate_String_Pattern_Indexer' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Duplicate_String_Pattern_Indexer_Parallel_Super_Fast_' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
 Execute sp_executesql @Create_Stored_Procedure_Command;
