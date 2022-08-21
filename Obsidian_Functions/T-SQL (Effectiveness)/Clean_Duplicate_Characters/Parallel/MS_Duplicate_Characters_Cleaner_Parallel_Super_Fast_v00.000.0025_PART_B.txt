@@ -2,7 +2,7 @@
 
 Declare @Output Nvarchar(Max)
 
-Execute dbo.Obsidian_Duplicate_Character_Cleaner_Parallel
+Execute dbo.Obsidian_Duplicate_Character_Cleaner_Parallel_Super_Fast
 @Data = '!!abdos!!jr!gbj!!!!!!c!!!!abdos!!jr!gbj!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!cccccccccc',
 @Duplicate_Character = '!',
 @Maximum_Target_Processor_Parallel_Core_Count = 100,

@@ -1,7 +1,7 @@
 --The following few blocks of code create a new stored procedure which can be used in order to remove multiple consecutive duplicate characters from strings.
 Declare @Create_Stored_Procedure_Command Nvarchar(Max);
 Set @Create_Stored_Procedure_Command = 
-N'Create Procedure dbo.Obsidian_Duplicate_Character_Cleaner_Parallel
+N'Create Procedure dbo.Obsidian_Duplicate_Character_Cleaner_Parallel_Super_Fast
 @Data Nvarchar(Max),
 @Duplicate_Character Nvarchar(1),
 @Maximum_Target_Processor_Parallel_Core_Count BigInt,
@@ -18,7 +18,7 @@ Set NoCount On;
 
 --(NOTA BENE)
 --If you change the table variables to temporary tables, and add indexes here and there, this stored procedure may be even speedier in execution.
---If you use this stored procedure for relatively small @Data strings e.g. <500K characters long, instead of the serial version, then you may not experience any parallel compute speed gains. This algorithm is really intended for use with big @Data straings with lengths in excess of 500K characters, and then you will experience significant speed improvements in comparison to serial compute, so long as you have access to multiple processor cores, and set the max parallel core count parameter accordingly.
+--If you use this stored procedure for relatively small @Data strings e.g. <500K characters long (maybe), instead of the serial version, then you may not experience any parallel compute speed gains. This algorithm is really intended for use with big @Data straings with lengths in excess of 500K characters (maybe), and then you will experience significant speed improvements in comparison to serial compute, so long as you have access to multiple processor cores, and set the max parallel core count parameter accordingly.
 --This query contains a foundational parallel programming technique (slicing the input string depending on the ratio of the number of designated processor cores to the length of the input @Data string, and then applying a function on each slice simultaneously, followed by a string concatenation aggregation at the end, which returns the full transformed @Data string).
 --This algorithm is ideal for big data compute use cases. Essentially, you could tweak the appropriate steps i.e. the application of the critical core string function in the @Data_Pattern_Delimit_Intermediate_B table variable insertion codeblock below (as well as the final double boundary methods), in order to enjoy significant parallel compute speed gains for a whole host of different string transformations!
 
@@ -152,5 +152,5 @@ Return
 
 ';
 
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Duplicate_Character_Cleaner_Parallel' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Duplicate_Character_Cleaner_Parallel_Super_Fast' and Xtype='P') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
 Execute sp_executesql @Create_Stored_Procedure_Command;
