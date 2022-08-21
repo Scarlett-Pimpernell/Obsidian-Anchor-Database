@@ -1,4 +1,7 @@
 --The following codeblocks produce dynamically structured code in order to generate a single column table of increasing integer index values.
+Declare @Index_Count BigInt
+Set @Index_Count = 100
+
 Declare @Dynamic_SQL_1 Nvarchar(Max)
 Set @Dynamic_SQL_1 = N'(Select dbo.Obsidian_Element_Index_Generator_Native_Code(@Parameter_1))'
 
@@ -15,3 +18,5 @@ Set @Dynamic_SQL_Data_Intermediate_Variable = (Select Replace([Intermediate_SQL]
 Declare @Obsidian_Data_Element_Index Table ([Element_Index] BigInt)
 Insert Into @Obsidian_Data_Element_Index ([Element_Index]) --You could just use an existing table of integers here, which would greatly speed up the query for big data applications where for example billions, trillions, or quadrillions of integers are needed on a daily basis.
 Execute (@Dynamic_SQL_Data_Intermediate_Variable)
+
+Select * From @Obsidian_Data_Element_Index

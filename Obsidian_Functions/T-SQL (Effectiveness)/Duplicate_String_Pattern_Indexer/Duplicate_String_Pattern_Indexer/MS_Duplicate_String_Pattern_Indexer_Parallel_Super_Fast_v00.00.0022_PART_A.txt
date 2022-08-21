@@ -49,7 +49,7 @@ If ((@Data_String_Length - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Dupli
 
 --The following codeblocks produce dynamically structured code in order to transform the @Data variable into a delimited character table.
 Declare @Dynamic_SQL_1 Nvarchar(Max)
-Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Code(@Parameter_1))''
+Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Native_Code(@Parameter_1))''
 
 Declare @Dynamic_SQL_Parameter_Definition_1 Nvarchar(Max)
 Set @Dynamic_SQL_Parameter_Definition_1 = N''@Parameter_1 BigInt''
