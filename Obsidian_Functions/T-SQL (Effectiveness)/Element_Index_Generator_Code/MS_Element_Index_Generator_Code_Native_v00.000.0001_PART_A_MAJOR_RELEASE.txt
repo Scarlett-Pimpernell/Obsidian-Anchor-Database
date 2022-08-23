@@ -1,7 +1,7 @@
 --The following few blocks of code create a new function which is used later on in this query in order to generate a table variable with 1 column containing increasing integers.
 Declare @Create_Function_Command Nvarchar(Max);
 Set @Create_Function_Command =
-	N'Create Function dbo.Obsidian_Element_Index_Generator_Native_Code(@Index_Count BigInt)
+	N'Create Function dbo.Obsidian_Element_Index_Generator_Code_Native(@Index_Count BigInt)
 Returns Nvarchar(Max)
 With Returns Null On Null Input
 As
@@ -27,5 +27,5 @@ Return @Element_Index_Generator_Code
 
 End';
 
-If Not Exists (Select * From Sysobjects Where Name='Obsidian_Element_Index_Generator_Native_Code' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Quantum Encryption repository.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Element_Index_Generator_Native_Code_Native' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Quantum Encryption repository.
 Execute sp_executesql @Create_Function_Command;

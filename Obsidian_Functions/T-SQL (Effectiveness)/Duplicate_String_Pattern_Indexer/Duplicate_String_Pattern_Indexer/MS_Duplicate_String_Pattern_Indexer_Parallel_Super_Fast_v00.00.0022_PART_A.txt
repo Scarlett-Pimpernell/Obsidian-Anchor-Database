@@ -27,29 +27,29 @@ Set @Element_Index_Size = (@Data_String_Length - (@Duplicate_Pattern_String_Leng
 
 --Data Validation Checks For Out Of Scope Parameters
 --(@Data)
-If @Data Is Null GoTo Invalid_Data_Parameter_Return_Value
-If @Data_String_Length = 0 GoTo Invalid_Data_Parameter_Return_Value
-If @Data = '' ''  GoTo Invalid_Data_Parameter_Return_Value
-If @Data = ''''  GoTo Invalid_Data_Parameter_Return_Value
+If @Data Is Null GoTo Invalid_Data_Parameter_Value
+If @Data_String_Length = 0 GoTo Invalid_Data_Parameter_Value
+If @Data = '' ''  GoTo Invalid_Data_Parameter_Value
+If @Data = ''''  GoTo Invalid_Data_Parameter_Value
 
 --(@Duplicate_Pattern)
-If @Duplicate_Pattern Is Null GoTo Invalid_Duplicate_Pattern_Return_Value
-If @Duplicate_Pattern_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
-If @Duplicate_Pattern = '' ''  GoTo Invalid_Duplicate_Pattern_Return_Value
-If @Duplicate_Pattern = ''''  GoTo Invalid_Duplicate_Pattern_Return_Value
-If Patindex(''%'' + Cast(@Duplicate_Pattern As Nvarchar(Max)) + ''%'', Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Return_Value
+If @Duplicate_Pattern Is Null GoTo Invalid_Duplicate_Pattern_Parameter_Value
+If @Duplicate_Pattern_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Parameter_Value
+If @Duplicate_Pattern = '' ''  GoTo Invalid_Duplicate_Pattern_Parameter_Value
+If @Duplicate_Pattern = ''''  GoTo Invalid_Duplicate_Pattern_Parameter_Value
+If Patindex(''%'' + Cast(@Duplicate_Pattern As Nvarchar(Max)) + ''%'', Cast(@Data As Nvarchar(Max))) = 0 GoTo Invalid_Duplicate_Pattern_Parameter_Value
 
 --(@Duplicate_Pattern_Order)
-If @Duplicate_Pattern_Order Is Null GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-If @Duplicate_Pattern_Order_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-If @Duplicate_Pattern_Order = '' '' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-If @Duplicate_Pattern_Order = '''' GoTo Invalid_Duplicate_Pattern_Order_Return_Value
-If ((@Data_String_Length - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Duplicate_Pattern As Nvarchar(Max)), ''''))) / @Duplicate_Pattern_String_Length) < @Duplicate_Pattern_Order GoTo Invalid_Duplicate_Pattern_Order_Return_Value
+If @Duplicate_Pattern_Order Is Null GoTo Invalid_Duplicate_Pattern_Order_Parameter_Value
+If @Duplicate_Pattern_Order_String_Length = 0 GoTo Invalid_Duplicate_Pattern_Order_Parameter_Value
+If @Duplicate_Pattern_Order = '' '' GoTo Invalid_Duplicate_Pattern_Order_Parameter_Value
+If @Duplicate_Pattern_Order = '''' GoTo Invalid_Duplicate_Pattern_Order_Parameter_Value
+If ((@Data_String_Length - Len(Replace(Cast(@Data As Nvarchar(Max)), Cast(@Duplicate_Pattern As Nvarchar(Max)), ''''))) / @Duplicate_Pattern_String_Length) < @Duplicate_Pattern_Order GoTo Invalid_Duplicate_Pattern_Order_Parameter_Value
 
 
 --The following codeblocks produce dynamically structured code in order to transform the @Data variable into a delimited character table.
 Declare @Dynamic_SQL_1 Nvarchar(Max)
-Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Native_Code(@Parameter_1))''
+Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Code_Native(@Parameter_1))''
 
 Declare @Dynamic_SQL_Parameter_Definition_1 Nvarchar(Max)
 Set @Dynamic_SQL_Parameter_Definition_1 = N''@Parameter_1 BigInt''
@@ -95,15 +95,15 @@ Where [Duplicate_Pattern_Match_Boolean] = 1
 Set @Duplicate_Pattern_Index = Cast((Select [Pattern_Index] From @Data_Pattern_Match_Final Where [Order] = @Duplicate_Pattern_Order) As Nvarchar(Max))
 Return
 
-Invalid_Data_Parameter_Return_Value:
+Invalid_Data_Parameter_Value:
 Set @Duplicate_Pattern_Index = (Select ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.'')
 Return
 
-Invalid_Duplicate_Pattern_Return_Value:
+Invalid_Duplicate_Pattern_Parameter_Value:
 Set @Duplicate_Pattern_Index = (Select ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).'')
 Return
 
-Invalid_Duplicate_Pattern_Order_Return_Value:
+Invalid_Duplicate_Pattern_Order_Parameter_Value:
 Set @Duplicate_Pattern_Index = (Select ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).'')
 Return
 

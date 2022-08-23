@@ -133,8 +133,7 @@ From @Data_Pattern_Delimit_Intermediate_C E
 Set @Cleaned_Data = Cast(Replace(Replace((Select String_Agg([Hybrid_Pattern], '''') Within Group (Order By [Element_Index] Asc) From @Data_Pattern_Delimit_Final), (@Duplicate_Character + @Duplicate_Character), @Duplicate_Character), (@Duplicate_Character + @Duplicate_Character), @Duplicate_Character) As Nvarchar(Max))
 
 --And remove the leading and trailing zero padding.
-Set @Cleaned_Data = Left(@Cleaned_Data, (Len(@Cleaned_Data) - 1))
-Set @Cleaned_Data = Right(@Cleaned_Data, (Len(@Cleaned_Data) - 1))
+Set @Cleaned_Data = Substring(@Cleaned_Data, 2, (Len(@Cleaned_Data) - 2))
 Return
 
 Invalid_Data_Parameter_Value:
