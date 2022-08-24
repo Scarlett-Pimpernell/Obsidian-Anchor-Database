@@ -14,6 +14,9 @@ As
 Set NoCount On;
 		
 
+--I would like to make clear that this stored procedure is possibly much slower than the native Patindex() function, but I am willing to accept this, because this duplicate pattern indexer function has more functionality, BUT, make sure you use Patindex() instead, wherever possible!
+
+
 --Internal Variables:
 Declare @Data_String_Length BigInt
 Set @Data_String_Length = Len(Cast(@Data As Nvarchar(Max)))
@@ -96,15 +99,15 @@ Set @Duplicate_Pattern_Index = Cast((Select [Pattern_Index] From @Data_Pattern_M
 Return
 
 Invalid_Data_Parameter_Value:
-Set @Duplicate_Pattern_Index = (Select ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.'')
+Set @Duplicate_Pattern_Index = ''The first input parameter (@Data), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, or is empty.''
 Return
 
 Invalid_Duplicate_Pattern_Parameter_Value:
-Set @Duplicate_Pattern_Index = (Select ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).'')
+Set @Duplicate_Pattern_Index = ''The second input parameter (@Duplicate_Pattern), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or does not match any slice of the first input parameter (@Data).''
 Return
 
 Invalid_Duplicate_Pattern_Order_Parameter_Value:
-Set @Duplicate_Pattern_Index = (Select ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).'')
+Set @Duplicate_Pattern_Index = ''The third input parameter (@Duplicate_Pattern_Order), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, or is greater than the actual number of second input parameter (@Duplicate_Pattern) matches within the various slices of the first input parameter (@Data).''
 Return
 
 

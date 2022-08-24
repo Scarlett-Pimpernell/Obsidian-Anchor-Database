@@ -1,6 +1,6 @@
 --The following few codeblocks generates a set of element indexes which increment by one.
 Declare @Index_Count BigInt
-Set @Index_Count = 99999
+Set @Index_Count = 9999
 
 
 --(Data Validation)

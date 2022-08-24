@@ -45,7 +45,7 @@ If @Maximum_Target_Processor_Parallel_Core_Count = ''''  GoTo Invalid_Maximum_Ta
 
 
 --(Internal Variables Part Two)
---Here I add a trailing zero to the @Data string in order to properly handle future joins.
+--Here I add leading and trailing zeros to the @Data string in order to properly handle future joins without causing errors because of zero string lengths or out of bounds character indexes.
 Set @Data = (''0'' + @Data + ''0'')
 
 Declare @Data_String_Length BigInt
@@ -64,7 +64,7 @@ Set @Element_Index_Size = ((Case When (@Data_String_Length / @Inverted_Maximum_T
 
 --The following codeblocks produce dynamically structured code in order to transform the @Data variable into a delimited character table.
 Declare @Dynamic_SQL_1 Nvarchar(Max)
-Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Native_Code(@Parameter_1))''
+Set @Dynamic_SQL_1 = N''(Select dbo.Obsidian_Element_Index_Generator_Code(@Parameter_1))''
 
 Declare @Dynamic_SQL_Parameter_Definition_1 Nvarchar(Max)
 Set @Dynamic_SQL_Parameter_Definition_1 = N''@Parameter_1 BigInt''

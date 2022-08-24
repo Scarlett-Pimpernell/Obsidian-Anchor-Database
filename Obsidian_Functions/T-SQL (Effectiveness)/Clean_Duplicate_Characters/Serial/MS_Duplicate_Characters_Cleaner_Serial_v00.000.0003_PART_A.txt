@@ -9,7 +9,7 @@ Begin
 
 
 --(USAGE GUIDANCE)
---This serial version of the duplicate character cleansing algorithm, is intended for use on @Data strings which are significantly less than 500K characters in length. If your use case regularly exceeds this by a great margin, and you have access to multiple processor cores for compute, then I highly recommend using the parallel version instead, which can be found on my GitHub account (Scarlett-Pimpernell --> Obsidian Repository).
+--This serial version of the duplicate character cleansing algorithm, is intended for use on @Data strings which are significantly less than 500K characters in length (maybe). If your use case regularly exceeds this by a great margin, and you have access to multiple processor cores for compute, then I highly recommend using the parallel version instead, which can be found on my GitHub account (Scarlett-Pimpernell --> Obsidian Repository).
 
 
 --Data Validation Checks For Out Of Scope Parameters.
