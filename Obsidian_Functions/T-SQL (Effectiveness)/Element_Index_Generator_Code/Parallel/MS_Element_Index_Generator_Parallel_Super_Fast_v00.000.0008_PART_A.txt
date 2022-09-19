@@ -1,2 +1,0 @@
-Drop Type If Exists dbo.Obsidian_Element_Index_Generator_Code_Number_Seeds_Parallel_Super_Fast; --Make sure this type is not in use for another proprietary technique outside the Obsidian Database. I would prefer to use a create if not exists clause, however this currently causes an error in SQL Sertver 2019.
-Create Type dbo.Obsidian_Element_Index_Generator_Code_Number_Seeds_Parallel_Super_Fast As Table ([Number_Seed] NvarChar(1)) --Need to do this in order to feed a table-valued parameter into the element index generator code function (PART B).

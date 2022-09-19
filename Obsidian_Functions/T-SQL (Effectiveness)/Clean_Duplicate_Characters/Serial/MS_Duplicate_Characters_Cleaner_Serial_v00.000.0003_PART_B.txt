@@ -1,1 +1,0 @@
-Select dbo.Obsidian_Duplicate_Character_Cleaner_Serial('!!!abc!!!', '!')
