@@ -1,0 +1,604 @@
+--HEADER:
+--MS Text Search Purposym and Semantic Associate Thesauruses Integration
+--T-SQL
+--SQL Server 2019
+--Initial Operating Capability
+--Version 1.3
+
+--OVERVIEW:
+--This query's input is any number of language sample Microsoft Word documents (.docx) and/or text (.txt) files, each containing no more than a total length of text up to 999,999,999 characters, and no sentence longer than 4,000 characters long.
+--Ideally, these textual files should cover a representative sample of your organisation's important proprietary and public communications and documentation.
+--The sample documents will be ETL'd into an Obsidian fragment thesaurus table, which can then be utilised by the Search_Text_Algorithm to understand search queries much like a human would, by using a powerful datascience technique.
+
+--SETUP INSTRUCTIONS:
+--The following query should be executed every time you you want to add language learning sample .docx and/or .txt files to the Obsidian fragment thesaurus.
+--Before starting this setup process, make sure that the desired .docx and/or .txt files have been placed in a folder on the C: drive, which your logged-in windows user account has permissions to access.
+--No other files should exist in the same chosen folder location mentioned above.
+--Each .docx and/or .txt file should have no more than 1,999,999 characters in it.
+--Remember to update the single @File_Path variable string in the code blocks below based on your HW/SW environment.
+--Before executing this query on a database,
+--check to make sure that the database doesn't already use any tables called either Obsidian_DS_Fragment_Thesaurus, Obsidian_Raw_Directory_File_Search, or Obsidian_Directory_File_Search, for other proprietary techniques outside of the Obsidian repository.
+--If you are already using these database object names,
+--consider renaming the appropriate tables in this query before you execute it,
+--as well as the appropriate code block reference to the renamed tables, in the MS_Text_Search_Algorithm from the accompanying Github Obsidian repository.
+
+--FUNCTIONALITY STILL TO BE INCLUDED IN THE ALGORITHM INCLUDES:
+--Integrate A PDF Sample File Compatibility Technique --> Estimated Release: Q3 2020.
+
+--TESTING:
+--I actually recommend that when first deploying this fragment thesaurus algorithm, please start with a performance scaling test. Try 25 text documents, and then 50 text documents. Time both executions of the query. This will give you an idea of the rate of exponentiation on execution times on your particular hardware, as data volumes increase.
+
+--NOTA BENE:
+--Please be advised that the s thesaurus will improve as you ETL greater ammounts and numbers of text and documents respectively. This is because it optimises for coverage percentage across all purposyms i.e. when the proportion of instances of the fragment significantly cover the proportion of instances of the semantic associate.
+--Also, it is advised that you ETL as many documents in one go as your hardware is reasonably capable of handling without reaching memory limits. This is because the semantic associate thesaurus must be calculated from scratch each time you want to process new documents.
+--I have protected the code from Powershell injection and SQL injection attacks, both on import and on calculate. These two types of cyber attacks are possible when executing the xp_cmdshell or sp_executesql stored procedures.  
+--This query may take a very long time to execute on low performance hardware, as it is carrying out a substantially complex ETL on the Microsoft Word documents which you provide to it as inputs. As such, expect the processing time to increase exponentially with greater numbers of Microsoft Word documents, and greater lengths of Microsoft Word documents.
+--If you are running the query in the cloud, consider keeping a close eye on the amount of compute resources you are using up.
+--In light of the above two points, please make sure that you are absolutely sure about where you are deploying this fragment thesaurus table, before executing the query below... the total compute resource usage is likely to be rather high, and so may cost you a fair bit.
+--I haven't used the SQL Server filestore functionality, because I want to minimise dependencies, and therefore minimise possible points of failure.
+--If deploying this query in a production environment, it is advised that you make the client aware that they hold the responsibility for incidents arising from providing files with names which include any powershell/command prompt or T-SQL code.
+
+
+----------The Extraction Stage Follows In the Code Blocks Below----------
+sp_configure 'show advanced options', 1;  
+Go  
+Reconfigure;  
+Go  
+sp_configure 'xp_cmdshell', 1;  
+Go  
+Reconfigure;  
+Go
+
+Declare @File_Path Nvarchar(250)
+Set @File_Path = 'C:\Temp\Fragment_Thesaurus_Data' --Repoint this file path reference to the same folder location where your new .txt learning samples have been saved/copied before executing this query. Don't forget to update the second file path reference in the code blocks below (which is static for now, until Microsoft fixes the associated bug).
+Set @File_Path = Case When Right(@File_Path, 1) = '\' Then @File_Path Else @File_Path + '\' End --The case statement is used in order to always make sure that the file path includes a trailing backslash (\).
+
+Declare @Archive_File_Path Nvarchar(250)
+Set @Archive_File_Path = Replace(Replace(@File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + 'Archive\'
+
+Declare @Create_Archive_Folder_Command Nvarchar(Max)
+Set @Create_Archive_Folder_Command =     
+    'Execute xp_cmdshell' + ' ' + '''md' + ' ' + Replace(Replace(@Archive_File_Path, 'xp_cmdshell', ''), 'sp_executesql', '') + ''', No_Output;'
+
+Execute sp_executesql @Create_Archive_Folder_Command;
+
+--In the future, a block of code should be integrated here, which includes the accompanying Powershell script that converts Microsoft Word documents into Text files. However, for now, Microsoft does not allow multi-line variables to be declared within SQL server. If you want to completely automate this Obsidian fragment thesaurus function, please get on to Microsoft with an urgent and important feature request which covers allowing multi-line variables in SQL Server. For the time being, you will have to just remember to manually execute the conversion powershell script from the Obsidian repository, directly in the Powershell console itself, once you have the required Microsoft Word documents in place. It shouldn't be too onerous, because updating the fragment thesaurus shouldn't happen any more often than weekly or monthly in a production solution.
+
+Declare @Raw_Directory_File_Search Table ([output] Nvarchar(500))
+Insert Into @Raw_Directory_File_Search ([output])
+Execute master..xp_cmdshell 'dir C:\Temp\Fragment_Thesaurus_Data' --Repoint this file path reference to the same folder location where your new .txt learning samples have been saved/copied before executing this query. Don't forget to update the first @File_Path reference in the code blocks above.
+
+Select * From @Raw_Directory_File_Search
+
+Drop Table If Exists dbo.Obsidian_Directory_File_Search;  --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Directory_File_Search  ([Order] Int, [output] Nvarchar(500), [File_Path] Nvarchar(250), [File_Name] Nvarchar(250), [Data] Nvarchar(Max));
+Insert Into dbo.Obsidian_Directory_File_Search ([output])
+Select 
+	[output] 
+From @Raw_Directory_File_Search 
+Where '%sp_executesql%' Not Like [output] --These two lines of code strip out files from the import plan table which contain either of the terms, sp_executesql or xp_cmdshell, in their file names. It is advised that if these terms are detected in file names, either an email, text, or notification should be sent to the solution administrator in order to alert them to a possible cyber security incident.
+Or '%xp_cmdshell%' Not Like [output]
+
+Insert Into dbo.Obsidian_Directory_File_Search ([Order], [output], [File_Path], [File_Name], [Data])
+Select
+	Row_Number() Over(Order By Len([output]) Asc) As [Order],
+	[output],
+	@File_Path As [File_Path],
+	--(Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))) --Removes all characters to the left of the first string of spaces in the [output] column. This method is nested two times below (3 levels) in order to parse out just the filename from the [output] column.
+	Ltrim(Right((Ltrim(Right((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), (Len((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1)))))) - (Charindex(' ', (Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), 1) - 1))))), (Len((Ltrim(Right((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), (Len((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1)))))) - (Charindex(' ', (Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), 1) - 1)))))) - (Charindex(' ', (Ltrim(Right((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), (Len((Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1)))))) - (Charindex(' ', (Ltrim(Right([output], (Len([output]) - (Charindex(' ', [output], 1) - 1))))), 1) - 1))))), 1) - 1)))) As [File_Name],
+	Null As [Data]
+From dbo.Obsidian_Directory_File_Search
+Where Right([output], 4) = '.txt' --This .txt ending ensures only .txt files in the desired file path are imported.
+
+Delete From dbo.Obsidian_Directory_File_Search --This block removes the unecessary rows from the Directory_File_Search table.
+Where 
+[Order] Is Null
+And [File_Path] Is Null
+And [File_Name] Is Null;
+
+--The following code blocks loop around the native and converted .txt files, imports their content into the data column of the dbo.Obsidian_Directory_File_Search table, and archives the .txt files to the archive folder. 
+Declare @Order Int;
+Declare @File_Name Nvarchar(200);
+Declare @File_Import_Command Nvarchar(1000);
+Declare @File_Copy_Command Nvarchar(1000);
+Declare @File_Rename_Command Nvarchar(1000);
+Declare @File_Delete_Command Nvarchar(1000);
+Declare @Data Nvarchar(Max);
+ 
+Declare Data_Import Cursor Fast_Forward For
+Select [Order]
+From dbo.Obsidian_Directory_File_Search
+Order By [Order];
+ 
+Open Data_Import
+Fetch Next From Data_Import Into @Order
+Set @File_Path = (Select Replace(Replace([File_Path], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select Replace(Replace([File_Name], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Import_Command = 
+    N'SELECT @Data1 = Cast([Bulkcolumn] AS Nvarchar(MAX))
+    from Openrowset (Bulk ''' + @File_Path + @File_Name + ''',
+    Single_CLOB) Row_Set'
+
+Execute sp_executesql @File_Import_Command, N'@Data1 Nvarchar(MAX) Output',@Data1 =@Data Output
+
+Set @File_Copy_Command = 
+    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + @File_Path + @File_Name + ' ' + @Archive_File_Path + ''', No_Output;'
+
+Execute sp_executesql @File_Copy_Command;       
+
+Set @File_Rename_Command =     
+    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + @Archive_File_Path + @File_Name + ' ' + '-NewName ' + Cast(Left(@File_Name, (Len(@File_Name) - Charindex('.', Reverse(@File_Name)))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
+
+Execute sp_executesql @File_Rename_Command; --Currently, the Rename-Item command doesn't seem to work when used by the sp_executesql stored procedure. This may be something to flag up to Microsoft for fixing!... Neither does the Move-Item command actually.
+
+Set @File_Delete_Command =     
+    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + @File_Path + @File_Name + ''', No_Output;'
+
+Execute sp_executesql @File_Delete_Command;
+
+While @@Fetch_Status = 0
+Begin
+    Update dbo.Obsidian_Directory_File_Search
+    Set [Data] = @Data
+    Where [Order] = @Order;
+
+Set @Order = (@Order + 1)
+Set @File_Path = (Select Replace(Replace([File_Path], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select Replace(Replace([File_Name], 'xp_cmdshell', ''), 'sp_executesql', '') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Import_Command = 
+    N'SELECT @Data1 = Cast([Bulkcolumn] AS Nvarchar(MAX))
+    from Openrowset (Bulk ''' + @File_Path + @File_Name + ''',
+    Single_CLOB) Row_Set'
+
+Execute sp_executesql @File_Import_Command, N'@Data1 Nvarchar(MAX) Output',@Data1 =@Data Output
+
+Set @File_Copy_Command = 
+    'Execute xp_cmdshell' + ' ' + '''Copy' + ' ' + @File_Path + @File_Name + ' ' + @Archive_File_Path + ''', No_Output;'
+
+Execute sp_executesql @File_Copy_Command;       
+
+Set @File_Rename_Command =     
+    'Execute xp_cmdshell' + ' ' + '''Rename-Item -Path' + ' ' + @Archive_File_Path + @File_Name + ' ' + '-NewName ' + Cast(Left(@File_Name, (Len(@File_Name) - Charindex('.', Reverse(@File_Name)))) As Nvarchar(Max)) + '_Archived_' + Cast(Replace(Replace(Replace(Getdate(), '-', '_'), ' ', '_'), ':', '.') As Nvarchar(Max)) + '.txt' + ''', No_Output;'
+
+Execute sp_executesql @File_Rename_Command; --Currently, the Rename-Item command doesn't seem to work when used by the sp_executesql stored procedure. This may be something to flag up to Microsoft for fixing!... Neither does the Move-Item command actually.
+
+Set @File_Delete_Command =     
+    'Execute xp_cmdshell' + ' ' + '''Del' + ' ' + @File_Path + @File_Name + ''', No_Output;'
+
+Execute sp_executesql @File_Delete_Command;
+
+Fetch Next From Data_Import Into @Order
+End
+Close Data_Import
+Deallocate Data_Import
+
+Go
+
+
+----------The Transformation Stage Follows In the Code Blocks Below----------
+--The following few blocks of code create a new function which is used later on in this query in order to remove multiple consecutive inter-word space duplicates.
+Declare @Create_Function_Command Nvarchar(1000);
+Set @Create_Function_Command =
+	N'Create Function dbo.Obsidian_Clean_Duplicates (@Data Nvarchar(Max), @Duplicate_Character Nvarchar(1))
+Returns Nvarchar(Max)
+With Schemabinding
+AS
+Begin
+
+Set @Data = @Duplicate_Character + @Data
+
+While Patindex(''%'' + @Duplicate_Character + @Duplicate_Character + ''%'',@Data) > 0
+	Set @Data = Replace(@Data, @Duplicate_Character + @Duplicate_Character, @Duplicate_Character)
+
+Return Right(@Data, (Len(@Data) - 1))
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Clean_Duplicates' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian repository.
+Execute sp_executesql @Create_Function_Command;
+
+
+--The following code blocks use a cursor in order to delimit the [Data] sentences which were previously extracted from the Microsoft Word documents and Text files. This is necessary in order to avoid performance crippling exponential fragments later on, which would occur for very long strings/documents. It seems sensible to do this delimiting anyway, because there is very little abstract knowledge which can be learnt from strings covering more than one sentence. As new computer hardware paradigms emerge, I will endeavour to update this query in order to make use of whole paragraph information.
+Declare @Order Int;
+Declare @output Nvarchar(500);
+Declare @File_Path Nvarchar(250);
+Declare @File_Name Nvarchar(250);
+Declare @Data Nvarchar(Max);
+
+Declare Data_Delimit Cursor Fast_Forward For
+Select [Order]
+From dbo.Obsidian_Directory_File_Search
+Order By [Order];
+ 
+Open Data_Delimit
+Fetch Next From Data_Delimit Into @Order
+Set @output = (Select [output] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Path = (Select [File_Path] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select [File_Name] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @Data = (Select [Data] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+
+Declare @Obsidian_Raw_Delimited_Directory_File_Search Table ([Value] Nvarchar(4000))
+Insert Into @Obsidian_Raw_Delimited_Directory_File_Search ([Value])
+Select Value From String_Split((Select Replace(Replace(Replace(Replace(Replace([Data], '*', ''), Char(13) + Char(10), '`¬|'), '`¬|', '.'), '!', '!.'), '?', '?.') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order), '.'); --Including minor cleanup.
+
+Declare @Obsidian_Intermediate_Delimited_Directory_File_Search Table ([output] Nvarchar(500), [File_Path] Nvarchar(250), [File_Name] Nvarchar(250), [Data] Nvarchar(Max), [Value] Nvarchar(4000))
+Insert Into @Obsidian_Intermediate_Delimited_Directory_File_Search ([Value]) --You have to insert the delimited value sentences into the table variable alongside null values, before updating the contextual metadata for each sentence in the other columns in the following code block.
+Select
+	Trim(dbo.Obsidian_Clean_Duplicates([Value], ' ')) As [Value] --Including minor leading, trailing, and consecutive-duplicate space cleanup.
+From @Obsidian_Raw_Delimited_Directory_File_Search
+Where [Value] <> ''
+
+Update @Obsidian_Intermediate_Delimited_Directory_File_Search
+    Set
+		[output] = @output,
+		[File_Path] = @File_Path,
+		[File_Name] = @File_Name,
+		[Data] = @Data
+    Where [output] Is Null
+	And	[File_Path] Is Null
+	And	[File_Name] Is Null
+	And [Data] Is Null;
+
+While @@Fetch_Status = 0
+Begin
+
+Delete From @Obsidian_Raw_Delimited_Directory_File_Search
+Insert Into @Obsidian_Raw_Delimited_Directory_File_Search ([Value])
+Select Value From String_Split((Select Replace(Replace(Replace(Replace(Replace([Data], '*', ''), Char(13) + Char(10), '`¬|'), '`¬|', '.'), '!', '!.'), '?', '?.') From dbo.Obsidian_Directory_File_Search Where [Order] = @Order), '.'); --Including minor cleanup.
+
+Insert Into @Obsidian_Intermediate_Delimited_Directory_File_Search ([Value]) --You have to insert the delimited value sentences into the table variable alongside null values, before updating the contextual metadata for each sentence in the other columns in the following code block.
+Select
+	Trim(dbo.Obsidian_Clean_Duplicates([Value], ' ')) As [Value] --Including minor leading, trailing, and consecutive-duplicate space cleanup.
+From @Obsidian_Raw_Delimited_Directory_File_Search
+Where [Value] <> ''
+
+Update @Obsidian_Intermediate_Delimited_Directory_File_Search
+    Set
+		[output] = @output,
+		[File_Path] = @File_Path,
+		[File_Name] = @File_Name,
+		[Data] = @Data
+    Where [output] Is Null
+	And	[File_Path] Is Null
+	And	[File_Name] Is Null
+	And [Data] Is Null;
+
+Set @Order = (@Order + 1)
+Set @output = (Select [output] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Path = (Select [File_Path] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @File_Name = (Select [File_Name] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+Set @Data = (Select [Data] From dbo.Obsidian_Directory_File_Search Where [Order] = @Order)
+
+Fetch Next From Data_Delimit Into @Order
+End
+Close Data_Delimit
+Deallocate Data_Delimit
+
+
+----------An Intermediate Load Stage Follows In the Code Block Below----------
+--The delimited sentences are inserted into the Obsidian cumulative sentence table, so that they can be queried by the search text algorithm which accompanies in the Obsidian repository.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Cumulative_Sentences' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table  dbo.Obsidian_Cumulative_Sentences ([output] Nvarchar(500), [File_Path] Nvarchar(250), [File_Name] Nvarchar(250), [Data] Nvarchar(Max), [Value] Nvarchar(4000));
+Insert Into  dbo.Obsidian_Cumulative_Sentences ([output], [File_Path], [File_Name], [Data], [Value])
+Select
+	[output],
+	[File_Path],
+	[File_Name],
+	[Data],
+	[Value]
+From @Obsidian_Intermediate_Delimited_Directory_File_Search
+;
+
+--The following code blocks carry out a post process cleanup of any duplicates that may be in the cumulative sentences, and therefore improves subsequent search engine efficiency.
+With Obsidian_Cumulative_Sentences_With_Order As
+(
+ Select Row_Number() Over (Partition By [output], [File_Path], [File_Name], [Data], [Value] Order By [output], [File_Path], [File_Name], [Data], [Value]) As [Order], [output], [File_Path], [File_Name], [Data], [Value]
+ From dbo.Obsidian_Cumulative_Sentences
+)
+
+Delete A
+From Obsidian_Cumulative_Sentences_With_Order A
+Where [Order] < (Select Max([Order]) From Obsidian_Cumulative_Sentences_With_Order B Where B.[output] = A.[output] And B.[File_Path] = A.[File_Path] And B.[File_Name] = A.[File_Name] And B.[Data] = A.[Data] And B.[Value] = A.[Value] Group By [output], [File_Path], [File_Name], [Data], [Value])
+
+
+----------The Transformation Stage Continues In the Code Blocks Below----------
+--The code block below gives each value its own order number which can be used for iteration in the following transformation stage.
+Declare @Obsidian_Delimited_Directory_File_Search Table ([Order] Int, [output] Nvarchar(500), [File_Path] Nvarchar(250), [File_Name] Nvarchar(250), [Data] Nvarchar(Max), [Value] Nvarchar(4000))
+Insert Into @Obsidian_Delimited_Directory_File_Search ([Order], [output], [File_Path], [File_Name], [Data], [Value])
+Select
+	Row_Number() Over(Order By Len([Value]) Asc) As [Order],
+	[output],
+	[File_Path],
+	[File_Name],
+	[Data],
+	[Value]
+From @Obsidian_Intermediate_Delimited_Directory_File_Search
+
+--The following several code blocks iterate through the delimited value sentences in order to produce value fragments.
+Declare @Value As Nvarchar(4000);
+
+Declare Value_Fragmentation Cursor Fast_Forward For
+Select [Order]
+From @Obsidian_Delimited_Directory_File_Search
+Order By [Order];
+
+Open Value_Fragmentation
+Fetch Next From Value_Fragmentation Into @Order
+Set @Value = (Select [Value] From @Obsidian_Delimited_Directory_File_Search Where [Order] = @Order)
+
+Declare @Value_Slide_Lenth_Table_Variable Table ([Value] Nvarchar(4000), [Slide_Length] Int)
+Insert Into @Value_Slide_Lenth_Table_Variable ([Value], [Slide_Length])
+Select
+	@Value As [Value],
+	Singles.N + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n As [Slide_Length]
+From 
+	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n),
+	(Values(0),(1),(2),(3),(4)) Thousands(n)	
+Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n Between 1 And Len(@Value)
+Order By 1;
+
+Declare @Value_Partial_Fragment_Table_Variable Table ([Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int);
+
+With Value_Fragments (n, [Value], [Slide_Length], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) As
+(
+Select
+	1,
+	[Value],
+	[Slide_Length],
+	Substring([Value], 1, [Slide_Length]) As [Fragment],
+	(1) As [Fragment_Start_Index],
+	([Slide_Length]) As [Fragment_End_Index]
+From @Value_Slide_Lenth_Table_Variable
+Union All
+Select
+	n + 1,
+	[Value],
+	[Slide_Length],
+	Substring([Value], n + 1, [Slide_Length]) As [Fragment],
+	(n + 1) As [Fragment_Start_Index],
+	(n + [Slide_Length]) As [Fragment_End_Index]
+From Value_Fragments
+Where (n + [Slide_Length]) <= Len(@Value)
+)
+
+Insert Into @Value_Partial_Fragment_Table_Variable ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) --Inserts all fragments of the @Value variable into a table varaible. This step is needed before further transformation can occur on the fragments.
+Select
+	[Value],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From Value_Fragments
+Option (Maxrecursion 4000)
+
+Declare @Value_Spaces Table ([Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int) --Inserts all spaces of the @Value variable into a table varaible. This step is needed in order to locate the full word @Value fragments later on. It is also needed for the fragment word count calculation later on.
+Insert Into @Value_Spaces ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	[Value],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable
+Where [Fragment] = ' '
+
+While @@Fetch_Status = 0
+Begin
+Set @Value = (Select [Value] From @Obsidian_Delimited_Directory_File_Search Where [Order] = @Order)
+
+Delete From @Value_Slide_Lenth_Table_Variable
+Insert Into @Value_Slide_Lenth_Table_Variable ([Value], [Slide_Length])
+Select
+	@Value As [Value],
+	Singles.N + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n As [Slide_Length]
+From 
+	(Values(1),(2),(3),(4),(5),(6),(7),(8),(9)) Singles(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Tens(n),
+	(Values(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) Hundreds(n),
+	(Values(0),(1),(2),(3),(4)) Thousands(n)
+Where Singles.n + 10*Tens.n + 100*Hundreds.n + 1000*Thousands.n Between 1 And Len(@Value)
+Order By 1;
+
+With Value_Fragments (n, [Value], [Slide_Length], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) As
+(
+Select
+	1,
+	[Value],
+	[Slide_Length],
+	Substring([Value], 1, [Slide_Length]) As [Fragment],
+	(1) As [Fragment_Start_Index],
+	([Slide_Length]) As [Fragment_End_Index]
+From @Value_Slide_Lenth_Table_Variable
+Union All
+Select
+	n + 1,
+	[Value],
+	[Slide_Length],
+	Substring([Value], n + 1, [Slide_Length]) As [Fragment],
+	(n + 1) As [Fragment_Start_Index],
+	(n + [Slide_Length]) As [Fragment_End_Index]
+From Value_Fragments
+Where (n + [Slide_Length]) <= Len(@Value)
+)
+
+Insert Into @Value_Partial_Fragment_Table_Variable ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) --Inserts all fragments of the @Value variable into a table varaible. This step is needed before further transformation can occur on the fragments.
+Select
+	[Value],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From Value_Fragments
+Option (Maxrecursion 4000)
+
+Insert Into @Value_Spaces ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	[Value],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable
+Where [Fragment] = ' '
+
+Set @Order = (@Order + 1)
+Set @Value = (Select [Value] From @Obsidian_Delimited_Directory_File_Search Where [Order] = @Order)
+
+Fetch Next From Value_Fragmentation Into @Order
+End
+Close Value_Fragmentation
+Deallocate Value_Fragmentation
+
+--The following query block inserts all complete word sentence fragments into a staging table.
+Declare @Obsidian_Raw_Fragments Table ([Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int);
+Insert Into @Obsidian_Raw_Fragments ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	A.[Value] As [Value],
+	A.[Fragment] As [Fragment],
+	Avg(A.[Fragment_Start_Index]) As [Fragment_Start_Index],
+	Avg(A.[Fragment_End_Index]) As [Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable A
+Where A.[Fragment_Start_Index] = 1	And A.[Fragment_End_Index] = Len(A.[Value]) And A.[Fragment] <> ' '
+Group By A.[Value], A.[Fragment]
+Union All
+Select
+	B.[Value] As [Value],
+	Trim(B.[Fragment]) As [Fragment], --Cleans up multiple consecutive spaces inbetween words in a sentence.
+	Avg(B.[Fragment_Start_Index]) As [Fragment_Start_Index],
+	Avg(B.[Fragment_End_Index]) As [Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable B
+Inner Join @Value_Spaces C
+	On (B.[Fragment_End_Index] = (C.[Fragment_Start_Index] - 1) And B.[Fragment_Start_Index] = 1 And C.[Value] = B.[Value] And B.[Fragment] <> ' ')
+Group By B.[Value], B.[Fragment]
+Union All
+Select
+	D.[Value] As [Value],
+	Trim(D.[Fragment]) As [Fragment], --Cleans up multiple consecutive spaces inbetween words in a sentence.
+	Avg(D.[Fragment_Start_Index]) As [Fragment_Start_Index],
+	Avg(D.[Fragment_End_Index]) As [Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable D
+Inner Join @Value_Spaces E
+	On (D.[Fragment_Start_Index] = (E.[Fragment_End_Index] + 1) And D.[Fragment_End_Index] = Len(D.[Value]) And E.[Value] = D.[Value] And D.[Fragment] <> ' ')
+Group By D.[Value], D.[Fragment]
+Union All
+Select
+	F.[Value] As [Value],
+	Trim(F.[Fragment]) As [Fragment], --Cleans up multiple consecutive spaces inbetween words in a sentence.
+	Avg(F.[Fragment_Start_Index]) As [Fragment_Start_Index],
+	Avg(F.[Fragment_End_Index]) As [Fragment_End_Index]
+From @Value_Partial_Fragment_Table_Variable F
+Inner Join @Value_Spaces H
+	On (F.[Fragment_Start_Index] = (H.[Fragment_End_Index] + 1) And H.[Value] = F.[Value] And F.[Fragment] <> ' ')
+Inner Join @Value_Spaces I
+	On (F.[Fragment_End_Index] = (I.[Fragment_Start_Index] - 1) And I.[Value] = F.[Value] And F.[Fragment] <> ' ')
+Group By F.[Value], F.[Fragment]
+
+
+----------The Load Stage Follows In the Code Blocks Below----------
+--First, the new fragments are inserted into the Obsidian cumulative raw fragment table.
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Cumulative_Raw_Fragments' and Xtype='U') --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table  dbo.Obsidian_Cumulative_Raw_Fragments ([Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int)
+Insert Into  dbo.Obsidian_Cumulative_Raw_Fragments ([Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+Select
+	[Value],
+	[Fragment],
+	[Fragment_Start_Index],
+	[Fragment_End_Index]
+From @Obsidian_Raw_Fragments
+;
+
+--The following code blocks carry out a cleanup of any duplicates that may be in the cumulative raw fragments, and therefore improves subsequent query efficiency.
+With Obsidian_Cumulative_Raw_Fragments_With_Order As
+(
+ Select Row_Number() Over (Partition By [Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index] Order By [Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]) As [Order], [Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index]
+ From dbo.Obsidian_Cumulative_Raw_Fragments
+)
+
+Delete A
+From Obsidian_Cumulative_Raw_Fragments_With_Order A
+Where [Order] < (Select Max([Order]) From Obsidian_Cumulative_Raw_Fragments_With_Order B Where B.[Value] = A.[Value] And B.[Fragment] = A.[Fragment] And B.[Fragment_Start_Index] = A.[Fragment_Start_Index] And B.[Fragment_End_Index] = A.[Fragment_End_Index] Group By [Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index])
+
+--Then all fragment and purposym pairings are inserted into the intermediate full purposym thesaurus table variable.
+Declare @Obsidian_Intermediate_Full_Purposym_Thesaurus Table ([Fragment_Value] Nvarchar(4000), [Fragment] Nvarchar(4000), [Fragment_Start_Index] Int, [Fragment_End_Index] Int, [Purposym_Value] Nvarchar(4000), [Purposym] Nvarchar(4000), [Purposym_Start_Index] Int, [Purposym_End_Index] Int);
+Insert Into @Obsidian_Intermediate_Full_Purposym_Thesaurus ([Fragment_Value], [Fragment], [Fragment_Start_Index], [Fragment_End_Index], [Purposym_Value], [Purposym], [Purposym_Start_Index], [Purposym_End_Index])
+Select
+	A.[Value] As [Fragment_Value],
+	A.[Fragment] As [Fragment],
+	A.[Fragment_Start_Index] As [Fragment_Start_Index],
+	A.[Fragment_End_Index] As [Fragment_End_Index],
+	B.[Value] As [Purposym_Value],
+	B.[Fragment] As [Purposym],
+	B.[Fragment_Start_Index] As [Purposym_Start_Index],
+	B.[Fragment_End_Index] As [Purposym_End_Index]
+From dbo.Obsidian_Cumulative_Raw_Fragments A
+Cross Join dbo.Obsidian_Cumulative_Raw_Fragments B
+Where --The code lines below filter for likeness of leading and trailing value fragments either side of each fragment and purposym cross join pairing. If alike, the purposym 'has' similar purpose and often similar meaning to all or part of the fragment.
+	A.[Fragment] <> '%'+B.[Fragment]+'%' --This line makes sure that the purposym is not merely a sub fragment.
+	And A.[Value] <> B.[Value] --This line makes sure that the purposym is not from a duplicate sentence. This will be removed later on, when I get round to integrating adjacent sentence understanding functionality. For now, it boosts efficiency.
+	And Len(A.[Fragment]) <> Len(A.[Value]) --Together these two lines remove pairings where there are no leading and trailing sails.
+	And Len(B.[Fragment]) <> Len(B.[Value]) --Together these two lines remove pairings where there are no leading and trailing sails.
+	And (Substring(B.[Value], 1, (B.[Fragment_Start_Index] - 1))) Like (Substring(A.[Value], 1, (A.[Fragment_Start_Index] - 1))) --This is the leading sail.
+	And (Substring(B.[Value], (B.[Fragment_End_Index] + 1), Len(B.[Value]))) Like (Substring(A.[Value], (A.[Fragment_End_Index] + 1), Len(A.[Value]))) --This is the trailing sail.
+
+--Then the new fragment and semantic associate pairings are inserted into the intermediate full semantic associate thesaurus table variable.
+Declare @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus Table ([Anchor] Nvarchar(4000), [Fragment] Nvarchar(4000), [Semantic_Associate] Nvarchar(4000));
+Insert Into @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus ([Anchor], [Fragment], [Semantic_Associate])
+Select
+	A.[Fragment] As [Anchor],
+	A.[Purposym] As [Fragment],
+	B.[Purposym] As [Semantic_Associate]
+From @Obsidian_Intermediate_Full_Purposym_Thesaurus A
+Cross Join @Obsidian_Intermediate_Full_Purposym_Thesaurus B --This line allows us to search for semantic associates across any existing purposym.
+Where
+	B.[Fragment] = A.[Fragment] --This line ensures that only co-purposyms are matched.
+	And (Substring(B.[Purposym_Value], 1, (B.[Purposym_Start_Index] - 1))) Like (Substring(A.[Purposym_Value], 1, (A.[Purposym_Start_Index] - 1))) --This is the leading sail.
+	And (Substring(B.[Purposym_Value], (B.[Purposym_End_Index] + 1), Len(B.[Purposym_Value]))) Like (Substring(A.[Purposym_Value], (A.[Purposym_End_Index] + 1), Len(A.[Purposym_Value]))) --This is the trailing sail.
+Group By A.[Fragment], A.[Purposym], B.[Purposym]
+
+--Purposym fragment counts are used to filter the semantic associate thesaurus table later on.
+Declare @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts Table ([Purposym] Nvarchar(4000), [Count] Int);
+Insert Into @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts ([Purposym], [Count])
+Select
+	[Purposym],
+	Count(1) As [Count]
+From @Obsidian_Intermediate_Full_Purposym_Thesaurus
+Group By [Purposym]
+
+--Semantic associate fragment counts are used to filter the semantic associate thesaurus table later on.
+Declare @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus_Counts Table ([Anchor] Nvarchar(4000), [Fragment] Nvarchar(4000), [Count] Float);
+Insert Into @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus_Counts ([Anchor], [Fragment], [Count])
+Select
+	[Anchor],
+	[Fragment],
+	Count(1) As [Count]
+From @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus
+Group By [Anchor], [Fragment]
+
+--Below is the final load into the purposym thesaurus.
+Drop Table If Exists dbo.Obsidian_Purposym_Thesaurus; --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Purposym_Thesaurus ([Fragment] Nvarchar(4000), [Purposym] Nvarchar(4000));
+Insert Into dbo.Obsidian_Purposym_Thesaurus ([Fragment], [Purposym])
+Select
+	[Fragment],
+	[Purposym]
+From @Obsidian_Intermediate_Full_Purposym_Thesaurus
+Group By [Fragment], [Purposym]
+
+Declare @Coverage_Percentage_Threshold Int
+Set @Coverage_Percentage_Threshold = 20 --This variable value must be constrained to 0 < x >= 100.
+
+--Below is the final load into the semantic associate thesaurus.
+Drop Table If Exists dbo.Obsidian_Semantic_Associate_Thesaurus; --Make sure this table is not in use for another proprietary technique outside the Obsidian repository.
+Create Table dbo.Obsidian_Semantic_Associate_Thesaurus ([Fragment] Nvarchar(4000), [Semantic_Associate] Nvarchar(4000), [Coverage_Percentage] Float);
+Insert Into dbo.Obsidian_Semantic_Associate_Thesaurus ([Fragment], [Semantic_Associate], [Coverage_Percentage])
+Select
+	A.[Fragment] As [Fragment],
+	A.[Semantic_Associate] As [Semantic_Associate],
+	((Sum(C.[Count]) / Avg(Square(B.[Count]))) * 100) As [Coverage_Percentage] --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]. We sum C.[Count], so that we can be senesitive to coverage percentage across fragment duplicates. We average B.[Count], because it is already a total.
+From @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus A
+Inner Join @Obsidian_Intermediate_Full_Purposym_Thesaurus_Counts B
+	On (B.[Purposym] = A.[Fragment])
+Inner Join @Obsidian_Intermediate_Full_Semantic_Associate_Thesaurus_Counts C
+	On (C.[Anchor] = A.[Anchor] And C.[Fragment] = A.[Fragment] And A.[Fragment] <> A.[Semantic_Associate] And A.[Fragment] <> '%'+A.[Semantic_Associate]+'%') --The first clause gives multi-purpose fragment duplicate count sensitivity. The third clause ensures that the semantic associate is not a duplicate, and the fourth clause makes sure that the semantic associate is not merely a sub fragment.
+Group By A.[Fragment], A.[Semantic_Associate] --We don't group by anchor, but we do group by fragment, so that the coverage percentage method is senesitive to multi-context fragment duplicates.
+Having 
+	((Sum(C.[Count]) / Avg(Square(B.[Count]))) * 100) >= @Coverage_Percentage_Threshold --B.[Count] is squared in order to normalise it with the previously self-crossjoined C.[Count]. We sum C.[Count], so that we can be senesitive to coverage percentage across fragment duplicates. We average B.[Count], because it is already a total.
+-- The coverage percentage method works effectively, because in previous code blocks, we allowed for duplicate fragments which come from different sentences (Values).

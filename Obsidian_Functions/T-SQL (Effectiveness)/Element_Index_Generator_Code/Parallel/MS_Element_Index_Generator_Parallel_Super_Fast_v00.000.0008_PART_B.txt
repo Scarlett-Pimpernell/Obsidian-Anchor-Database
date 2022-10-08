@@ -1,0 +1,56 @@
+--The following few blocks of code create a new function which is used later on in order to generate a temporary table with 1 column containing integers that increment by one.
+Declare @Create_Function_Command Nvarchar(Max);
+Set @Create_Function_Command =
+N'Create Function dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Index_Count BigInt)
+Returns Nvarchar(Max)
+With Returns Null On Null Input
+As
+Begin
+
+
+--This code allows the generation of up to 99B integers.
+--You may be able to speed this query up, by converting the table variables into temporary tables and possibly also by adding an index.
+
+
+--(Data Validation)
+--(@Index_Count)
+If @Index_Count Is Null GoTo Invalid_Index_Count_Parameter_Value
+If Len(@Index_Count) = 0 GoTo Invalid_Index_Count_Parameter_Value
+If @Index_Count = '' '' GoTo Invalid_Index_Count_Parameter_Value
+If @Index_Count = '''' GoTo Invalid_Index_Count_Parameter_Value
+If @Index_Count < 1 GoTo Invalid_Index_Count_Parameter_Value
+If @Index_Count > 99999999999999 GoTo Invalid_Index_Count_Parameter_Value
+
+
+--(Core Algorithm)
+Declare @Element_Index_Generator_Code Nvarchar(Max)
+
+Set @Element_Index_Generator_Code = 
+
+(Case When @Index_Count <= 9 Then ''Select A.[Number_Seed] As [Element_Index] From @Number_Seeds A Where Cast(A.[Number_Seed] As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99 Then ''Select (A.[Number_Seed] + B.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Where Cast((A.[Number_Seed] + B.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 9999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 999999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 9999999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Cross Join @Number_Seeds G Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 99999999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Cross Join @Number_Seeds G Cross Join @Number_Seeds H Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 999999999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Cross Join @Number_Seeds G Cross Join @Number_Seeds H Cross Join @Number_Seeds I Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else (Case When @Index_Count <= 9999999999 Then ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed] + J.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Cross Join @Number_Seeds G Cross Join @Number_Seeds H Cross Join @Number_Seeds I Cross Join @Number_Seeds J Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed] + J.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+Else ''Select (A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed] + J.[Number_Seed] + K.[Number_Seed]) As [Element_Index] From @Number_Seeds A Cross Join @Number_Seeds B Cross Join @Number_Seeds C Cross Join @Number_Seeds D Cross Join @Number_Seeds E Cross Join @Number_Seeds F Cross Join @Number_Seeds G Cross Join @Number_Seeds H Cross Join @Number_Seeds I Cross Join @Number_Seeds J Cross Join @Number_Seeds K Where Cast((A.[Number_Seed] + B.[Number_Seed] + C.[Number_Seed] + D.[Number_Seed] + E.[Number_Seed] + F.[Number_Seed] + G.[Number_Seed] + H.[Number_Seed] + I.[Number_Seed] + J.[Number_Seed] + K.[Number_Seed]) As BigInt) Between 1 And @Index_Count''
+End) End) End) End) End) End) End) End) End) End)
+
+
+--The following codeblocks return useful data from the function regarding either errors or element index generator code.
+--(Return Values)
+Return @Element_Index_Generator_Code
+
+Invalid_Index_Count_Parameter_Value:
+Set @Element_Index_Generator_Code = ''The first input parameter (@Index_Count), is out of scope for one of the following reasons... It is either null, is of zero length, is a space, is empty, has a value of less than 1, or has a value greater than 99999999999999.''
+Return @Element_Index_Generator_Code
+
+
+End';
+
+If Not Exists (Select * From Sysobjects Where Name='Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast' and Xtype='FN') --Make sure this function is not in use for another proprietary technique outside the Obsidian Database.
+Execute sp_executesql @Create_Function_Command;
