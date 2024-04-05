@@ -1,2 +1,0 @@
-Drop Type If Exists dbo.Obsidian_Partitioned_Number_Sorter_Column_Structure; --Make sure this type is not in use for another proprietary technique outside the Obsidian repository. I would prefer to use a create if not exists clause, however this currently causes an error in SQL Sertver 2019.
-Create Type dbo.Obsidian_Partitioned_Number_Sorter_Column_Structure As Table ([Arguement] Nvarchar(Max)) --Need to do this in order to feed a table-valued parameter into the number sorter function (PART B).
