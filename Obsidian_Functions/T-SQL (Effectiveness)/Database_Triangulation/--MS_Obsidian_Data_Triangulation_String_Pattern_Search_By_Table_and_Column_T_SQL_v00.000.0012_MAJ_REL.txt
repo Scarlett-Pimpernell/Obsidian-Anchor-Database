@@ -1,4 +1,4 @@
---MS_Obsidian_Database_Triangulation_String_Pattern_Search_By_Table_and_Column_T_SQL_v00.000.0011_MAJ_REL
+--MS_Obsidian_Database_Triangulation_String_Pattern_Search_By_Table_and_Column_T_SQL_v00.000.0012_MAJ_REL
 --This algorithm can be packaged into a stored procedure if desired... Otherwise, simply cut and paste, and adjust the global variables before each execution...
 --It allows you to pass in a string pattern, which will then be searched for across all the tables in your database...
 --If you want to also use this search against views, then please feel free to make the appropriate amendments...
@@ -52,7 +52,7 @@ If @Match_Type = N'Partial'
 Declare @System_Table_Prepared_For_Dynamic_Search Table ([Dynamic_Join_String] NVarchar(Max))
 Insert Into @System_Table_Prepared_For_Dynamic_Search ([Dynamic_Join_String])
 Select
-	((N'Select ''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''' As [Table_Name], ''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''' As [Column_Name] From ' + Cast(A.[Table_Name] As NVarchar(Max))) + (N' Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + @Terminating_Search_String)) As [Dynamic_Join_String]
+	((N'Select Max(''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name] From ' + Cast(A.[Table_Name] As NVarchar(Max))) + (N' Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + @Terminating_Search_String) + ' Group By [' + Cast(A.[Column_Name] As NVarchar(Max)) + ']') As [Dynamic_Join_String]
 From Information_Schema.Columns A
 Left Join @Ignore_Column_Data_Types B On 
 	(A.[Data_Type] = B.[Data_Type_Name])
@@ -65,7 +65,7 @@ Group By A.[Table_Name], A.[Column_Name]
 
 Declare @SQL_Command As NVarchar(Max)
 Set @SQL_Command = Cast((Select String_Agg(Cast([Dynamic_Join_String] As NVarchar(Max)), N' Union All ') From @System_Table_Prepared_For_Dynamic_Search) As NVarchar(Max))
-
+Select @SQL_Command
 Declare @Table_matches Table ([Table_Name] NVarchar(Max), [Column_Name] NVarchar(Max))
 Insert Into @Table_Matches
 Execute sp_executesql @SQL_Command
@@ -75,4 +75,4 @@ Execute sp_executesql @SQL_Command
 --Here are the tables which contain the search string in at least one of their data values...
 Select [Table_Name] From @Table_matches Group By [Table_Name]
 --If you need more detailed column level information, here is an additonal column which indicates the columns in each table, which contain the search string in at least one of their data values...
-Select * From @Table_matches Group By [Table_Name], [Column_Name]
+Select * From @Table_matches
