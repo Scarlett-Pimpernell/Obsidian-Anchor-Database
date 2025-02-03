@@ -1,4 +1,4 @@
---MS_Obsidian_Database_Triangulation_String_Pattern_Search_By_Table_and_Column_T_SQL_v00.000.0009_MIN_HAN
+--MS_Obsidian_Database_Triangulation_String_Pattern_Search_By_Table_and_Column_T_SQL_v00.000.0010_MIN_HAN
 --This algorithm can be packaged into a stored procedure if desired... Otherwise, simply cut and paste, and adjust the global variables before each execution...
 --It allows you to pass in a string pattern, which will then be searched for across all the tables in your database...
 --If you want to also use this search against views, then please feel free to make the appropriate amendments...
@@ -52,9 +52,7 @@ If @Match_Type = N'Partial'
 Declare @System_Table_Prepared_For_Dynamic_Search Table ([Dynamic_Join_String] NVarchar(Max))
 Insert Into @System_Table_Prepared_For_Dynamic_Search ([Dynamic_Join_String])
 Select
-	--(N'Select ''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''' From ' + Cast(A.[Table_Name] As NVarchar(Max))) As [Dynamic_Union_All_String],
-	--(N' Where ' + Cast(String_Agg(Cast(A.[Column_Name] As NVarchar(Max)), @Delimited_Search_String) As NVarchar(Max)) + @Terminating_Search_String) As [Dynamic_Where_Clause_String],
-	((N'Select ''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''' As [Table_Name], ''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''' As [Column_Name] From ' + Cast(A.[Table_Name] As NVarchar(Max))) + (N' Where Cast([' + Cast(String_Agg(Cast(A.[Column_Name] As NVarchar(Max)), @Delimited_Search_String) As NVarchar(Max)) + @Terminating_Search_String)) As [Dynamic_Join_String]
+	((N'Select ''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''' As [Table_Name], ''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''' As [Column_Name] From ' + Cast(A.[Table_Name] As NVarchar(Max))) + (N' Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + @Terminating_Search_String)) As [Dynamic_Join_String]
 From Information_Schema.Columns A
 Left Join @Ignore_Column_Data_Types B On 
 	(A.[Data_Type] = B.[Data_Type_Name])
