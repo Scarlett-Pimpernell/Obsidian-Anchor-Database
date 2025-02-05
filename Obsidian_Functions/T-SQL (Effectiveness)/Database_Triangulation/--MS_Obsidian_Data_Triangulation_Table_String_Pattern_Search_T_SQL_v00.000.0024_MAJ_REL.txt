@@ -1,4 +1,4 @@
---MS_Obsidian_Database_Triangulation_Table_String_Pattern_Search_T_SQL_v00.000.0023_MAJ_REL
+--MS_Obsidian_Database_Triangulation_Table_String_Pattern_Search_T_SQL_v00.000.0024_MAJ_REL
 --It allows you to pass in a string pattern, which will then be searched for across all the tables in your database...
 --If you want to also use this search against views, then please feel free to make the appropriate amendments...
 --The output provides a list of all the table names and column names that contain the search string pattern within their requisite cell data...
@@ -61,11 +61,11 @@ Values
 --By the way, this algorithm is smart enough to handle partial whitelist column data, for example where you don't want to specify every catalog or schema that you want to include.
 --WITHIN THIS WHITELIST INCLUSIONS TABLE VARIABLE, PLEASE MAKE SURE YOU DON'T USE SQUARE BRACKET NOTATION FOR THE SPECIFIC DATABASE OBJECTS REFERENCED USING STRINGS... SQUARE BRACKETS WILL AUTOMATICALLY BE ADDED LATER ON IN THE ALGORITHM!!!
 Declare @Whitelist_Inlcusions Table ([Table_Catalog] NVarchar(4000), [Table_Schema] NVarchar(4000), [Table_Name] NVarchar(4000), [Column_Name] NVarchar(4000))
---Insert Into @Whitelist_Inlcusions ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
---Values
---(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, N'MooDPrimaryElement', @All_Combinations_Tag),
---(N'MSOAEGS_0011_PT_1K', N'dbo', N'MooDUsedByElementMap', @All_Combinations_Tag),
---(N'MS_Obsidian_Auto_Archive_Generator_Baseline', @All_Combinations_Tag, @All_Combinations_Tag, @All_Combinations_Tag)
+Insert Into @Whitelist_Inlcusions ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
+Values
+(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, N'MooDPrimaryElement', @All_Combinations_Tag),
+(N'MSOAEGS_0011_PT_1K', N'dbo', N'MooDUsedByElementMap', @All_Combinations_Tag),
+(N'MS_Obsidian_Auto_Archive_Generator_Baseline', @All_Combinations_Tag, @All_Combinations_Tag, @All_Combinations_Tag)
 --(Add include protocols here, as extra insert values rows... Please don't forget comma separation within and across rows! {You will need to always have at least 3 commas within row, as there are 4 columns in the whitelist insert into command}... Also, you will need to provide a special keyword variable [@All_Combinations_Tag], obviously without the square brackets, wherever you are not specifying data in a whitelist protocol column [Please see the original example insert values for an idea of how to do this here]... This will emulate an any value functionality in the respective column.})
 --SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
 
