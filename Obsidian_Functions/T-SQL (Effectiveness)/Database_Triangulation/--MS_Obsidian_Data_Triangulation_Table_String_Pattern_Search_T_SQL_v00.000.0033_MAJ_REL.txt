@@ -1,0 +1,477 @@
+--MS_Obsidian_Database_Triangulation_Table_String_Pattern_Search_T_SQL_v00.000.0033_MAJ_REL
+--It allows you to pass in a string pattern, which will then be searched for across all the tables in your database...
+--If you want to also use this search against views, then please feel free to make the appropriate amendments...
+--The output provides a list of all the table names and column names that contain the search string pattern within their requisite cell data...
+--There are global variables available regarding switching between exact match and partial match, but please be aware that exact match is likely to be a much quicker search in almost all circumstances...
+--There is likely a query column search count limit, due to the count of union alls in a dynamic t-sql execution, and indeed string sizes in general (I hear that the query source code character limit is about 250K, and that utilised NVarchar(Max) data fields have a character limit each of around 1 billion, but not sure if any of this will have any impact, as I have not tested thoroughly)
+--I may include regex capabilities in a distant update to these algorithms...
+--Oh and BTW, if you havent realised, you can actually use these algorithms to support a nifty and simplified data discovery user interface via desktop/website/robot etc_...
+--Adjust all the data type sizes, and check for unnecessary casting throughout, before final release!!!!!!!
+--Should I include found string in the output table???... Most likely yes, so do this soon!
+
+
+--POWER RANGES TO THE RESCUE AD VERBAM
+ --also provide a feature for range searches (may want to steal the vrig rsnge consolidater technique)... 
+ --add a column to the strings search pattern 
+ --table variable, called search type, which holds either Data_Point or Data_Range, and also a third column 
+ --with a single value order (corresponding to a 4th order column) to the other in the pair for data ranges...
+
+
+
+
+
+--GLOBAL VARIABLES
+--This following variable sets the any value tag for the blacklist and whitelist tables below... Please feel free to change it appropriately, if you have a usecase where one of your database objects is called [All_Combinations]... Otherwise ignoring and including will not work as expected, leading to unstable algorithm behaviour.
+Declare @All_Combinations_Tag As NVarchar(4000)
+Set @All_Combinations_Tag = 'All_Combinations'
+
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+--Use this table variable to set the search protocols for the algorithm to follow... The match type column can be set to either: "Exact", "Partial", or "Range" (In either case, without the double quotes)...
+Declare @Search_Protocol_Datapoints Table ([Search_String] NVarchar(4000), [Match_Type] NVarchar(4000))
+Insert Into @Search_Protocol_Datapoints ([Search_String], [Match_Type])
+Values
+(N'149ED75C889A4356ADF8D6E95A729ACD', N'Exact')--,
+--(N'Category', N'Partial'),
+--(N'Search_Protocol_Example_0001', N'Exact')
+
+--Please only use this table for range searches where there are lower and upper boundary values (It doesn't matter which order you put them in the columns, as long as they are on the correct row which covers each pair). The algorithm will then go on to resolve boundary order, and search for data values in the database that sit within the range. This is different to the datapoint values in the other search protocol table above... Please only use [Range_Data_Types] of 'String', 'Number', 'Date_Time', and/or 'Boolean_Bit'  (For now, until I guage demand properly). 
+--Please also be very careful with dates... This algorithm has only been designed to handle the following underlying SQL Server date time data types (that one should not specify in this table, in the [Range_Data_Type] column, but rather use the data type labels from the sourcecode line above this one!) : ('date', 'datetime2', 'datetime', 'smalldatetime')... The reason why everything mentioned on this line is important with regard to dat time formats, is because if the data value in the database is stored as for example Year-Month-Day, but you insert range search protocols in the format Day-Month-Year in this table's boundary columns, then if your underlying database storage date time format is actually a user defined data type, then there is no guarantee that triangulations will be successful where you would expect them to, because the order of th date constitiuents is reversed (A similar situation impacts algorithm usage and design where dealing with delimiters and spaces within the date time values to be searched by the algorithm, and those inserted into this table; and the whole reason is basically because with the included0by-design SQL Server data types listed earlier on this sourcecode line, the algorithm has been designed to reformat them into the most granular format {and in the same aorder of date time constituents each time}, and so we can do a VALUE BASED SEARCH, as opposed to whereas other date time formats would simply resort to a BIT PATTERN BASED SEARCH)... Please finally be aware with regards to the rationale and considerations made here on this line of sourcecode, that if you really want to do a value based search on an in-built date time data type Listed earlier on this sourceode line, which is a datapoint search rather than a range search, please simply set both boundary columnns in thatinsert row to the same value (I may add value based datapoint search fore date time data types to the datapoint search protocol table variable at a later date... Dunno right now...)...
+Declare @Search_Protocol_Ranges Table ([Search_String_Range_Boundary_0001] NVarchar(4000), [Search_String_Range_Boundary_0002] NVarchar(4000), [Range_Data_Type] NVarchar(4000))
+Insert Into @Search_Protocol_Ranges ([Search_String_Range_Boundary_0001], [Search_String_Range_Boundary_0002], [Range_Data_Type])
+Values
+(N'06/02/2025 14:00:00', N'06/02/2025 16:00:00', N'Date_Time')--,
+--(N'Happy Chappy', N'Happy Christmas', N'String'),
+--(N'Happy Chappy', N'Happy Christmas', N'Number')
+--More range data types may be added in the future, if there is enough demand!
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+
+--Use this table variable to set the column data types for the algorithm to ignore... Afterall, one should probably not attempt to search a textual string against data values in and image column (this is not IDs or computer/human language) or even varbinary column (this is almost always not a useful task)... You can add any user-defined data types here also.
+Declare @Ignore_Column_Data_Types Table ([Data_Type_Name] NVarchar(4000))
+Insert Into @Ignore_Column_Data_Types ([Data_Type_Name])
+Values
+(N'geography'),
+(N'geometry'),
+(N'hierarchyid'),
+(N'image'),
+(N'rowversion'),
+(N'varbinary'),
+(N'xml'),
+(N'binary'),
+(N'User_Defined_Type_Example_0001') --An example user-defined data type.
+
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+--(BLACKLIST --> Subordinates To --> WHITELIST {In the codeblock below})
+--Use this table variable to set the table and column names for the algorithm to ignore (and please bear in mind whitelist/blacklist precedence)... Afterall, one should probably not attempt to search through absolutely massive tables or columns in a lax way, or without great cause... You can even choose to manually ignore tables or columns that you think are causing the algorithm to crash or slow to a grind, for example because of strange data types or massive amount of rows and/or columns contained within.
+--By the way, this algorithm is smart enough to handle partial blacklist column data, for example where you don't want to specify every table or column that you want to ignore.
+--WITHIN THIS BLACKLIST IGNORES TABLE VARIABLE, PLEASE MAKE SURE YOU DON'T USE SQUARE BRACKET NOTATION FOR THE SPECIFIC DATABASE OBJECTS REFERENCED USING STRINGS... SQUARE BRACKETS WILL AUTOMATICALLY BE ADDED LATER ON IN THE ALGORITHM!!!
+Declare @Blacklist_Ignores Table ([Table_Catalog] NVarchar(4000), [Table_Schema] NVarchar(4000), [Table_Name] NVarchar(4000), [Column_Name] NVarchar(4000))
+Insert Into @Blacklist_Ignores ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
+Values
+(N'Obsidian_SQL_Server_2022', @All_Combinations_Tag, @All_Combinations_Tag, @All_Combinations_Tag),
+(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, N'MooDPrimaryElement', @All_Combinations_Tag),
+(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, N'MooDUsedByElementMap', @All_Combinations_Tag)
+--(Add ignore protocols here, as extra insert values rows... Please don't forget comma separation within and across rows! {You will need to always have at least 3 commas within row, as there are 4 columns in the blacklist insert into command... Also, you will need to provide a special keyword variable [@All_Combinations_Tag], obviously without the square brackets, wherever you are not specifying data in a blacklist protocol column [Please see the original example insert values for an idea of how to do this here]... This will emulate an any value functionality in the respective column.})
+
+--[If there are rows inserted into the whitelist below this sourcecode line, then the blacklist above this sourcecode line will be ignored, for obvious reasons.]
+--[If there are rows inserted into the whitelist below this sourcecode line, then the blacklist above this sourcecode line will be ignored, for obvious reasons.]
+--[If there are rows inserted into the whitelist below this sourcecode line, then the blacklist above this sourcecode line will be ignored, for obvious reasons.]
+--[If there are rows inserted into the whitelist below this sourcecode line, then the blacklist above this sourcecode line will be ignored, for obvious reasons.]
+--[If there are rows inserted into the whitelist below this sourcecode line, then the blacklist above this sourcecode line will be ignored, for obvious reasons.]
+
+--(WHITELIST --> Superceeds From --> BLACKLIST {In the codeblock above})
+--Use this table variable to set the table names for the algorithm to include (and please bear in mind whitelist/blacklist precedence)... Afterall, one should probably not attempt to search through absolutely massive tables or columns in a lax way, or without great cause... You can even choose to manually include tables or columns that you think are essential for the successful execution of the algorithm, to the exclusion of all else as unnecessary string pattern search space.
+--By the way, this algorithm is smart enough to handle partial whitelist column data, for example where you don't want to specify every catalog or schema that you want to include.
+--WITHIN THIS WHITELIST INCLUSIONS TABLE VARIABLE, PLEASE MAKE SURE YOU DON'T USE SQUARE BRACKET NOTATION FOR THE SPECIFIC DATABASE OBJECTS REFERENCED USING STRINGS... SQUARE BRACKETS WILL AUTOMATICALLY BE ADDED LATER ON IN THE ALGORITHM!!!
+Declare @Whitelist_Inlcusions Table ([Table_Catalog] NVarchar(4000), [Table_Schema] NVarchar(4000), [Table_Name] NVarchar(4000), [Column_Name] NVarchar(4000))
+Insert Into @Whitelist_Inlcusions ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
+Values
+(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, @All_Combinations_Tag, @All_Combinations_Tag)--,
+--(N'MSOAEGS_0011_PT_1K', @All_Combinations_Tag, N'MooDPrimaryElement', @All_Combinations_Tag),
+--(N'MSOAEGS_0011_PT_1K', N'dbo', N'MooDUsedByElementMap', @All_Combinations_Tag),
+--(N'MS_Obsidian_Auto_Archive_Generator_Baseline', @All_Combinations_Tag, @All_Combinations_Tag, @All_Combinations_Tag)
+--(Add include protocols here, as extra insert values rows... Please don't forget comma separation within and across rows! {You will need to always have at least 3 commas within row, as there are 4 columns in the whitelist insert into command}... Also, you will need to provide a special keyword variable [@All_Combinations_Tag], obviously without the square brackets, wherever you are not specifying data in a whitelist protocol column [Please see the original example insert values for an idea of how to do this here]... This will emulate an any value functionality in the respective column.})
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+
+
+--DATA VALIDATION
+--Will need to check that no catalog, schema, table, or column is called 'All_Combinations' --> Eventually provide user with the ability to set their own anything global variables tag, incase they do have objects called 'All_Combinations' that they want to keep using.
+
+
+--ALGORITHM EXECUTION
+Declare @Search_Protocol_Datapoints_Consolidated Table ([Search_String] NVarchar(4000), [Match_Type] NVarchar(4000))
+Insert Into @Search_Protocol_Datapoints_Consolidated ([Search_String], [Match_Type])
+Select
+	[Search_String] As [Search_String],
+	Min([Match_Type]) As [Match_Type] --This should prudently alphabetically choose "Exact" over "Partial" wherever there is a duplication of the same string pattern with different match types... Although I haven't tested yet! 
+From @Search_Protocol_Datapoints Group By [Search_String]
+Select * From @Search_Protocol_Datapoints_Consolidated
+Declare @Search_Protocol_Ranges_Consolidated Table ([Search_String_Range_Boundary_0001] NVarchar(4000), [Search_String_Range_Boundary_0002] NVarchar(4000), [Range_Data_Type] NVarchar(4000))
+Insert Into @Search_Protocol_Ranges_Consolidated ([Search_String_Range_Boundary_0001], [Search_String_Range_Boundary_0002], [Range_Data_Type])
+Select
+	Least([Search_String_Range_Boundary_0001], [Search_String_Range_Boundary_0002]) As [Search_String_Range_Boundary_0001],
+	Greatest([Search_String_Range_Boundary_0001], [Search_String_Range_Boundary_0002]) As [Search_String_Range_Boundary_0002],
+	[Range_Data_Type] As [Range_Data_Type]
+From @Search_Protocol_Ranges Group By [Search_String_Range_Boundary_0001], [Search_String_Range_Boundary_0002], [Range_Data_Type]
+--Eventually apply my fancy range consolidation technique from other previous VRIG algorithm...
+Select * From @Search_Protocol_Ranges_Consolidated
+Declare @Blacklist_Ignores_Consolidated Table ([Table_Catalog] NVarchar(4000), [Table_Schema] NVarchar(4000), [Table_Name] NVarchar(4000), [Column_Name] NVarchar(4000))
+Insert Into @Blacklist_Ignores_Consolidated ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
+Select * From @Blacklist_Ignores
+Where
+	[Table_Catalog] != @All_Combinations_Tag
+	Or [Table_Schema] != @All_Combinations_Tag
+	Or [Table_Name] != @All_Combinations_Tag
+	Or [Column_Name] != @All_Combinations_Tag
+
+Declare @Whitelist_Inlcusions_Consolidated Table ([Table_Catalog] NVarchar(4000), [Table_Schema] NVarchar(4000), [Table_Name] NVarchar(4000), [Column_Name] NVarchar(4000))
+Insert Into @Whitelist_Inlcusions_Consolidated ([Table_Catalog], [Table_Schema], [Table_Name], [Column_Name])
+Select * From @Whitelist_Inlcusions
+Where
+	[Table_Catalog] != @All_Combinations_Tag
+	Or [Table_Schema] != @All_Combinations_Tag
+	Or [Table_Name] != @All_Combinations_Tag
+	Or [Column_Name] != @All_Combinations_Tag
+
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+Declare @Triangulation_Dynamic_Search Table ([Substatementlet_Strings] NVarchar(Max))
+
+--Check empty, one row, and many rows works for the logic here, before releasing the algorithm...
+If (select 1 where Exists (select 1 from @Whitelist_Inlcusions)) Is Not Null
+	
+	Begin
+	
+	Insert Into @Triangulation_Dynamic_Search ([Substatementlet_Strings])
+	Select
+		((N'Select Max(''' + Cast(A.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(A.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Search_String] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Search_String] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Match_Type] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Match_Type] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Match_Type], Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(A.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Exact' Then (N'] As NVarchar(Max)) Like Cast(''' + Cast(D.[Search_String] As NVarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Partial' Then (N'] As NVarchar(Max)) Like Cast(''%' + Cast(D.[Search_String] As NVarchar(4000)) + N'%'' As NVarchar(4000))') Else N'Null' End) End)) + N' Group By [' + Cast(A.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+		--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+	From Information_Schema.Columns A
+	Left Join @Ignore_Column_Data_Types B On 
+		(A.[Data_Type] = B.[Data_Type_Name])
+	Left Join @Whitelist_Inlcusions_Consolidated C On
+		(
+		--All Protocol Values Specified
+		A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+		--One Protocol Value Wildcarded
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+		--Two Protocol Values Wildcarded
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+		--Three Protocol Values Wildcarded
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+		Or
+		A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+		Or
+		C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+		)
+	Cross Join @Search_Protocol_Datapoints_Consolidated D
+	--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+	Where
+		B.[Data_Type_Name] Is Null
+		And C.[Table_Catalog] Is Not Null
+		And D.[Search_String] Is Not Null
+	Union All
+	Select
+		((N'Select Max(''' + Cast(E.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(E.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(E.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(E.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (N'(Range_Start_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N' : (Range_End_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0002] As NVarchar(4000))) Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then N'Range' Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Match_Type], Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(E.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'String' Then (N'] As NVarChar(Max)) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N''' As NVarchar(4000)) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As NVarchar(Max)) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As Nvarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'Number' Then (N'] As Decimal) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000))  + N''' As Decimal) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Decimal) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Decimal)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000))  = N'Date_Time' Then (N'] As Datetime2) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Datetime2) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Datetime2) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Datetime2)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000)) = N'Boolean_Bit' Then (N'] As Bit) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Bit) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Bit) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Bit)') Else N'Pray_Beg_Forgiveness_For_This_Error' End) End) End) End) Else N'Pray_Beg_Forgiveness_For_This_Error' End)) + N' Group By [' + Cast(E.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+		--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+	From Information_Schema.Columns E
+	Left Join @Ignore_Column_Data_Types F On 
+		(E.[Data_Type] = F.[Data_Type_Name])
+	Left Join @Whitelist_Inlcusions_Consolidated G On
+		(
+		--All Protocol Values Specified
+		E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+		--One Protocol Value Wildcarded
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+		--Two Protocol Values Wildcarded
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+		--Three Protocol Values Wildcarded
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+		Or
+		E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+		Or
+		G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+		)
+	Cross Join @Search_Protocol_Ranges_Consolidated H
+	--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+	Where
+		F.[Data_Type_Name] Is Null
+		And G.[Table_Catalog] Is Not Null
+		And H.[Search_String_Range_Boundary_0001] Is Not Null
+		And E.[Data_Type] In ('char', 'varchar', 'text', 'nchar', 'nvarchar', 'ntext')
+		And H.[Range_Data_Type] = N'String'
+		Or
+		F.[Data_Type_Name] Is Null
+		And G.[Table_Catalog] Is Not Null
+		And H.[Search_String_Range_Boundary_0001] Is Not Null
+		And E.[Data_Type] In ('tinyint', 'smallint', 'int', 'bigint', 'decimal', 'float')
+		And H.[Range_Data_Type] = N'Number'
+		Or
+		F.[Data_Type_Name] Is Null
+		And G.[Table_Catalog] Is Not Null
+		And H.[Search_String_Range_Boundary_0001] Is Not Null
+		And E.[Data_Type] In ('date', 'datetime2', 'datetime', 'smalldatetime')
+		And H.[Range_Data_Type] = N'Date_Time'
+		Or
+		F.[Data_Type_Name] Is Null
+		And G.[Table_Catalog] Is Not Null
+		And H.[Search_String_Range_Boundary_0001] Is Not Null
+		And E.[Data_Type] = N'Bit'
+		And H.[Range_Data_Type] = N'Boolean_Bit'
+		--Executive decision... Yes I know that the intersect statement is very slow in where clauses, but frankly the number of clause groups would be massive otherwise, because of the many different sub number and sub string and sub date time data types that would need to be covered... Therefore, we are going to take the 'hit' on not optimising this one fully.
+		--Please don't forget to add any kind of funky user defined data types, as desired, to the appropriate intersect delimited lists!!!
+
+	End
+
+Else
+
+	Begin
+
+	--Check empty, one row, and many rows works for the logic here, before releasing the algorithm...
+	If (select 1 where Exists (select 1 from @Blacklist_Ignores)) Is Not Null
+	
+		Begin
+		
+		Insert Into @Triangulation_Dynamic_Search ([Substatementlet_Strings])
+		Select
+			((N'Select Max(''' + Cast(A.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(A.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Search_String] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Search_String] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Match_Type] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Match_Type] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Match_Type], Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(A.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Exact' Then (N'] As NVarchar(Max)) Like Cast(''' + Cast(D.[Search_String] As NVarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Partial' Then (N'] As NVarchar(Max)) Like Cast(''%' + Cast(D.[Search_String] As NVarchar(4000)) + N'%'' As NVarchar(4000))') Else N'Null' End) End)) + N' Group By [' + Cast(A.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+			--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+		From Information_Schema.Columns A
+		Left Join @Ignore_Column_Data_Types B On 
+			(A.[Data_Type] = B.[Data_Type_Name])
+		Left Join @Blacklist_Ignores_Consolidated C On
+			(
+			--All Protocol Values Specified
+			A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+			--One Protocol Value Wildcarded
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+			--Two Protocol Values Wildcarded
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+			--Three Protocol Values Wildcarded
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And A.[Column_Name] = C.[Column_Name]
+			Or
+			A.[Table_Catalog] = C.[Table_Catalog] And C.[Table_Schema] = @All_Combinations_Tag And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And C.[Table_Schema] = @All_Combinations_Tag And A.[Table_Name] = C.[Table_Name] And C.[Column_Name] = @All_Combinations_Tag
+			Or
+			C.[Table_Catalog] = @All_Combinations_Tag And A.[Table_Schema] = C.[Table_Schema] And C.[Table_Name] = @All_Combinations_Tag And C.[Column_Name] = @All_Combinations_Tag
+			)
+		Cross Join @Search_Protocol_Datapoints_Consolidated D
+		--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+		Where
+			B.[Data_Type_Name] Is Null
+			And C.[Table_Catalog] Is Null
+			And D.[Search_String] Is Not Null
+		Union All
+		Select
+			((N'Select Max(''' + Cast(E.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(E.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(E.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(E.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (N'(Range_Start_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N' : (Range_End_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0002] As NVarchar(4000))) Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then N'Range' Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Match_Type], Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(E.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'String' Then (N'] As NVarChar(Max)) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N''' As NVarchar(4000)) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As NVarchar(Max)) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As Nvarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'Number' Then (N'] As Decimal) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000))  + N''' As Decimal) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Decimal) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Decimal)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000))  = N'Date_Time' Then (N'] As Datetime2) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Datetime2) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Datetime2) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Datetime2)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000)) = N'Boolean_Bit' Then (N'] As Bit) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Bit) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Bit) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Bit)') Else N'Pray_Beg_Forgiveness_For_This_Error' End) End) End) End) Else N'Pray_Beg_Forgiveness_For_This_Error' End)) + N' Group By [' + Cast(E.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+			--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+		From Information_Schema.Columns E
+		Left Join @Ignore_Column_Data_Types F On 
+			(E.[Data_Type] = F.[Data_Type_Name])
+		Left Join @Blacklist_Ignores_Consolidated G On
+			(
+			--All Protocol Values Specified
+			E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+			--One Protocol Value Wildcarded
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+			--Two Protocol Values Wildcarded
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+			--Three Protocol Values Wildcarded
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And E.[Column_Name] = G.[Column_Name]
+			Or
+			E.[Table_Catalog] = G.[Table_Catalog] And G.[Table_Schema] = @All_Combinations_Tag And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And G.[Table_Schema] = @All_Combinations_Tag And E.[Table_Name] = G.[Table_Name] And G.[Column_Name] = @All_Combinations_Tag
+			Or
+			G.[Table_Catalog] = @All_Combinations_Tag And E.[Table_Schema] = G.[Table_Schema] And G.[Table_Name] = @All_Combinations_Tag And G.[Column_Name] = @All_Combinations_Tag
+			)
+		Cross Join @Search_Protocol_Ranges_Consolidated H
+		--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+		Where
+			F.[Data_Type_Name] Is Null
+			And G.[Table_Catalog] Is Null
+			And H.[Search_String_Range_Boundary_0001] Is Not Null
+			And E.[Data_Type] In ('char', 'varchar', 'text', 'nchar', 'nvarchar', 'ntext')
+			And H.[Range_Data_Type] = N'String'
+			Or
+			F.[Data_Type_Name] Is Null
+			And G.[Table_Catalog] Is Null
+			And H.[Search_String_Range_Boundary_0001] Is Not Null
+			And E.[Data_Type] In ('tinyint', 'smallint', 'int', 'bigint', 'decimal', 'float')
+			And H.[Range_Data_Type] = N'Number'
+			Or
+			F.[Data_Type_Name] Is Null
+			And G.[Table_Catalog] Is Null
+			And H.[Search_String_Range_Boundary_0001] Is Not Null
+			And E.[Data_Type] In ('date', 'datetime2', 'datetime', 'smalldatetime')
+			And H.[Range_Data_Type] = N'Date_Time'
+			Or
+			F.[Data_Type_Name] Is Null
+			And G.[Table_Catalog] Is Null
+			And H.[Search_String_Range_Boundary_0001] Is Not Null
+			And E.[Data_Type] = N'Bit'
+			And H.[Range_Data_Type] = N'Boolean_Bit'
+			--Executive decision... Yes I know that the intersect statement is very slow in where clauses, but frankly the number of clause groups would be massive otherwise, because of the many different sub number and sub string and sub date time data types that would need to be covered... Therefore, we are going to take the 'hit' on not optimising this one fully.
+			--Please don't forget to add any kind of funky user defined data types, as desired, to the appropriate intersect delimited lists!!!
+
+		End
+
+	Else
+
+		Begin
+
+			If (select 1 where Exists (select 1 from @Whitelist_Inlcusions)) Is Null
+				If (select 1 where Exists (select 1 from @Blacklist_Ignores)) Is Null
+
+					Begin
+					
+					Insert Into @Triangulation_Dynamic_Search ([Substatementlet_Strings])
+					Select
+						((N'Select Max(''' + Cast(A.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(A.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(A.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(A.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Search_String] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Search_String] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Exact' Then Cast(D.[Match_Type] As NVarchar(Max)) Else (Case When Cast(D.[Match_Type] As NVarchar(Max)) = N'Partial' Then  Cast(D.[Match_Type] As NVarchar(Max)) Else N'Null' End) End) + N''') As [Match_Type], Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(A.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(A.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(A.[Column_Name] As NVarchar(Max)) + (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Exact' Then (N'] As NVarchar(Max)) Like Cast(''' + Cast(D.[Search_String] As NVarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(D.[Match_Type] As NVarchar(4000)) = N'Partial' Then (N'] As NVarchar(Max)) Like Cast(''%' + Cast(D.[Search_String] As NVarchar(4000)) + N'%'' As NVarchar(4000))') Else N'Null' End) End)) + N' Group By [' + Cast(A.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+						--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+					From Information_Schema.Columns A
+					Left Join @Ignore_Column_Data_Types B On 
+						(A.[Data_Type] = B.[Data_Type_Name])
+					Cross Join @Search_Protocol_Datapoints_Consolidated D
+					--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+					Where
+						B.[Data_Type_Name] Is Null
+						And D.[Search_String] Is Not Null
+					Union All
+					Select
+						((N'Select Max(''' + Cast(E.[Table_Catalog] As NVarchar(Max)) + N''') As [Table_Catalog], Max(''' + Cast(E.[Table_Schema] As NVarchar(Max)) + N''') As [Table_Schema], Max(''' + Cast(E.[Table_Name] As NVarchar(Max)) + N''') As [Table_Name], Max(''' + Cast(E.[Column_Name] As NVarchar(Max)) + N''') As [Column_Name], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (N'(Range_Start_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N' : (Range_End_Boundary) : ' + Cast(H.[Search_String_Range_Boundary_0002] As NVarchar(4000))) Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Search_Protocol], Max(''' + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then N'Range' Else N'Pray_Beg_Forgiveness_For_This_Error' End) + N''') As [Match_Type], Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + N'] As NVarChar(Max)) As [Triangulated_Value] From [' + (Cast(E.[Table_Catalog] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Schema] As NVarchar(Max)) + N'].[' + Cast(E.[Table_Name] As NVarchar(Max)))) + (N'] Where Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + (Case When Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) Is Not Null Then (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'String' Then (N'] As NVarChar(Max)) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarchar(4000)) + N''' As NVarchar(4000)) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As NVarchar(Max)) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As Nvarchar(4000)) + N''' As NVarchar(4000))') Else (Case When Cast(H.[Range_Data_Type] As NVarchar(4000)) = N'Number' Then (N'] As Decimal) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000))  + N''' As Decimal) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Decimal) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Decimal)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000))  = N'Date_Time' Then (N'] As Datetime2) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Datetime2) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Datetime2) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Datetime2)') Else (Case When Cast(H.[Range_Data_Type] As NVarChar(4000)) = N'Boolean_Bit' Then (N'] As Bit) >= Cast(''' + Cast(H.[Search_String_Range_Boundary_0001] As NVarChar(4000)) + N''' As Bit) And Cast([' + Cast(E.[Column_Name] As NVarchar(Max)) + '] As Bit) <= Cast(''' + Cast(H.[Search_String_Range_Boundary_0002] As NVarChar(4000)) + N''' As Bit)') Else N'Pray_Beg_Forgiveness_For_This_Error' End) End) End) End) Else N'Pray_Beg_Forgiveness_For_This_Error' End)) + N' Group By [' + Cast(E.[Column_Name] As NVarchar(Max)) + N']') As [Substatementlet_Strings]
+						--We'd absolutely eventually prefer a mechanism in SQL Server, which allows the engine to ignore assessing/storing null values, in order to maximise compute and storage performance here.
+					From Information_Schema.Columns E
+					Left Join @Ignore_Column_Data_Types F On 
+						(E.[Data_Type] = F.[Data_Type_Name])
+					Cross Join @Search_Protocol_Ranges_Consolidated H
+					--Cross join every system table row to every fuse-paired search protocol datapoint-range row... This massively decreases data volumes and join counts... Absolutely decisive for hyper-data usecases!!!
+					Where
+						F.[Data_Type_Name] Is Null
+						And H.[Search_String_Range_Boundary_0001] Is Not Null
+						And E.[Data_Type] In ('char', 'varchar', 'text', 'nchar', 'nvarchar', 'ntext')
+						And H.[Range_Data_Type] = N'String'
+						Or
+						F.[Data_Type_Name] Is Null
+						And H.[Search_String_Range_Boundary_0001] Is Not Null
+						And E.[Data_Type] In ('tinyint', 'smallint', 'int', 'bigint', 'decimal', 'float')
+						And H.[Range_Data_Type] = N'Number'
+						Or
+						F.[Data_Type_Name] Is Null
+						And H.[Search_String_Range_Boundary_0001] Is Not Null
+						And E.[Data_Type] In ('date', 'datetime2', 'datetime', 'smalldatetime')
+						And H.[Range_Data_Type] = N'Date_Time'
+						Or
+						F.[Data_Type_Name] Is Null
+						And H.[Search_String_Range_Boundary_0001] Is Not Null
+						And E.[Data_Type] = N'Bit'
+						And H.[Range_Data_Type] = N'Boolean_Bit'
+						--Executive decision... Yes I know that the intersect statement is very slow in where clauses, but frankly the number of clause groups would be massive otherwise, because of the many different sub number and sub string and sub date time data types that would need to be covered... Therefore, we are going to take the 'hit' on not optimising this one fully.
+						--Please don't forget to add any kind of funky user defined data types, as desired, to the appropriate intersect delimited lists!!!
+
+					End
+		
+		End
+
+	End
+--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK--SOURCECODE_LOGICAL_CHUNK
+Select * From @Triangulation_Dynamic_Search
+Declare @SQL_Command As NVarchar(Max)
+Set @SQL_Command = (Select String_Agg(Cast([Substatementlet_Strings] As NVarchar(Max)), N' Union All ') From @Triangulation_Dynamic_Search)
+Select @SQL_Command
+Declare @Triangulations Table ([Table_Catalog] NVarchar(Max), [Table_Schema] NVarchar(Max), [Table_Name] NVarchar(Max), [Column_Name] NVarchar(Max), [Search_Protocol] NVarchar(4000), [Match_Type] NVarchar(4000), [Triangulated_Value] Nvarchar(Max))
+Insert Into @Triangulations
+Execute sp_executesql @SQL_Command
+
+
+--OUTPUT CHECK
+--Here is the search protocols' final results... The select statement is capable of showing all triangulations of database objects which contain the search strings of interest in at least one of their associated data values...
+--If you need less or more detailed information, simply adjust the commenting in the select statemnt below (you will need to make sure that the select columns and the group by columns are hamronised i_e_ they match up, because if there is a select column without its requisite grouping column, then the command will fail).
+Select
+	[Table_Catalog],
+	[Table_Schema],
+	[Table_Name],
+	[Column_Name],
+	[Search_Protocol],
+	[Match_Type],
+	[Triangulated_Value] 
+From @Triangulations Group By [Table_Catalog], [Table_Schema], [Table_Name], [Column_Name], [Search_Protocol], [Match_Type], [Triangulated_Value] 
