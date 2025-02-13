@@ -1,0 +1,117 @@
+--MS_Obsidian_Fragmentiser_Optimised_v00.000.0007_MINOR_HANDLE
+--This algorithm is a sub-algorithm that can be slotted into the MS_Obsidian LLM (MS_Text_Search_Purposym_And_Semantic_Associate_Thesauruses_Integration) algorithm in placce of the slicer dicer fragment building technique...
+--Please remember to clean multiple consecutive space into single spaces... I have uploaded a t-sql query for this also onto this GitHub repository...
+--Please bear in mind, that I had to develop this using hash characters in place of space characters as the word delimiters, because SSMS has a single space character bug, that blocks you from assigning to an nvarchar varaible... nvm... Yu will need to change the @Index_Pattern assigned value from a hash character (#) to a single space character ( ) in your testing and production usecases...
+--Please bear in mind, that as such, I have not been able to fully test this sub-algorithm insert, but I am confident that it is many magnitudes more performant than existing best-in-class, in terms of both compute speed and compute energy efficiency... It makes full use of SQL database parallelisation, and also uses the vastly superior join features so that inherently slow looping can be altogether avoided!...
+
+
+--INPUT
+Declare @Documents Table ([Order] Bigint, [Document_Name] NVarchar(4000), [Document_Contents] NVarchar(Max))
+Insert Into @Documents ([Order], [Document_Name], [Document_Contents])
+Values
+('1', 'Document_0001', 'aaaaa#ABC#123#<>?#00000'),
+('2', 'Document_0002', 'aw;oe#riegnvqo2u4nf0#324ng9qu3nvgpawh#fap0qw4gfh2#4pq2840h#gf0q[824#hf[qu#oiwehfo'),
+('3', 'Document_0003', '1-#932j9ri-0#2fnini-24-nfj#2fi03g nv08q34ng0iq2nh#34gp80vbq248vhnapqKA.KDA.ML;X[A#QDQPK#3OD3-2QJR24#HG'),
+('4', 'Document_0004', 'w0einfq24g#naqwefoinia#[wro0gubnw[a80b#oienf;AOI#QWEF#HQR-3J9Arj=#0QF-[anewvflsjrb#kgia4t8hw#tfnpwOM#NEFAD\A#GJW[OQF=#AM]Z[ESOJ;V[WBANDV;O#[AJWE]QEWP#GMVAQGMPW')
+--INPUT
+
+
+--FRAGMENTISER_OPTIMISED
+--Fragmentise with maximum efficiency (altrhough I would prefer to use a stored procedure in a column assignation of course!!!)...
+Declare @Loop_Count_0001 As Bigint
+Set @Loop_Count_0001 = 0
+Declare @Document_Name As Nvarchar(4000)
+Declare @Data As Nvarchar(Max)
+Declare @Index_Pattern As NVarchar(4000)
+Declare @Data_String_Length BigInt
+Declare @Index_Pattern_String_Length BigInt
+Declare @Element_Index_Size BigInt
+Declare @Dynamic_SQL_Data_Intermediate_Variable Nvarchar(Max)
+Declare @Obsidian_Data_Element_Index Table ([Element_Index] BigInt)
+Declare @Data_Pattern_Delimit Table ([Pattern_Index] BigInt, [Pattern] Nvarchar(Max))
+Declare @Data_Pattern_Match_Intermediate Table ([Pattern_Index] BigInt, [Index_Pattern_Match_Boolean] TinyInt)
+Declare @Data_Pattern_Match_Final Table ([Order] BigInt, [Pattern_Index] BigInt, [Index_Pattern_Match_Boolean] TinyInt)				
+Declare @Delimiter_Count As BigInt
+Declare @Fragments Table ([Document_Name] NVarchar(4000), [Fragment] NVarchar(Max))
+While @Loop_Count_0001 < (Select Count(1) From @Documents)
+	Begin
+		
+		Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+		
+
+		--Some initiation variables need to be set...
+		Set @Document_Name = Cast((Select [Document_Name] From @Documents Where [Order] = @Loop_Count_0001) As Nvarchar(Max))
+		Set @Data = Cast((Select [Document_Contents] From @Documents Where [Order] = @Loop_Count_0001) As Nvarchar(Max))
+		Set @Index_Pattern = N'#'
+		Set @Data_String_Length = Len(Cast(@Data As Nvarchar(Max)))
+		Set @Index_Pattern_String_Length = Len(Cast(@Index_Pattern As Nvarchar(Max)))
+		Set @Element_Index_Size = (@Data_String_Length - (@Index_Pattern_String_Length - 1))
+
+
+		--Here we need to build an index pattern scaffold...
+		Set @Dynamic_SQL_Data_Intermediate_Variable =
+		(
+		'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+		Insert Into @Number_Seeds ([Number_Seed])
+		Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+		Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Element_Index_Size), '@Index_Count', @Element_Index_Size) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+		)
+		
+		Insert Into @Obsidian_Data_Element_Index ([Element_Index])
+		Execute (@Dynamic_SQL_Data_Intermediate_Variable)
+		
+		Insert Into @Data_Pattern_Delimit ([Pattern_Index], [Pattern])
+		Select
+			[Element_Index] As [Pattern_Index],
+			Substring(@Data, [Element_Index], Len(@Index_Pattern)) As [Pattern]
+		From @Obsidian_Data_Element_Index
+
+
+		--The following codeblocks use the @Order variable in order to index specific string pattern index members... 	
+		Insert Into @Data_Pattern_Match_Intermediate ([Pattern_Index], [Index_Pattern_Match_Boolean])
+		Select
+			[Pattern_Index] As [Pattern_Index],
+			(Case When [Pattern] Like @Index_Pattern Then 1 Else 0 End) As [Index_Pattern_Match_Boolean]
+		From @Data_Pattern_Delimit
+
+		Insert Into @Data_Pattern_Match_Final ([Order], [Pattern_Index], [Index_Pattern_Match_Boolean])
+		Select
+			(Row_Number() Over (Order By [Pattern_Index] Asc) + 1) As [Order], --Plus one, because we are subsequently going to be inserting a pseudo delimiter before the series, which needs to have and order value of 1...
+			[Pattern_Index] As [Pattern_Index],
+			[Index_Pattern_Match_Boolean] As [Index_Pattern_Match_Boolean]
+		From @Data_Pattern_Match_Intermediate
+		Where [Index_Pattern_Match_Boolean] = 1
+
+
+		--To handle the first and last fragments and their subsequent meta fragments properly...
+		Set @Delimiter_Count = (Select Count(1) From @Data_Pattern_Match_Final)
+		
+		Insert Into @Data_Pattern_Match_Final ([Order], [Pattern_Index], [Index_Pattern_Match_Boolean])
+		Values
+		(1, 0, 1),
+		((@Delimiter_Count + 2), (Len(@Data) + 1), 1) --Plus 2, because we have added a leading and trailing pseudo delimiter row for proper future generation of fragments...
+		
+
+		--Finally we insert the fragments into the fragments table...
+		Insert Into @Fragments ([Document_Name], [Fragment])
+		Select
+			@Document_Name As [Document_Name],
+			Substring(@Data, (A.[Pattern_Index] + 1), ((B.[Pattern_Index] - A.[Pattern_Index]) - 1)) As [Fragment]
+		From @Data_Pattern_Match_Final A
+		Inner Join @Data_Pattern_Match_Final B On
+			(B.[Order] > A.[Order])
+		Where A.[Order] != (@Delimiter_Count + 2) --Plus 2, because we have previously added a leading and trailing pseudo delimiter row for proper generation of fragments...
+		
+		--Cleanout of re-usable table variables...
+		Delete From @Obsidian_Data_Element_Index
+		Delete From @Data_Pattern_Delimit
+		Delete From @Data_Pattern_Match_Intermediate
+		Delete From @Data_Pattern_Match_Final
+
+	End
+--FRAGMENTISER_OPTIMISED
+
+
+--OUTPUT
+Select [Document_Name], [Fragment] As [Fragment] From @Fragments
+--OUTPUT
