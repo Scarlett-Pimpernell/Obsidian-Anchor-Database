@@ -1,4 +1,4 @@
---MS_Obsidian_Fragmentiser_Optimised_v00.000.0009_MAJOR_RELEASE
+--MS_Obsidian_Fragmentiser_Optimised_v00.000.0010_MAJOR_RELEASE
 --This algorithm is a sub-algorithm that can be slotted into the MS_Obsidian LLM (MS_Text_Search_Purposym_And_Semantic_Associate_Thesauruses_Integration) algorithm in placce of the slicer dicer fragment building technique...
 --Please remember to clean multiple consecutive space into single spaces... I have uploaded a t-sql query for this also onto this GitHub repository...
 --Please bear in mind, that I had to develop this using hash characters in place of space characters as the word delimiters, because SSMS has a single space character bug, that blocks you from assigning to an nvarchar varaible... nvm... Yu will need to change the @Index_Pattern assigned value from a hash character (#) to a single space character ( ) in your testing and production usecases...
@@ -11,7 +11,7 @@ Insert Into @Documents ([Order], [Document_Name], [Document_Contents])
 Values
 (1, 'Test', 'aa#a1#1a#11'),
 (2, 'Document_0001', 'aaaaa#ABC#123#<>?#00000'),
-(3, 'Document_0002', 'aw;oe#riegnvqo2u4nf0#324ng9qu3nvgpawh#fap0qw4gfh2#4pq2840h#gf0q[824#hf[qu#oiwehfo'),
+(3, 'Document_0002', 'aaaaa#aw;oe#riegnvqo2u4nf0#324ng9qu3nvgpawh#fap0qw4gfh2#4pq2840h#gf0q[824#hf[qu#oiwehfo'),
 (4, 'Document_0003', '1-#932j9ri-0#2fnini-24-nfj#2fi03g nv08q34ng0iq2nh#34gp80vbq248vhnapqKA.KDA.ML;X[A#QDQPK#3OD3-2QJR24#HG'),
 (5, 'Document_0004', 'w0einfq24g#naqwefoinia#[wro0gubnw[a80b#oienf;AOI#QWEF#HQR-3J9Arj=#0QF-[anewvflsjrb#kgia4t8hw#tfnpwOM#NEFAD\A#GJW[OQF=#AM]Z[ESOJ;V[WBANDV;O#[AJWE]QEWP#GMVAQGMPW')
 --INPUT
@@ -33,7 +33,7 @@ Declare @Data_Pattern_Delimit Table ([Pattern_Index] BigInt, [Pattern] Nvarchar(
 Declare @Data_Pattern_Match_Intermediate Table ([Pattern_Index] BigInt, [Index_Pattern_Match_Boolean] TinyInt)
 Declare @Data_Pattern_Match_Final Table ([Order] BigInt, [Pattern_Index] BigInt, [Index_Pattern_Match_Boolean] TinyInt)				
 Declare @Delimiter_Count As BigInt
-Declare @Fragments Table ([Document_Name] NVarchar(4000), [Fragment] NVarchar(Max))
+Declare @Fragments Table ([Fragment] NVarchar(Max))
 While @Loop_Count_0001 < (Select Count(1) From @Documents)
 	Begin
 		
@@ -94,15 +94,14 @@ While @Loop_Count_0001 < (Select Count(1) From @Documents)
 		
 
 		--Finally we insert the fragments into the fragments table...
-		Insert Into @Fragments ([Document_Name], [Fragment])
+		Insert Into @Fragments ([Fragment])
 		Select
-			@Document_Name As [Document_Name],
-			Max(Substring(@Data, (A.[Pattern_Index] + 1), ((B.[Pattern_Index] - A.[Pattern_Index]) - 1))) As [Fragment]
+			Substring(@Data, (A.[Pattern_Index] + 1), ((B.[Pattern_Index] - A.[Pattern_Index]) - 1)) As [Fragment]
 		From @Data_Pattern_Match_Final A
 		Inner Join @Data_Pattern_Match_Final B On
 			(B.[Order] > A.[Order])
 		Where A.[Order] != (@Delimiter_Count + 2) --Plus 2, because we have previously added a leading and trailing pseudo delimiter row for proper generation of fragments...
-		Group By A.[Order], B.[Order] --For compute efficiency reasons, ideally you want to group by fragment value only where possible... Which I suppose is kind of achieved here... The reason is that we may otherwise have unnecessary duplicate fragments across different document pairs, which would unnecessarily bloat the instance count of the handling of the exact same fragment!!!
+		
 
 		--Cleanout of re-usable table variables...
 		Delete From @Obsidian_Data_Element_Index
@@ -111,9 +110,16 @@ While @Loop_Count_0001 < (Select Count(1) From @Documents)
 		Delete From @Data_Pattern_Match_Final
 
 	End
+
+Declare @Fragments_Consolidated Table ([Fragment] Nvarchar(Max))
+Insert Into @Fragments_Consolidated ([Fragment])
+Select
+	[Fragment] As [Fragment]
+From @Fragments
+Group By [Fragment] --For compute efficiency reasons, ideally you want to group by fragment value only where possible (although adding other columns may be beneficial for some usecases)... Which I suppose is kind of achieved here... The reason is that we may otherwise have unnecessary duplicate fragments across different document pairs, which would unnecessarily bloat the instance count of the handling of the exact same fragment!!!
 --FRAGMENTISER_OPTIMISED
 
 
 --OUTPUT
-Select [Document_Name], [Fragment] As [Fragment] From @Fragments
+Select [Fragment] As [Fragment] From @Fragments_Consolidated
 --OUTPUT
