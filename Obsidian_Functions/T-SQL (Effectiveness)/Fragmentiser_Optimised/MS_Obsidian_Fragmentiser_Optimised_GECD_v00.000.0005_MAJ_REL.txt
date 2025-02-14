@@ -1,0 +1,81 @@
+--MS_Obsidian_Fragmentiser_Optimised_Every_Character_Delimit_v00.000.0005_MAJ_REL
+--This is a specific variation of the optimised fragmentiser algorithm, which is intended for use to fully fragmentise a string, with maximum compute speed... As such, please predominantly feel free to switch it into the (Text_Search_Technique) algorithm which can be found in the same GitHub repository that you found this T-SQL query sourcecode file in (Obsidian)... It would need to replace the @Search_Text_Extended_Typo_Table_Variable transformation codeblock...
+--AND BTW, THE I THINK THE EXISTING PREVIOUSLY IMPLEMENTED APPROACH TO THIS ACTUALLY HAS A BUG IN IT, AND SO THE SEARCH BEHAVIOUR IS ALMOST CERTAINLY SUB-OPTIMAL WITHOUT THIS AMENDMENT SWAPPED INTO THE APPROPRIATE PLACE IN THE OVERALL SEARCH TEXT ALGORITHM!!!!!
+
+--SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS
+--This algorithm is a sub-algorithm that can be slotted into the MS_Obsidian LLM (MS_Text_Search_Purposym_And_Semantic_Associate_Thesauruses_Integration) algorithm in placce of the slicer dicer fragment building technique...
+--Please remember to clean multiple consecutive space into single spaces... I have uploaded a t-sql query for this also onto this GitHub repository...
+--Please bear in mind, that I had to develop this using hash characters in place of space characters as the word delimiters, because SSMS has a single space character bug, that blocks you from assigning to an nvarchar varaible... nvm... Yu will need to change the @Index_Pattern assigned value from a hash character (#) to a single space character ( ) in your testing and production usecases...
+--Please bear in mind, that as such, I have not been able to fully test this sub-algorithm insert, but I am confident that it is many magnitudes more performant than existing best-in-class, in terms of both compute speed and compute energy efficiency... It makes full use of SQL database parallelisation, and also uses the vastly superior join features so that inherently slow looping can be altogether avoided!...
+--SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS_SUPERSEEDED_COMMENTS
+
+
+--GLOBAL_VARIABLES
+Declare @Search_Text_Typo_Granularity_Percentage As Int
+Set @Search_Text_Typo_Granularity_Percentage = 20 --This variable value must be constrained to 0=<x<=100... In order to experience good effectiveness, values between 10% and 50% are recommended.
+--GLOBAL_VARIABLES
+
+
+--INPUT
+Declare @Search_Text As NVarchar(Max)
+Set @Search_Text = N'123456789'
+--INPUT
+
+
+--FRAGMENTISER_OPTIMISED
+--Fragmentise with maximum efficiency (altrhough I would prefer to use a stored procedure in a column assignation of course!!!)...
+Declare @Search_Text_String_Length BigInt
+Declare @Typo_Value_String_Length As Decimal
+Declare @Dynamic_SQL_Data_Intermediate_Variable Nvarchar(Max)
+Declare @Obsidian_Data_Element_Index Table ([Element_Index] BigInt)
+Declare @Search_Text_Extended_Typo_Table_Variable Table ([Typo_Value] NVarchar(Max))
+	
+
+--Some initiation variables need to be set...
+Set @Search_Text_String_Length = (Len(Cast(@Search_Text As Nvarchar(Max))) + 1) --Plus 1, in order to handle the suffixal limit boundary later on properly and efficiently.
+Set @Typo_Value_String_Length = Ceiling(((@Search_Text_String_Length * @Search_Text_Typo_Granularity_Percentage) / 100))
+
+--Here we need to build a fragment scaffold...
+Set @Dynamic_SQL_Data_Intermediate_Variable =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Search_Text_String_Length), '@Index_Count', @Search_Text_String_Length) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+		
+Insert Into @Obsidian_Data_Element_Index ([Element_Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable)
+
+
+--Finally we insert the typo value fragments into the typo value table, with their additionally handled fragment series limit character insert rows...
+--(Prefixal Limit Character Added Here)
+Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
+Select
+	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), A.[Element_Index], B.[Element_Index]) As Nvarchar(Max)) As [Typo_Value]
+From @Obsidian_Data_Element_Index A
+Inner Join @Obsidian_Data_Element_Index B On
+	(A.[Element_Index] = 1 And B.[Element_Index] < @Typo_Value_String_Length)
+
+--(Intermediate Typo Value Fragments Added Here)
+Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
+Select
+	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), A.[Element_Index], (B.[Element_Index] - A.[Element_Index])) As Nvarchar(Max)) As [Typo_Value]
+From @Obsidian_Data_Element_Index A
+Inner Join @Obsidian_Data_Element_Index B On
+	(B.[Element_Index] = (A.[Element_Index] + @Typo_Value_String_Length))
+
+--(Suffixal Limit Character Added Here)
+Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
+Select
+	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), B.[Element_Index], ((A.[Element_Index] - B.[Element_Index]) + 1)) As Nvarchar(Max)) As [Typo_Value]
+From @Obsidian_Data_Element_Index A
+Inner Join @Obsidian_Data_Element_Index B On
+	(A.[Element_Index] = @Search_Text_String_Length And B.[Element_Index] > (@Search_Text_String_Length - @Typo_Value_String_Length))
+Where A.[Element_Index] != B.[Element_Index]  --This is the other part of allowing us to handle the suffixal limit boundary by adding an extra element index previously, and this where clause removes the extra row created by this approach.
+--FRAGMENTISER_OPTIMISED
+
+
+--OUTPUT
+Select [Typo_Value] As [Typo_Value] From @Search_Text_Extended_Typo_Table_Variable
+--OUTPUT
