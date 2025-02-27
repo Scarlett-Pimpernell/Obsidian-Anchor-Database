@@ -1,4 +1,4 @@
---MS_Obsidian_Fragmentiser_Optimised_Every_Character_Delimit_v00.000.0005_MAJ_REL
+--MS_Obsidian_Fragmentiser_Optimised_Every_Character_Delimit_v00.000.0006_MAJOR_RELEASE
 --This is a specific variation of the optimised fragmentiser algorithm, which is intended for use to fully fragmentise a string, with maximum compute speed... As such, please predominantly feel free to switch it into the (Text_Search_Technique) algorithm which can be found in the same GitHub repository that you found this T-SQL query sourcecode file in (Obsidian)... It would need to replace the @Search_Text_Extended_Typo_Table_Variable transformation codeblock...
 --AND BTW, THE I THINK THE EXISTING PREVIOUSLY IMPLEMENTED APPROACH TO THIS ACTUALLY HAS A BUG IN IT, AND SO THE SEARCH BEHAVIOUR IS ALMOST CERTAINLY SUB-OPTIMAL WITHOUT THIS AMENDMENT SWAPPED INTO THE APPROPRIATE PLACE IN THE OVERALL SEARCH TEXT ALGORITHM!!!!!
 
@@ -18,7 +18,7 @@ Set @Search_Text_Typo_Granularity_Percentage = 20 --This variable value must be 
 
 --INPUT
 Declare @Search_Text As NVarchar(Max)
-Set @Search_Text = N'123456789'
+Set @Search_Text = N'123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 --INPUT
 
 
@@ -48,33 +48,20 @@ Insert Into @Obsidian_Data_Element_Index ([Element_Index])
 Execute (@Dynamic_SQL_Data_Intermediate_Variable)
 
 
---Finally we insert the typo value fragments into the typo value table, with their additionally handled fragment series limit character insert rows...
---(Prefixal Limit Character Added Here)
-Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
-Select
-	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), A.[Element_Index], B.[Element_Index]) As Nvarchar(Max)) As [Typo_Value]
-From @Obsidian_Data_Element_Index A
-Inner Join @Obsidian_Data_Element_Index B On
-	(A.[Element_Index] = 1 And B.[Element_Index] < @Typo_Value_String_Length)
-
---(Intermediate Typo Value Fragments Added Here)
+--Finally we insert the typo value fragments into the typo value table.
 Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
 Select
 	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), A.[Element_Index], (B.[Element_Index] - A.[Element_Index])) As Nvarchar(Max)) As [Typo_Value]
 From @Obsidian_Data_Element_Index A
 Inner Join @Obsidian_Data_Element_Index B On
-	(B.[Element_Index] = (A.[Element_Index] + @Typo_Value_String_Length))
-
---(Suffixal Limit Character Added Here)
-Insert Into @Search_Text_Extended_Typo_Table_Variable ([Typo_Value])
+	(B.[Element_Index] > A.[Element_Index] And B.[Element_Index] < (A.[Element_Index] + @Typo_Value_String_Length))
+Union All
 Select
-	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), B.[Element_Index], ((A.[Element_Index] - B.[Element_Index]) + 1)) As Nvarchar(Max)) As [Typo_Value]
+	Cast(Substring(Cast(@Search_Text As Nvarchar(Max)), A.[Element_Index], (B.[Element_Index] - A.[Element_Index])) As Nvarchar(Max)) As [Typo_Value]
 From @Obsidian_Data_Element_Index A
 Inner Join @Obsidian_Data_Element_Index B On
-	(A.[Element_Index] = @Search_Text_String_Length And B.[Element_Index] > (@Search_Text_String_Length - @Typo_Value_String_Length))
-Where A.[Element_Index] != B.[Element_Index]  --This is the other part of allowing us to handle the suffixal limit boundary by adding an extra element index previously, and this where clause removes the extra row created by this approach.
+	(B.[Element_Index] < A.[Element_Index] And B.[Element_Index] > (A.[Element_Index] + @Typo_Value_String_Length))
 --FRAGMENTISER_OPTIMISED
-
 
 --OUTPUT
 Select [Typo_Value] As [Typo_Value] From @Search_Text_Extended_Typo_Table_Variable
