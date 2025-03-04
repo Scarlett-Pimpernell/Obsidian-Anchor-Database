@@ -28,10 +28,9 @@ Execute (@Dynamic_SQL_Data_Intermediate_Variable)
 Declare @Obsidian_Element_Index_Crypto_Scaffold_Intermediate Table ([Order] Int, [Index] Int)
 Insert Into @Obsidian_Element_Index_Crypto_Scaffold_Intermediate ([Order], [Index])
 Select
-	Row_Number() Over(Order By (Select 1) Asc) As [Order],
-	[Index] As [Index]
-From @Obsidian_Index_Scaffold
-Order By Crypt_Gen_Random(32) --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
+	Row_Number() Over(Order By Crypt_Gen_Random(32) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
+	(Case When Len(Cast([Index] As Nvarchar(4000))) > 1 Then Cast(Right(Cast([Index] As Nvarchar(4000)), 1) As Int) Else [Index] End) As [Index] --This little trick I 'appropriated' from the Romulans will actually sub-perfectly improve hexadecimal ID uniform balancing, across value classes, such that maximum value space can be used, in order to disperse hashes to near maximal dimensionality, without the onerous computational overhead that accompanies implementing unto the 'FALSE GOD' of the 'Way of D'era', which is of course pursuing the perfect solution for any given problem.
+From @Obsidian_Index_Scaffold  
 
 Declare @Obsidian_Element_Index_Crypto_Scaffold_Final Table ([Index] Nvarchar(4000), [Crypto_Hash] Binary(4000))
 Insert Into @Obsidian_Element_Index_Crypto_Scaffold_Final ([Index], [Crypto_Hash])
@@ -59,8 +58,8 @@ Set Identity_Insert [MooDPrimaryElement] OFF
 Declare @Obsidian_Field_0001_Index_Crypto_Scaffold_Intermediate Table ([Order] Int, [Index] Int)
 Insert Into @Obsidian_Field_0001_Index_Crypto_Scaffold_Intermediate ([Order], [Index])
 Select
-	Row_Number() Over(Order By (Select 1) Asc) As [Order],
-	[Index] As [Index]
+	Row_Number() Over(Order By Crypt_Gen_Random(32) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
+	(Case When Len(Cast([Index] As Nvarchar(4000))) > 1 Then Cast(Right(Cast([Index] As Nvarchar(4000)), 1) As Int) Else [Index] End) As [Index] --This little trick I 'appropriated' from the Romulans will actually sub-perfectly improve hexadecimal ID uniform balancing, across value classes, such that maximum value space can be used, in order to disperse hashes to near maximal dimensionality, without the onerous computational overhead that accompanies implementing unto the 'FALSE GOD' of the 'Way of D'era', which is of course pursuing the perfect solution for any given problem.
 From @Obsidian_Index_Scaffold
 Order By Crypt_Gen_Random(32) --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
 
@@ -78,8 +77,8 @@ Set @Field_0001_Hexadecimal_ID_Hash = Left(Cast((Select String_Agg([Index], '') 
 Declare @Obsidian_Field_0002_Index_Crypto_Scaffold_Intermediate Table ([Order] Int, [Index] Int)
 Insert Into @Obsidian_Field_0002_Index_Crypto_Scaffold_Intermediate ([Order], [Index])
 Select
-	Row_Number() Over(Order By (Select 1) Asc) As [Order],
-	[Index] As [Index]
+	Row_Number() Over(Order By Crypt_Gen_Random(32) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
+	(Case When Len(Cast([Index] As Nvarchar(4000))) > 1 Then Cast(Right(Cast([Index] As Nvarchar(4000)), 1) As Int) Else [Index] End) As [Index] --This little trick I 'appropriated' from the Romulans will actually sub-perfectly improve hexadecimal ID uniform balancing, across value classes, such that maximum value space can be used, in order to disperse hashes to near maximal dimensionality, without the onerous computational overhead that accompanies implementing unto the 'FALSE GOD' of the 'Way of D'era', which is of course pursuing the perfect solution for any given problem.
 From @Obsidian_Index_Scaffold
 Order By Crypt_Gen_Random(32) --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
 
@@ -97,8 +96,8 @@ Set @Field_0002_Hexadecimal_ID_Hash = Left(Cast((Select String_Agg([Index], '') 
 Declare @Obsidian_Field_0003_Index_Crypto_Scaffold_Intermediate Table ([Order] Int, [Index] Int)
 Insert Into @Obsidian_Field_0003_Index_Crypto_Scaffold_Intermediate ([Order], [Index])
 Select
-	Row_Number() Over(Order By (Select 1) Asc) As [Order],
-	[Index] As [Index]
+	Row_Number() Over(Order By Crypt_Gen_Random(32) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
+	(Case When Len(Cast([Index] As Nvarchar(4000))) > 1 Then Cast(Right(Cast([Index] As Nvarchar(4000)), 1) As Int) Else [Index] End) As [Index] --This little trick I 'appropriated' from the Romulans will actually sub-perfectly improve hexadecimal ID uniform balancing, across value classes, such that maximum value space can be used, in order to disperse hashes to near maximal dimensionality, without the onerous computational overhead that accompanies implementing unto the 'FALSE GOD' of the 'Way of D'era', which is of course pursuing the perfect solution for any given problem.
 From @Obsidian_Index_Scaffold
 Order By Crypt_Gen_Random(32) --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row.
 
