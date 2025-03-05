@@ -1,0 +1,27 @@
+/* BEGIN_SYSTEM_GENERATED_CODE */
+/* The script inside the SYSTEM_GENERATED_CODE section is auto generated for each execution, so don't put any script here that you want to keep */
+
+SET NOCOUNT ON;
+
+/* END_SYSTEM_GENERATED_CODE */
+
+--MS_Obsidified_Custom_T_SQL_Script_For_Aggregation_Matrices
+--The best practice when starting to write any 'Custom SQL' script, is to simply grab the syntax sourcecode from the MooD aggregation matrix, and execute it directly in SQL Server Management Studio, within a query window... This will let you see what the overall end state and end shape are, for the output which you want to pass back into the MooD engine aggregation matrix...
+--You only need to use a SQL Server @Matrix_Pre_Aggregation technique, if shock horror, your MooD aggregation matrix output requires aggregate data for its rows and/or columns, such as sums, minimas, maximas, averages, and other more funky some such similars as these... Otherwise, just simply implement a single SQL Server select statement, or where necessary multiple SQL Server select statements, joined into one result set with 'Union Alls'...
+Declare @Matrix_Pre_Aggregation Table ([Dim1Level0] Char(35), [value_21] Float) --To get the right column names here, you may need to pre-build the MooD aggregation matrix, open the 'Custom SQL' script dialogue, and then do some manual analysis yourself, by understanding the auto-generated T-SQL syntax sourcecode (Gentle Hint: It is woefully compute inefficient...)... Then simply adjust the column names here in the Obsidified SQL Server script as appropriate... Please be aware that row groupings in the edited 'Custom SQL' script, if there are any groupings required, due to the existence of desired row levels or column levels in the MooD aggregation matrix, will obviously need a lot more deeper thought, which I currently can not be bothered investigating further (Speak to Derek Muir... He may have the hunger for slightly more complex affairs... and maybe not even of the 'assumed' kind!!!)... How any which way, you should be starting to realise the 'Custom SQL' MooD aggregation matrices are not for the faint of heart!!!... (The MooD aggregation engine, for want of a better way of putting it, is basically driven by a 'satan-engine', as far as I can tell... It produces absolutely horrific, and I would even say criminal syntax, that humans basically should not really try to understand!!!)...
+--Char(35), because the MooD element Hex IDs, used as row headers, are always 32 (8-Bit) characters long, and as you'll see in the insert select statement codeblock below, we also need an additional 3 (8-bit) characters worth of space, because the MooD engine requires SQL Server row header Hex IDs to be returned with their element type (joined from the SQL Server [MooDAlias] table) concatenated as a suffix... This concatenated string then automatically gets handled properly by the MooD engine (Icon, naming, etc_)... BTW, the current MooD engine can only ever assume element type values ranging from 1 to 999... As an interesting side, this means that unbeknownst to most people at MooD, you can never natively handle solution usecases where there are more than 999 different element types, without taking on massive risk!!!...
+Insert Into @Matrix_Pre_Aggregation ([Dim1Level0], [value_21])
+Select
+	(A.[id] + Cast(B.[basedOnElementType] As Char(3))) As [Dim1Level0], --The SQL Server [basedOnElementType] column from the SQL Server [MooDAlias] table, which joins rows to the SQL Server [MooDPrimaryElement] table, by matching based on (B.[id] = A.[aliasId]), in order to find the right element type for each element returned to the MooD aggregation matrix...
+	Len(A.[name]) As [value_21]
+From [MooDPrimaryElement] A
+Inner Join [MooDAlias] B On
+	(B.[id] = A.[aliasId])
+Where A.[parentId] = '3708862BD1CD47458E9B65CED5DB79B4' --In this particular example, I've kept it simple, and am simply aggregating data from the children of the parent element which has the aforementioned Hex ID evaluated here in the where clause distal arguement...
+
+--Here we carry out any necessary aggregations... You will need to keep the columns synchronised in terms of naming, order, and count, depending on what you have declared and defined above, in this 'Custom SQL' script, for the SQL Server @Matrix_Pre_Aggregation table...
+Insert Into @Matrix_Pre_Aggregation ([Dim1Level0], [value_21])
+Values ('-=TOTAL=-', (Select Sum([value_21]) From @Matrix_Pre_Aggregation)) --Nota Bene... Someone at some point decided to use the string pattern -=TOTAL=- to indicate total columns, as is seen here, but there could be all sorts of other magic string patterns for various types of other aggregation commands... For example, you may have to do your own investigation in order to find the magic string pattern for 'Sub Totals' at some point...
+
+--Don't forget to actually return a result set to the MooD engine aggregation matrix, as similar to below!!!
+Select * From @Matrix_Pre_Aggregation
