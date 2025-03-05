@@ -5,32 +5,27 @@ Delete From [MooDElementData] Where [creationDateTime] = '2025-03-03 08:01:17.00
 
 
 --Superfast Obsidian Hexadecimal-Compatible MooD Data Smashing Algorithm (To Be Used In A Custom T-SQL Synchroniser Script)
---This is a safer version of the smash hash algorithm from a hexadecimal ID clash avoidance perspective, but you have to take a compute speed performance hit in order to benefit from this safety... This safer algorithm allows up to all characters to be possibly the same, thereby exponentially increasing the dimensionality, and making the probability of ID clashes so low, that it may only happen once again in the whole future of the rest of the time-space continuum!!! (The original algorithm which this one was extended from, was WITHOUT character more-than-double-duplicates, whereas this safer algorithm is WITH character more-than-double-duplicates)... Only use this safer hasher if you are utterly concerned by the posssibility of ID clashes in business critical hyper scale data usecases, otherwise you will unnecessarily slow down computation, sometimes unacceptably so)...
+--This is a riskier version of the smash hash algorithm from a hexadecimal ID clash avoidance perspective, but you can make a compute speed performance gain so long as you accept this additional risk... This riskier algorithm allows each allowed hexadecimal hash characterto be used only twice (numbers 0 to 9 and letters A to F), thereby exponentially reducing the dimensionality, and making the probability of ID clashes slightly higher, but these Hex ID clashes may still only happen only several times in the whole future of the rest of the time-space continuum!!! (The original algorithm which this one was restricted from, was WITH character more-than-double-duplicates, whereas this riskier algorithm is WITHOUT character more-than-double-duplicates)... Only use this riskier hasher if you are utterly unconcerned by the posssibility of ID clashes in business standard sub-hyper scale data usecases, otherwise you will unwisely speed up computation, sometimes acceptably so)...
 --Eventually, I plan to amend this approach, so that all the necessary hexadecimal hash IDs can be pre-generated in parallel, before element creation and field data ingestion, as this will provide probably very significant compute speed improvements.
 --Please be aware, that the Hexadecimal ID hash technique in this algorithm is 'Near-Perfect', because it optimises the trade-off between uniform balancing of values via the maximum utilisation of value space, and the implementation of the most appropriate speediness of computation... Without any significant or necessary 'fudging' we can handle the reality that 32 character hexadecimal ID hashes require scaffolds with elements that don't fall neatly onto a single integer scale (ie_ they have non zero modulus 10 characteristics)... This is deemed therefore no longer a problem by the Vulcan authorities for now, because 4th age humanoids can simply implement my run-of-the-mill pixie science, in order to defeat the Borg when necessary...
---Now onto some Hobbit stats... I asked ChatGPT what the probability of ID clashing was with this safer algorithm as it stands currently... It calculated that ID clashes would happen every 1 in ~2.94×10^39 generated IDs (on average across an insane amount of generated IDs of course)... This is a vanishingly small number, and more than sufficient to ensure expected behaviour in basically all small data (1 Million IDs), medium data (1 Billion IDs), big data (1 Trillion IDs), and hyper data (1 Quadrillion IDs) usecases...
+--Now onto some Hobbit stats... I asked ChatGPT what the probability of ID clashing was with this algorithm as it stands currently... It calculated that ID clashes would happen every 1 in ~2.49×10^31 generated IDs (on average across an insane amount of generated IDs of course)... This is a vanishingly small number, and more than sufficient to ensure expected behaviour in almost all small data (1 Million IDs), medium data (1 Billion IDs), and big data (1 Trillion IDs) usecases... However, if you are implementing a hyper data (>= 1 Quadrillion IDs) usecase, then please consider using the more robust hexadecimal ID hashing algorithm that I will hopefully be releasing onto GitHub any day now... Keep your repentant 'sauron eyes' peeled!!!
 
 
 --(Global)
 --Scaffold...
-Declare @Obsidian_Index_Scaffold_Hash_Alpha Table ([Raw_Index] Int, [Hashed_Index] Char(1))
-Insert Into @Obsidian_Index_Scaffold_Hash_Alpha ([Raw_Index], [Hashed_Index])
+Declare @Obsidian_Index_Scaffold_Hashes Table ([Raw_Index] Int, [Hashed_Index] Char(1))
+Insert Into @Obsidian_Index_Scaffold_Hashes ([Raw_Index], [Hashed_Index])
 Values (1, '0'), (2, '0'), (3, '1'), (4, '1'), (5, '2'), (6, '2'), (7, '3'), (8, '3'), (9, '4'), (10, '4'), (11, '5'), (12, '5'), (13, '6'), (14, '6'), (15, '7'), (16, '7'), (17, '8'), (18, '8'), (19, '9'), (20, '9'), (21, 'A'), (22, 'A'), (23, 'B'), (24, 'B'), (25, 'C'), (26, 'C'), (27, 'D'), (28, 'D'), (29, 'E'), (30, 'E'), (31, 'F'), (32, 'F')
-
-Declare @Obsidian_Index_Scaffold_Hash_Beta Table ([Raw_Index] Int, [Hashed_Index] Char(1))
-Insert Into @Obsidian_Index_Scaffold_Hash_Beta ([Raw_Index], [Hashed_Index])
-Values (1, '0'), (2, '1'), (3, '2'), (4, '3'), (5, '4'), (6, '5'), (7, '6'), (8, '7'), (9, '8'), (10, '9'), (11, 'A'), (12, 'B'), (13, 'C'), (14, 'D'), (15, 'E'), (16, 'F')
 
 
 --(Elements)
---Delta Scaffold Join Hash...
+--Scaffold Scramble...
 Declare @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate Table ([Order] Int, [Hashed_Index] Char(1))
 Insert Into @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate ([Order], [Hashed_Index])
 Select
-	Row_Number() Over(Partition By A.[Raw_Index] Order By Crypt_Gen_Random(8000) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time...
-	B.[Hashed_Index] As [Hashed_Index]
-From @Obsidian_Index_Scaffold_Hash_Alpha A
-Cross Join @Obsidian_Index_Scaffold_Hash_Beta B
+	(Row_Number() Over(Order By Crypt_Gen_Random(7) Asc)) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time... (Some Math: You need 7 characters to account for at least 3,200 permutations {32 scaffold indexes multiplied by 100 to give ample room for mostly-non-clashing manoeuvre}... This is why I have now standard-optimised this crypto number length... Otherwise it massively slows down the algorithm without any actual benefit... To determine the crypto number length you need for usecase, which will cover the permutations, multiply your scaffold index count by a sensible number like 100... Then we need to find the smallest number n, such that: 𝑛! ≥ 3,200... This can be searched manually by gradually increasing n while recalculating each time, or you can implement a calculation to the same effect!!!)...
+	[Hashed_Index] As [Hashed_Index]
+From @Obsidian_Index_Scaffold_Hashes
 
 --Rejoin Hash...
 Declare @Element_Hexadecimal_ID_Hash As Char(32)
@@ -38,9 +33,9 @@ Set @Element_Hexadecimal_ID_Hash =
 (
 Select
 	String_Agg(B.[Hashed_Index], '') As [Hexadecimal_ID_Hash] --Be careful, the hash values are joined in no particular order... This may impact associated development work... If it is causing an issue, you can easily force the order by integrating the 'Str_Agg' function optional 'Within Group (Order By [Some_Sort_Of_Order_Logic] Asc)' into this line of sourcecode, in the appropriate manner... A.[Raw_Index] would probably be a suitable candidate to order on here...
-From @Obsidian_Index_Scaffold_Hash_Alpha A
+From @Obsidian_Index_Scaffold_Hashes A
 Inner Join @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate B On
-	(B.[Order] = 1 And B.[Order] = A.[Raw_Index])
+	(B.[Order] = A.[Raw_Index])
 )
 
 --(Something Seemingly Banal, Will Probably Turn Out To Be the Critical Algorithmic Facet... No Doubt...)
@@ -73,15 +68,13 @@ Insert Into @Obsidian_Index_Scaffold_Field ([Index])
 Execute (@Dynamic_SQL)
 
 --Scaffold Scramble...
-Declare @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate Table ([Order] Int, [Raw_Index] Int, [Hashed_Index] Char(1))
-Insert Into @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate ([Order], [Raw_Index], [Hashed_Index])
+Declare @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate Table ([Order] Int, [Hashed_Index] Char(1))
+Insert Into @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate ([Order], [Hashed_Index])
 Select
-	Row_Number() Over(Partition By B.[Raw_Index] Order By Crypt_Gen_Random(8000) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time...
-	B.[Raw_Index] As [Raw_Index],
-	C.[Hashed_Index] As [Hashed_Index]
+	Row_Number() Over(Order By Crypt_Gen_Random(8) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time... (Some Math: You need 8 characters to account for at least 9,600 permutations {32 scaffold indexes multiplied by the number of fields [in this case 3], multiplied by 100 to give ample room for mostly-non-clashing manoeuvre}... This is why I have now standard-optimised this crypto number length... Otherwise it massively slows down the algorithm without any actual benefit... To determine the crypto number length you need for usecase, which will cover the permutations, multiply your scaffold index count by your field count, and then multiply by a sensible number like 100... Then we need to find the smallest number n, such that: 𝑛! ≥ 9,600... This can be searched manually by gradually increasing n while recalculating each time, or you can implement a calculation to the same effect!!!)...
+	B.[Hashed_Index] As [Hashed_Index]
 From @Obsidian_Index_Scaffold_Field A
-Cross Join @Obsidian_Index_Scaffold_Hash_Alpha B
-Cross Join @Obsidian_Index_Scaffold_Hash_Beta C
+Cross Join @Obsidian_Index_Scaffold_Hashes B
 
 --Rejoin Hash...
 Declare @Field_Hexadecimal_ID_Hashes Table ([Order] Bigint, [Hexadecimal_ID_Hash] Varchar(Max))
@@ -90,10 +83,10 @@ Select
 	(Row_Number() Over(Order By (Select 1) Asc)) As [Order],
 	String_Agg(C.[Hashed_Index], '') As [Hexadecimal_ID_Hash] --Be careful, the hash values are joined in no real particular order, which is more than fine for most usecases, but for some, this may impact associated development work... If it is causing an issue, you can easily force the order by amending the logic in 'Within Group (Order By [Some_Sort_Of_Order_Logic] Asc)' on this line of sourcecode, in an appropriate manner...
 From @Obsidian_Index_Scaffold_Field A
-Cross Join @Obsidian_Index_Scaffold_Hash_Alpha B
+Cross Join @Obsidian_Index_Scaffold_Hashes B
 Inner Join @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate C On
-	(C.[Order] < (@Field_Count + 1) And C.[Order] = (((A.[Index] - 1) * 32) + B.[Raw_Index]))
-Group By A.[Index], B.[Raw_Index]
+	(C.[Order] = (((A.[Index] - 1) * 32) + B.[Raw_Index]))
+Group By A.[Index]
 
 --(Something Seemingly Banal, Will Probably Turn Out To Be the Critical Algorithmic Facet... No Doubt...)
 Declare @Max_Field_cluId As Bigint
