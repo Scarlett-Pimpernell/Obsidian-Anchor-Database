@@ -1,0 +1,105 @@
+Select * From [MooDPrimaryElement] Order By [creationDateTime] Desc
+Select * From [MooDElementData] Order By [creationDateTime] Desc
+Delete From [MooDPrimaryElement] Where [creationDateTime] = '2025-03-03 08:01:17.000'
+Delete From [MooDElementData] Where [creationDateTime] = '2025-03-03 08:01:17.000'
+
+
+--Superfast Obsidian Hexadecimal-Compatible MooD Data Smashing Algorithm (To Be Used In A Custom T-SQL Synchroniser Script)
+--This is a riskier version of the smash hash algorithm from a hexadecimal ID clash avoidance perspective, but you can make a compute speed performance gain so long as you accept this additional risk... This riskier algorithm allows each allowed hexadecimal hash characterto be used only twice (numbers 0 to 9 and letters A to F), thereby exponentially reducing the dimensionality, and making the probability of ID clashes slightly higher, but these Hex ID clashes may still only happen only several times in the whole future of the rest of the time-space continuum!!! (The original algorithm which this one was restricted from, was WITH character more-than-double-duplicates, whereas this riskier algorithm is WITHOUT character more-than-double-duplicates)... Only use this riskier hasher if you are utterly unconcerned by the posssibility of ID clashes in business standard sub-hyper scale data usecases, otherwise you will unwisely speed up computation, sometimes acceptably so)...
+--Eventually, I plan to amend this approach, so that all the necessary hexadecimal hash IDs can be pre-generated in parallel, before element creation and field data ingestion, as this will provide probably very significant compute speed improvements.
+--Please be aware, that the Hexadecimal ID hash technique in this algorithm is 'Near-Perfect', because it optimises the trade-off between uniform balancing of values via the maximum utilisation of value space, and the implementation of the most appropriate speediness of computation... Without any significant or necessary 'fudging' we can handle the reality that 32 character hexadecimal ID hashes require scaffolds with elements that don't fall neatly onto a single integer scale (ie_ they have non zero modulus 10 characteristics)... This is deemed therefore no longer a problem by the Vulcan authorities for now, because 4th age humanoids can simply implement my run-of-the-mill pixie science, in order to defeat the Borg when necessary...
+--Now onto some Hobbit stats... I asked ChatGPT what the probability of ID clashing was with this algorithm as it stands currently... It calculated that ID clashes would happen every 1 in ~2.49×10^31 generated IDs (on average across an insane amount of generated IDs of course)... This is a vanishingly small number, and more than sufficient to ensure expected behaviour in almost all small data (1 Million IDs), medium data (1 Billion IDs), and big data (1 Trillion IDs) usecases... However, if you are implementing a hyper data (>= 1 Quadrillion IDs) usecase, then please consider using the more robust hexadecimal ID hashing algorithm that I will hopefully be releasing onto GitHub any day now... Keep your repentant 'sauron eyes' peeled!!!
+
+
+--(Global)
+--Scaffold...
+Declare @Obsidian_Index_Scaffold_Hashes Table ([Raw_Index] Int, [Hashed_Index] Char(1))
+Insert Into @Obsidian_Index_Scaffold_Hashes ([Raw_Index], [Hashed_Index])
+Values (1, '0'), (2, '0'), (3, '1'), (4, '1'), (5, '2'), (6, '2'), (7, '3'), (8, '3'), (9, '4'), (10, '4'), (11, '5'), (12, '5'), (13, '6'), (14, '6'), (15, '7'), (16, '7'), (17, '8'), (18, '8'), (19, '9'), (20, '9'), (21, 'A'), (22, 'A'), (23, 'B'), (24, 'B'), (25, 'C'), (26, 'C'), (27, 'D'), (28, 'D'), (29, 'E'), (30, 'E'), (31, 'F'), (32, 'F')
+
+
+--(Elements)
+--Scaffold Scramble...
+Declare @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate Table ([Order] Int, [Hashed_Index] Char(1))
+Insert Into @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate ([Order], [Hashed_Index])
+Select
+	(Row_Number() Over(Order By Crypt_Gen_Random(8000) Asc)) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time...
+	[Hashed_Index] As [Hashed_Index]
+From @Obsidian_Index_Scaffold_Hashes
+
+--Rejoin Hash...
+Declare @Element_Hexadecimal_ID_Hash As Char(32)
+Set @Element_Hexadecimal_ID_Hash =
+(
+Select
+	String_Agg(B.[Hashed_Index], '') As [Hexadecimal_ID_Hash] --Be careful, the hash values are joined in no particular order... This may impact associated development work... If it is causing an issue, you can easily force the order by integrating the 'Str_Agg' function optional 'Within Group (Order By [Some_Sort_Of_Order_Logic] Asc)' into this line of sourcecode, in the appropriate manner... A.[Raw_Index] would probably be a suitable candidate to order on here...
+From @Obsidian_Index_Scaffold_Hashes A
+Inner Join @Obsidian_Index_Scaffold_Element_Scrambled_Intermediate B On
+	(B.[Order] = A.[Raw_Index])
+)
+
+--(Something Seemingly Banal, Will Probably Turn Out To Be the Critical Algorithmic Facet... No Doubt...)
+Declare @Max_Element_cluId As Bigint
+Set @Max_Element_cluId = (Select Max([cluId]) From [MooDPrimaryElement])
+
+--PLEASE DON'T FORGET TO AMEND THESE INSERTED ROW VALUES BELOW APPROPRIATELY... YOU WILL NEED TO LOOK UP THE [parentId] (IF YOU ARE NOT CREATING THE PARENT ELEMENT HERE ITSELF) ON THE [MooDPrimaryElement] TABLE IN THE MOOD DATABASE; AND THE YOU WILL NEED TO LOOK UP THE [aliasId] FROM THE [MooDAlias] TABLE IN THE MOOD SQL SERVER DATABASE... THE REST OF THE COLUMNS SHOULD BE RATHER SELF-EXPLANATORY IN MY HUMBLE OPINION... (IF YOU ARE CREATING PARENT ELEMENTS {OR EVEN A TREE OF ELEMENTS, THEN MAKE SURE YOU PUT THE HIGHEST LEVEL OF THE TREE TOWARDS THE TOP OF THE INSERT ROWS, AND ORDER THE ROWS SO THAT ALL DESCENDENTS WILL ALWAYS COME AFTER THEIR PARENT ELEMENT ROW... THEN SIMPLY WHILE LOOP AROUND THE INSERT SET OF ROWS, ONE LEVEL OF THE ELEMENT HIERARCHY AT A TIME [SO THAT YOU CAN PRE-GENERATE THE APPROPRIATE HEXADECIMAL IDENTIFIERS]})... OH, AND PLESE DON'T FORGET TO INCREMENT THE CLUID IF YOU ARE SIMULTANEOUSLY INSERTING MULTIPLE ELEMENT ROWS (HE'S MISBEHAVING ENOUGH ALREADY, I'M SURE YOU'LL AGREE)...
+Set Identity_Insert [MooDPrimaryElement] ON
+Insert Into [MooDPrimaryElement] ([className], [id], [parentId], [aliasId], [ownerId], [name], [variantOfId], [lastModifiedDateTime], [creationDateTime], [flags], [cluId])
+Values ('PRIM', @Element_Hexadecimal_ID_Hash, '3708862BD1CD47458E9B65CED5DB79B4', '03AFE16743A3455889C46D09A05D55F1', '786A4991EA7B11D1B4840020AFC894E9', ('Database_Edit_Test_' + Cast(Getdate() As Nvarchar(4000))), NULL, '2025-03-03 08:01:17.000', '2025-03-03 08:01:17.000', 0, (@Max_Element_cluId + 1))
+Set Identity_Insert [MooDPrimaryElement] OFF
+
+
+--THE FOLLOWING DATA FIELD TECHNIQUE MUST BE CARRIED FOR EACH APPROPRIATE FIELD ON A GIVEN PREVIOUSLY CREATED MOOD ELEMENT IN THIS SMASH ALGORITHM, BECAUSE OTHERWISE, THE ELEMENTS MAY BE UNEDITABLE IN MOOD BA AND MOOD MAE!!!... AS SUCH, IF YOU ARE INGESTING A LOT OF FIELD DATA, YOU PROBABLY WANT TO IMPLEMENT THE REST OF THIS ALGORITHM WITHIN A WHILE LOOP, WHICH WOULD LOOP AROUND EACH MOOD ELEMENT FIELD, INSTEAD OF WHAT I HAVE DONE HERE, WHICH IS SIMPLY COPY AND PASTE HAND-CRANKING, BECAUSE I AM APPARENTLY NOT YET RECEIVING PAYMENT FOR MY EFFORTS!!!
+--(Fields)
+--Scaffold...
+Declare @Field_Count As Bigint
+Set @Field_Count = 3
+Declare @Dynamic_SQL As Nvarchar(Max)
+Set @Dynamic_SQL =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(32), '@Index_Count', @Field_Count) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Field Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Field ([Index])
+Execute (@Dynamic_SQL)
+
+--Scaffold Scramble...
+Declare @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate Table ([Order] Int, [Hashed_Index] Char(1))
+Insert Into @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate ([Order], [Hashed_Index])
+Select
+	Row_Number() Over(Order By Crypt_Gen_Random(8000) Asc) As [Order], --This should scramble the index series appropriately, when used in conjunction with storing an order for each scrambled row... You can reduce this crypto number if you are only handling small amounts of data, and if you are handling large amounts of data, you probably want to concatenate multiple crypto numbers at maximum byte size each time...
+	B.[Hashed_Index] As [Hashed_Index]
+From @Obsidian_Index_Scaffold_Field A
+Cross Join @Obsidian_Index_Scaffold_Hashes B
+
+--Rejoin Hash...
+Declare @Field_Hexadecimal_ID_Hashes Table ([Order] Bigint, [Hexadecimal_ID_Hash] Varchar(Max))
+Insert Into @Field_Hexadecimal_ID_Hashes ([Order], [Hexadecimal_ID_Hash])
+Select
+	(Row_Number() Over(Order By (Select 1) Asc)) As [Order],
+	String_Agg(C.[Hashed_Index], '') As [Hexadecimal_ID_Hash] --Be careful, the hash values are joined in no real particular order, which is more than fine for most usecases, but for some, this may impact associated development work... If it is causing an issue, you can easily force the order by amending the logic in 'Within Group (Order By [Some_Sort_Of_Order_Logic] Asc)' on this line of sourcecode, in an appropriate manner...
+From @Obsidian_Index_Scaffold_Field A
+Cross Join @Obsidian_Index_Scaffold_Hashes B
+Inner Join @Obsidian_Index_Scaffold_Field_Scrambled_Intermediate C On
+	(C.[Order] = (((A.[Index] - 1) * 32) + B.[Raw_Index]))
+Group By A.[Index]
+
+--(Something Seemingly Banal, Will Probably Turn Out To Be the Critical Algorithmic Facet... No Doubt...)
+Declare @Max_Field_cluId As Bigint
+Set @Max_Field_cluId = (Select Max([cluId]) From [MooDElementData])
+
+--PLEASE DON'T FORGET TO AMEND THESE INSERTED ROW VALUES BELOW APPROPRIATELY... YOU WILL NEED TO LOOK UP THE [aliasDefFieldId] OR [pickListItemId] FROM THE APPROPRIATE TABLE ([MooDAliasDefField] AND ???[MooDAliasDefSimpleTypePickItem]??? RESPECTIVELY), IN THE MOOD SQL SERVER DATABASE, AND AS SUCH, YOU MUST MAKE SURE THAT YOU PRE-CREATE ALL THE ELEMENTS YOU NEED TO INGEST DATA ONTO... AS WELL AS ANY DESIRED FIELD VALUES IN THEIR RESPECTIVE COLUMNS... OH, AND PLESE DON'T FORGET TO INCREMENT THE CLUID IF YOU ARE SIMULTANEOUSLY INSERTING MULTIPLE FIELD ROWS (HE'S MISBEHAVING ENOUGH ALREADY, I'M SURE YOU'LL AGREE)...
+Set Identity_Insert [MooDElementData] ON
+Insert Into [MooDElementData] ([className], [id], [subjectId], [subjectType], [aliasDefFieldId], [pickListItemId], [intVal], [boolVal], [dateVal], [realVal], [stringVal], [lastModifiedDateTime], [creationDateTime], [flags], [cluId])
+Values
+('DTME', (Select [Hexadecimal_ID_Hash] From @Field_Hexadecimal_ID_Hashes Where [Order] = 1), @Element_Hexadecimal_ID_Hash, 55, '03AFE16743A3455812A451C50BFA4E8F', NULL, 0, 0, '2025-03-03 08:01:17.000', 0, NULL, '2025-03-03 08:01:17.000', '2025-03-03 08:01:17.000', 0, (@Max_Field_cluId + 1)),
+('INTE', (Select [Hexadecimal_ID_Hash] From @Field_Hexadecimal_ID_Hashes Where [Order] = 2), @Element_Hexadecimal_ID_Hash, 55, '03AFE16743A34558267EA4BF58D44792', NULL, 88888888, 0, NULL, 0, NULL, '2025-03-03 08:01:17.000', '2025-03-03 08:01:17.000', 0, (@Max_Field_cluId + 2)),
+('STRN', (Select [Hexadecimal_ID_Hash] From @Field_Hexadecimal_ID_Hashes Where [Order] = 3), @Element_Hexadecimal_ID_Hash, 55, '03AFE16743A3455878F145AD37214F08', NULL, 0, 0, NULL, 0, '88888888', '2025-03-03 08:01:17.000', '2025-03-03 08:01:17.000', 0, (@Max_Field_cluId + 3))
+Set Identity_Insert [MooDElementData] OFF
+--For now, we have hard coded the Hex ID Hash references... This could be re-purposed with a clever select join, to apply Hex ID Hashes to a given column of field data that you want to smash into MooD!!!... Speak to me if you need this done, and can't quite get your head around the implementation...
+
+Select 1 --This seems to be necessary for MooD, in order to avoid spurious synchroniser fail messages in the BA audit and validation interface, but also to avoid falsely concerning error messages which would otherwise get displayed to the user via an MAE action (such as clicking a button which executes a custom SQL synchroniser).
