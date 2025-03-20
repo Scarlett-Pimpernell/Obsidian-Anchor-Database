@@ -1,0 +1,89 @@
+--MS_Obsidian_Superfast_Starfleet_Random_Integer_ID_Hash_Generator
+--With this algorithm, you're generating integer string hashes, comprised of single digit integer numbers (0 to 9), where each digit is indexed from a scrambled and deconstructed number partition, with π (pi) itself providing the necessary decimal sequence predicate for the partitioning regime... As a result, the combinatorial search space for each digit of a generated Starfleet Integer ID Hash, is linearly proportional to its character length, such that a @Hash_Length of 1, has a corresponding combinatorial search space of 10^10 resolutions (That’s 10 billion possible ways to obtain the 10 possible values of the digit (0 to 9)... If you are generating a @Hash_Length of 40, then the corresponding combinatorial search space would be 10^40 resolutions (That’s 10 duodecillion possible ways to obtain the 10 possible values of the digit (0 to 9) across the 40 digits of the hash... As you can probably tell by now therefore, ChatGPT thinks that this is a very random number generator indeed!!!... What is more though, is that the actual sequence of seeds which generate your Starfleet Integer ID Hashes, are derived from a decomposition of the numebr Pi (as previously mentioned), which is itself an irrational, class-balanced, almost certainly randomicit, number, with an infinite decimal precision limit (so long as you don't run out of atoms in the universe to store it with)... This gives the combinatorial search space 'infinite virtual potential', so long as @Hash_Seeds (All of Terran, Vulcan, and Andorian) are kept private... On top of this, you will eventually be able to engage temporal distortion, which means that even if somehow a cyber adversary obtained your @Hash_Seeds, the additional calculations needed to temporally anti-distort the generated hashes would be so obscene in both count size and compute size (you would need to have monitored the exact CPU state and timings of each computation, which is most intractable to say the least, even for insiders like Starfleet engineers), that simply put, no one would ever actually 'bother you' about it... They would essentially be searching an infinitessimal part of the combinatorial search space, for half of 'universal eternity', and making no progress... Kinda like a Terran trying to explain euphoria to a vulcan with much badly hidden schadenfreude, and then realising with excruciating abasement, that upon talking to your average Andorian later that evening, Terran euphoria is like comatosis in comparison to Andorian 'Raptulation'!!!
+
+--Please note, that the reason I have chosen the Pi number as the basis of randomicity is as follows:
+--The digits of π (pi) are basically the universe's best 'foundationally intrinsic' attempt to provide mankind with the perfect random sequence generator.. Here’s a breakdown of why:
+--1. π (pi) is Deterministic --> Which is necessary, in order to actually compute a reliable output.
+--2. The classes of π (pi) are Uniformly Distributed --> This means that in the known decimal expansions, each digit (0 to 9) appears roughly equally often.
+--3. The sequence of π (pi) digits is Statistically Random --> Ideal, because there are no obvious meta-patterns that repetitively occur.
+--4. The limit of π (pi) is Normal --> Basically indicating, that its infinite decimal expansion will propagate the first three properties with the utmost fidelity.
+--5. Simulated Chaos arising from deconstructed π (pi) derivations --> Should however, mean that small changes in global variables, can emulate maximally possible quantum-random behaviour on digital hardware.
+--In conclusion, I would stop using all other random integer generators pronto, and come join +Raphael+ in the superiority-takes-all space conquest... It starts with Terran-operated bases on the moon this decade, and is quickly followed up by speciating-humanoid colonies on Mars, this half century!!!
+
+--'Keep your eyes peeled' (Non-Andorians only of course... Wouldn't want to offend their Augur-Prime) for an additional temporal distortion technique... Should be releasing anytime soon!!!
+--I also have theories regarding next-generation completely-superior advanced usecases for random number generators (algorithm blueprints designed already)... More on this, once I get a job or a customer...
+
+--(GLOBAL VARIABLES)
+Declare @Hash_Seed_Terran Bigint
+Set @Hash_Seed_Terran = 17 --1 >= x <= 100,000,000,000 ... Nota Bene: The lower the Hash Shift, the more likely it is that you will want a lower Hash Seed value... The Terran Hash Seed value must be different from the Vulcan and Andorian Hash Seed values, in order to avoid a Starfleet civil war!...
+
+Declare @Hash_Seed_Vulcan Bigint
+Set @Hash_Seed_Vulcan = 4000 --1 >= x <= 100,000,000,000 ... Nota Bene: The lower the Hash Shift, the more likely it is that you will want a lower Hash Seed value... The Vulcan Hash Seed value must be different from Terran and Andorian Hash Seed values, in order to avoid a Starfleet civil war!...
+
+Declare @Hash_Seed_Andorian Bigint
+Set @Hash_Seed_Andorian = 831228 --1 >= x <= 100,000,000,000 ... Nota Bene: The lower the Hash Shift, the more likely it is that you will want a lower Hash Seed value... The Andorian Hash Seed value must be different from Terran and Vulcan Hash Seed values, in order to avoid a Starfleet civil war!...
+
+Declare @Hash_Shift Bigint
+Set @Hash_Shift = 6 --1 >= x <= 10 ... Lower hash shift values will produce more randomicit integer hashes at smaller hash lengths; whereas, larger hash shift values will lead to more randomicit consecutive repetitions of integer hashes at larger hash lengths... This mechanism is a trade-off... If you are unsure which value to use, simply set the value to 1 for default behaviour which is more similar to exisiting class-probability-balanced random number generators... Nota Bene: The higher the Hash Seeds, the more likely it is that you will want a higher Hash Shift value... My advice, is experiment a little!... Disclaimer: I'm not even entirely sure if this variable control is really all that useful outside of theory, and haven't been able to test it in an applied manner, to my usual satisfaction and significance criteria...
+
+Declare @Hash_Value_Length Bigint
+Set @Hash_Value_Length = 40 --1 >= x < 8,000... Any longer, and I fear that you may be up to something quite dangerous to the strategic goals of Starfleet!!!
+
+Declare @Hash_Array_Length Bigint
+Set @Hash_Array_Length = 1000 --1 >= x < As big as y're rig can handle...
+
+Declare @Temporal_Distortion_Boolean Tinyint
+Set @Temporal_Distortion_Boolean = 0 --Can be set to either the number zero (disengaged) or the number one (engaged)... This variable currently does nothing... It is just a placeholder...
+
+
+--(EXECUTION)
+--Hash_Value_Scaffold
+Declare @Dynamic_SQL_Data_Intermediate_Variable_Hash_Value As Nvarchar(Max)
+Set @Dynamic_SQL_Data_Intermediate_Variable_Hash_Value =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Hash_Value_Length), '@Index_Count', @Hash_Value_Length) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Hash_Value Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Hash_Value ([Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable_Hash_Value)
+
+
+--Hash_Array_Scaffold
+Declare @Dynamic_SQL_Data_Intermediate_Variable_Hash_Array As Nvarchar(Max)
+Set @Dynamic_SQL_Data_Intermediate_Variable_Hash_Array =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Hash_Array_Length), '@Index_Count', @Hash_Array_Length) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Hash_Array Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Hash_Array ([Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable_Hash_Array)
+
+
+--Hash_Generation
+Declare @Pillars_Of_Starfleet Table ([Array_Index] Bigint, [Value_Index] Bigint, [Scrambled_Eggs_Benedict] Varchar(Max), [A_Tiny_Mush_Of_Vulcan_Flan] Decimal(38, 37), [A_Huge_Slice_Of_Andorian_Pie] Decimal(38, 37))
+Insert Into @Pillars_Of_Starfleet ([Array_Index], [Value_Index], [Scrambled_Eggs_Benedict], [A_Tiny_Mush_Of_Vulcan_Flan], [A_Huge_Slice_Of_Andorian_Pie])
+Select
+	A.[Index] As [Array_Index],
+	B.[Index] As [Value_Index],
+	Reverse(Cast(((Cast(4 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Terran - 1))) + 1))  - (Cast(2 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Terran - 1))) + 4)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Terran - 1))) + 5)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Terran - 1))) + 6))) As Varchar(Max))) As [Scrambled_Eggs_Benedict], -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Terrans appreciate scrambled eggs for brunch (It is used mainly as a hangover cure, along with a bloody mary, after the exploits of a night 'out on the town'... Plus, a 'famous prophet' of the never ending millenium, has declared that Canadians will probably be all the rage, in some significant manner, during the first space age race!!!)... It's been reversed, as a warning to the 21st century youth, that booze binges lead to beer belly battlegrounds, where your stomach fights for survival, and may not actually be able to hold down a meal...
+	((Cast(4 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Vulcan - 1))) + 1))  - (Cast(2 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Vulcan - 1))) + 4)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Vulcan - 1))) + 5)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Vulcan - 1))) + 6))) As [A_Tiny_Mush_Of_Vulcan_Flan], -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Vulcans don't really appreciate flan (It is used mainly as a penance during the rigours of Kolinahr!!!)...
+	((Cast(4 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Andorian - 1))) + 1))  - (Cast(2 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Andorian - 1))) + 4)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Andorian - 1))) + 5)) - (Cast(1 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Andorian - 1))) + 6))) As [A_Huge_Slice_Of_Andorian_Pie] -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Andorians really appreciate pie (It is usually their main course in a meal!!!)...
+From @Obsidian_Index_Scaffold_Hash_Array A
+Cross Join @Obsidian_Index_Scaffold_Hash_Value B
+
+
+--Hash_Serving
+Select
+	String_Agg(Sqrt(Square(Cast(Substring(Reverse(Cast(([A_Tiny_Mush_Of_Vulcan_Flan] - [A_Huge_Slice_Of_Andorian_Pie]) As Varchar(Max))), (Case When ([Value_Index] % @Hash_Shift) = 0 Then @Hash_Shift Else ([Value_Index] % @Hash_Shift) End), 1) As Tinyint))), '') Within Group (Order By [Scrambled_Eggs_Benedict] Asc) As [Firmament_Feast] --We can now serve a tasty pseudo-random integer meal... Please be aware that there is currently no particular order in which the courses and their constituents are brought together... As such, there may be some usecases or circumstances where this is unacceptable (Starfleet Standard Issue Blitz Rations don't exactly make the mouth water, eh???)... Here, we also use an index modulo shift technique, in order to increase the randomicit features and behaviours of the algorithm (It activates the Hash Shift control)...
+From @Pillars_Of_Starfleet
+Group By [Array_Index]
+
+--And so the three insatiable Starfleet God's of Gluttony are born into the cosmos: 1. Haon the Father of the Terrans; 2. Divad the brother of the Vulcans; and 3. Susej the friend of the Andorians...
