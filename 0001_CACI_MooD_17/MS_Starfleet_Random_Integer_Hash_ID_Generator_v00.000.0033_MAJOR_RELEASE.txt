@@ -19,6 +19,10 @@
 --One idea I will providing a solution for can be called something like Native Augmentable Physics Simulation (NAPS)... This is a trick I learned from Master Jedi 'Yoda the Best' himself!!!
 
 
+--(NECESSARY METAVARIABLE SETTINGS)
+--I would like a setting to turn of query caching for all plans in this query, without having to specify for individual statements, and I certainly don't want to turn of query plans for the whole database... Come on Microsoft... Why have you not already enabled this functionality???... It seems pretty universally useful!!!...
+
+
 --(GLOBAL VARIABLES)
 Declare @Hash_Seed_Terran Bigint
 Set @Hash_Seed_Terran = 17 --1 >= x <= 100,000,000,000 ... Nota Bene: The lower the Hash Shift, the more likely it is that you will want a lower Hash Seed value... The Terran Hash Seed value must be different from the Vulcan and Andorian Hash Seed values, in order to avoid a Starfleet civil war!...
@@ -51,149 +55,166 @@ Set @Temporal_Distortion_Toolean_Andorian = 0 --Can be set to either the number 
 
 
 --(EXECUTION)
---Temporal_Distortion
-Declare @Current_System_State_Clock_Index_Partition As Varchar(8)
-Set @Current_System_State_Clock_Index_Partition = Right(Replace(Replace(Replace(Replace(Cast(Sysutcdatetime() As Varchar(Max)), '-', ''), ' ', ''), ':', ''), '.', ''), 8) --I have partially 'reverse sliced' the granularity here (the 'full reversing' takes place later on in the algorithm), because for my database, the year comes first in this value, and the greatest precision seconds decimal comes last... Whereas, you always want the least geranularity last (the year segment), and the greatest granularity first (the highest precision sub-second)... If you do not properly handle this dynamic (which arises due to different datetime2 formats across different databases, when calling the Sysutcdatetime() function), then your temporal distortion will be less than ideal, and possibly pointless, in terms of maximising cyber security protections... Nota Bene: In this current implementation, we are only using part of the Sysutcdatetime() function Datetime2 output value (This will need to be amended in cases where greater Hash Seed data type precisions are enabled in SQL Server)...
---This temporal dilator technique must use fractional numbers up to and including the first seconds digit (from greatest decimal precision digit up to single digit seconds, which in this case provides 8 consecutive digits), but no more than this, such as also using hours or days etc_, because otherwise the temproal distortion would be biased and potentially easier to cyber hack (hours for example, don't cover all numbers between zero and ninety nine... they only cover twenty four at most, which means the distribution of outputs would be skewed to lower numbers {Especially in the less precise hour digit}...)...
-
---Manual transformation step I know, but its only 8 values right now, given the size of the Hash Seed ranges... Speak to a Catholic priest if this shortcut upsets you...
-Declare @Temporal_Distortion_Index Table ([Order] Tinyint, [Clock_Index] Tinyint)
-
-Declare @Normalised_Zero_Injection_Count As Bigint
-Set @Normalised_Zero_Injection_Count = Round((((Cast(Substring(@Current_System_State_Clock_Index_Partition, 8, 1) As Decimal(38, 36)) + 1) / Cast(10 As Decimal(38, 36))) * Cast(7 As Decimal(38, 36))), 0) --We use the greatest precision limit integer to decide how many zeroes we are injecting into the clock index (so that we can later fully utilise the full Hash Seed range when temporally distorting)... Otherwise, only very small temporal perturbations would occur, which would significantly reduce the cyber defensive power of this temporal distortion technique... We have used plus 1 with the raw clock index substring value, in order to avoid ever returning a zero (as this would later lead to divide zero errors... This corresponding shift in the range from zero to nine (0 to 9), to now one to ten (1 to 10), has been balanced out, by dividing with a value of 10 {called proportional or output normalisation}... Please also note, the alteration from the typical Decimal(38, 37) {which would have worked with an upper range limit of nine (9)}, but because we now have an upper range limit of ten (10), we need to use the {Decimal(38, 36)} data type here, in order to avoid arithmetic overflows or something like that, where the number can't be stored as it is larger than the variable data type)... and also plus 1 with the overall normalised value, in order to make the algorithm slightly more efficent in terms of subsequent equality operator mechanics... We normalise onto a scale from one to seven, for obvious reasons (divide zero errors and misaligned ranges {we currently only want eight digits in our distortion capability (with no possibility of producing an overall zero), whereas nines and tens could appear some times, unless we normalise them out})...
-
---Rebuild of the clock index
-Declare @Loop_Count_0001 As Bigint
-Set @Loop_Count_0001 = 0
---This following loop basically injects the zeroes...
-While @Loop_Count_0001 < 8 --Eight is the 'reverse sliced' clock index length...
+Declare @Temporal_Distortion_Engaged_Boolean As Tinyint
+--The following If statements help avoid unnecessary compute...
+If @Temporal_Distortion_Toolean_Terran != 0
 	Begin
+		Set @Temporal_Distortion_Engaged_Boolean = 1
+	End
+If @Temporal_Distortion_Toolean_Vulcan != 0
+	Begin
+		Set @Temporal_Distortion_Engaged_Boolean = 1
+	End
+If @Temporal_Distortion_Toolean_Andorian != 0
+	Begin
+		Set @Temporal_Distortion_Engaged_Boolean = 1
+	End
+If @Temporal_Distortion_Engaged_Boolean = 1
+	Begin
+		--Temporal_Distortion
+		Declare @Current_System_State_Clock_Index_Partition As Varchar(8)
+		Set @Current_System_State_Clock_Index_Partition = Right(Replace(Replace(Replace(Replace(Cast(Sysutcdatetime() As Varchar(Max)), '-', ''), ' ', ''), ':', ''), '.', ''), 8) --I have partially 'reverse sliced' the granularity here (the 'full reversing' takes place later on in the algorithm), because for my database, the year comes first in this value, and the greatest precision seconds decimal comes last... Whereas, you always want the least geranularity last (the year segment), and the greatest granularity first (the highest precision sub-second)... If you do not properly handle this dynamic (which arises due to different datetime2 formats across different databases, when calling the Sysutcdatetime() function), then your temporal distortion will be less than ideal, and possibly pointless, in terms of maximising cyber security protections... Nota Bene: In this current implementation, we are only using part of the Sysutcdatetime() function Datetime2 output value (This will need to be amended in cases where greater Hash Seed data type precisions are enabled in SQL Server)...
+		--This temporal dilator technique must use fractional numbers up to and including the first seconds digit (from greatest decimal precision digit up to single digit seconds, which in this case provides 8 consecutive digits), but no more than this, such as also using hours or days etc_, because otherwise the temproal distortion would be biased and potentially easier to cyber hack (hours for example, don't cover all numbers between zero and ninety nine... they only cover twenty four at most, which means the distribution of outputs would be skewed to lower numbers {Especially in the less precise hour digit}...)...
+
+		--Manual transformation step I know, but its only 8 values right now, given the size of the Hash Seed ranges... Speak to a Catholic priest if this shortcut upsets you...
+		Declare @Temporal_Distortion_Index Table ([Order] Tinyint, [Clock_Index] Tinyint)
+
+		Declare @Normalised_Zero_Injection_Count As Bigint
+		Set @Normalised_Zero_Injection_Count = Round((((Cast(Substring(@Current_System_State_Clock_Index_Partition, 8, 1) As Decimal(38, 36)) + 1) / Cast(10 As Decimal(38, 36))) * Cast(7 As Decimal(38, 36))), 0) --We use the greatest precision limit integer to decide how many zeroes we are injecting into the clock index (so that we can later fully utilise the full Hash Seed range when temporally distorting)... Otherwise, only very small temporal perturbations would occur, which would significantly reduce the cyber defensive power of this temporal distortion technique... We have used plus 1 with the raw clock index substring value, in order to avoid ever returning a zero (as this would later lead to divide zero errors... This corresponding shift in the range from zero to nine (0 to 9), to now one to ten (1 to 10), has been balanced out, by dividing with a value of 10 {called proportional or output normalisation}... Please also note, the alteration from the typical Decimal(38, 37) {which would have worked with an upper range limit of nine (9)}, but because we now have an upper range limit of ten (10), we need to use the {Decimal(38, 36)} data type here, in order to avoid arithmetic overflows or something like that, where the number can't be stored as it is larger than the variable data type)... and also plus 1 with the overall normalised value, in order to make the algorithm slightly more efficent in terms of subsequent equality operator mechanics... We normalise onto a scale from one to seven, for obvious reasons (divide zero errors and misaligned ranges {we currently only want eight digits in our distortion capability (with no possibility of producing an overall zero), whereas nines and tens could appear some times, unless we normalise them out})...
+
+		--Rebuild of the clock index
+		Declare @Loop_Count_0001 As Bigint
+		Set @Loop_Count_0001 = 0
+		--This following loop basically injects the zeroes...
+		While @Loop_Count_0001 < 8 --Eight is the 'reverse sliced' clock index length...
+			Begin
 		
-		Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+				Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
 		
-		If @Loop_Count_0001 = 8
-			Begin
-				Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
-				Values (Cast(@Loop_Count_0001 As Tinyint), Cast(Substring(@Current_System_State_Clock_Index_Partition, (@Loop_Count_0001 - @Normalised_Zero_Injection_Count), 1) As Tinyint)) --(@Loop_Count_0001 - @Zero_Injection_Count) because you want to always use the most dynamic and frequently changing digit integers first... Unfortunately, because of lack of system datetime precision, the first clock index integer is used in order to determine how many zeroes are injected, and is also re-used here, but this seems conceptually polluted in some minor way to me right now...
-			End
-		Else If @Loop_Count_0001 < @Normalised_Zero_Injection_Count
-			Begin
-				Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
-				Values (Cast(@Loop_Count_0001 As Tinyint), Cast(0 As Tinyint))
-			End
-		Else
-			Begin
-				Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
-				Values (Cast(@Loop_Count_0001 As Tinyint), Cast(Substring(@Current_System_State_Clock_Index_Partition, (@Loop_Count_0001 - @Normalised_Zero_Injection_Count), 1) As Tinyint)) --(@Loop_Count_0001 - @Zero_Injection_Count) because you want to always use the most dynamic and frequently changing digit integers first... Unfortunately, because of lack of system datetime precision, the first clock index integer is used in order to determine how many zeroes are injected, and is also re-used here, but this seems conceptually polluted in some minor way to me right now...
-			End
-	End
-
---This codeblock fully reverses the system clock slice (With the Desc keyword)...
-Declare @Current_System_State_Clock_Index_Partition_Descending_Order As Decimal(38, 29)
-Set @Current_System_State_Clock_Index_Partition_Descending_Order = Cast((Select String_Agg(Cast([Clock_Index] As Varchar(8)), '') Within Group (Order By [Order] Desc) As [Zero_Injected_Clock_Index] From @Temporal_Distortion_Index) As Decimal(38, 29)) --Just an acknowledgement of algorithmic shortfall here, but because SQL Server doesn't provide date time data types with at least 8 digit decimal precision (it currently maxes out at 7 digits), we never actually distort hash seeds using the single digit integer position (there will currently always be a trailing zero)... Not ideal, but arguably okay, because you probably want greater time distortions anyways...
-
---We can now distort our hash seeds appropriately, as follows...
-Declare @Temporal_Distortion_Granularity_Step_Size As Decimal(38, 29)
-Set @Temporal_Distortion_Granularity_Step_Size = (Cast(99999999 As Decimal(38, 29)) / @Current_System_State_Clock_Index_Partition_Descending_Order) --Please make sure that this 100 million value remains in synchronisation with the rest of the algorithm, if amending in any significant way (for example greater precision data types and therefore larger seed ranges)... Also make sure it is in synchronisation with the seed range limit data validation constraints (Which I haven't actually implemented here, but simply mentioned in the comments above)...
-
---1. Terran Temporal Distortion
-If @Temporal_Distortion_Toolean_Terran = -1
-	Begin
-		Set @Hash_Seed_Terran = (Case When @Hash_Seed_Terran = 1 Then 0 Else Floor((Cast(@Hash_Seed_Terran As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Terran As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
-	End
-Else If @Temporal_Distortion_Toolean_Terran = 1
-	Begin
-		Set @Hash_Seed_Terran = (Case When @Hash_Seed_Terran = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Terran As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Terran As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
-	End
---2. Vulcan Temporal Distortion
-If @Temporal_Distortion_Toolean_Vulcan = -1
-	Begin
-		Set @Hash_Seed_Vulcan = (Case When @Hash_Seed_Vulcan = 1 Then 0 Else Floor((Cast(@Hash_Seed_Vulcan As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Vulcan As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
-	End
-Else If @Temporal_Distortion_Toolean_Vulcan = 1
-	Begin
-		Set @Hash_Seed_Vulcan = (Case When @Hash_Seed_Vulcan = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Vulcan As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Vulcan As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
-	End
---3. Andorian Temporal Distortion
-If @Temporal_Distortion_Toolean_Andorian = -1
-	Begin
-		Set @Hash_Seed_Andorian = (Case When @Hash_Seed_Andorian = 1 Then 0 Else Floor((Cast(@Hash_Seed_Andorian As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Andorian As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
-	End
-Else If @Temporal_Distortion_Toolean_Andorian = 1
-	Begin
-		Set @Hash_Seed_Andorian = (Case When @Hash_Seed_Andorian = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Andorian As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Andorian As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
-	End
-
---Please note, that here below, I have set different temproal distortion modifiers for the three different Hash Seed distortions... This is highly advisable, given that the algorithm is not designed to work when any of the three Hash Seeds are identical!!!
---Limit Modifier
---(We here need to worry about modifying on the hash seed range limits, because it is assumed that a temporal distortion could cause all three hash seeds to clash onto either 1 or 100,000,000...)
-If @Hash_Seed_Terran = 1
-	Begin
-		If @Hash_Seed_Vulcan = 1
-			Begin
-				If @Hash_Seed_Andorian = 1
+				If @Loop_Count_0001 = 8
 					Begin
-						Set @Hash_Seed_Terran = 1
-						Set @Hash_Seed_Vulcan = 2
-						Set @Hash_Seed_Andorian = 3
+						Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
+						Values (Cast(@Loop_Count_0001 As Tinyint), Cast(Substring(@Current_System_State_Clock_Index_Partition, (@Loop_Count_0001 - @Normalised_Zero_Injection_Count), 1) As Tinyint)) --(@Loop_Count_0001 - @Zero_Injection_Count) because you want to always use the most dynamic and frequently changing digit integers first... Unfortunately, because of lack of system datetime precision, the first clock index integer is used in order to determine how many zeroes are injected, and is also re-used here, but this seems conceptually polluted in some minor way to me right now...
+					End
+				Else If @Loop_Count_0001 < @Normalised_Zero_Injection_Count
+					Begin
+						Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
+						Values (Cast(@Loop_Count_0001 As Tinyint), Cast(0 As Tinyint))
+					End
+				Else If @Loop_Count_0001 >= @Normalised_Zero_Injection_Count
+					Begin
+						Insert Into @Temporal_Distortion_Index ([Order], [Clock_Index])
+						Values (Cast(@Loop_Count_0001 As Tinyint), Cast(Substring(@Current_System_State_Clock_Index_Partition, (@Loop_Count_0001 - @Normalised_Zero_Injection_Count), 1) As Tinyint)) --(@Loop_Count_0001 - @Zero_Injection_Count) because you want to always use the most dynamic and frequently changing digit integers first... Unfortunately, because of lack of system datetime precision, the first clock index integer is used in order to determine how many zeroes are injected, and is also re-used here, but this seems conceptually polluted in some minor way to me right now...
 					End
 			End
-	End
-Else If @Hash_Seed_Terran = 100000000
-	Begin
-		If @Hash_Seed_Vulcan = 100000000
+
+		--This codeblock fully reverses the system clock slice (With the Desc keyword)...
+		Declare @Current_System_State_Clock_Index_Partition_Descending_Order As Decimal(38, 29)
+		Set @Current_System_State_Clock_Index_Partition_Descending_Order = Cast((Select String_Agg(Cast([Clock_Index] As Varchar(8)), '') Within Group (Order By [Order] Desc) As [Zero_Injected_Clock_Index] From @Temporal_Distortion_Index) As Decimal(38, 29)) --Just an acknowledgement of algorithmic shortfall here, but because SQL Server doesn't provide date time data types with at least 8 digit decimal precision (it currently maxes out at 7 digits), we never actually distort hash seeds using the single digit integer position (there will currently always be a trailing zero)... Not ideal, but arguably okay, because you probably want greater time distortions anyways...
+		
+		--We can now distort our hash seeds appropriately, as follows...
+		Declare @Temporal_Distortion_Granularity_Step_Size As Decimal(38, 29)
+		Set @Temporal_Distortion_Granularity_Step_Size = (Cast(99999999 As Decimal(38, 29)) / @Current_System_State_Clock_Index_Partition_Descending_Order) --Please make sure that this 100 million value remains in synchronisation with the rest of the algorithm, if amending in any significant way (for example greater precision data types and therefore larger seed ranges)... Also make sure it is in synchronisation with the seed range limit data validation constraints (Which I haven't actually implemented here, but simply mentioned in the comments above)...
+
+		--1. Terran Temporal Distortion
+		If @Temporal_Distortion_Toolean_Terran = -1
 			Begin
-				If @Hash_Seed_Andorian = 100000000
+				Set @Hash_Seed_Terran = (Case When @Hash_Seed_Terran = 1 Then 0 Else Floor((Cast(@Hash_Seed_Terran As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Terran As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
+			End
+		Else If @Temporal_Distortion_Toolean_Terran = 1
+			Begin
+				Set @Hash_Seed_Terran = (Case When @Hash_Seed_Terran = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Terran As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Terran As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
+			End
+		--2. Vulcan Temporal Distortion
+		If @Temporal_Distortion_Toolean_Vulcan = -1
+			Begin
+				Set @Hash_Seed_Vulcan = (Case When @Hash_Seed_Vulcan = 1 Then 0 Else Floor((Cast(@Hash_Seed_Vulcan As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Vulcan As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
+			End
+		Else If @Temporal_Distortion_Toolean_Vulcan = 1
+			Begin
+				Set @Hash_Seed_Vulcan = (Case When @Hash_Seed_Vulcan = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Vulcan As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Vulcan As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
+			End
+		--3. Andorian Temporal Distortion
+		If @Temporal_Distortion_Toolean_Andorian = -1
+			Begin
+				Set @Hash_Seed_Andorian = (Case When @Hash_Seed_Andorian = 1 Then 0 Else Floor((Cast(@Hash_Seed_Andorian As Decimal(38, 29)) - ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Andorian As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Floor() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when negatively distorting via a subtraction operand on this line of sourcecode...
+			End
+		Else If @Temporal_Distortion_Toolean_Andorian = 1
+			Begin
+				Set @Hash_Seed_Andorian = (Case When @Hash_Seed_Andorian = 1 Then 0 Else Ceiling((Cast(@Hash_Seed_Andorian As Decimal(38, 29)) + ((@Temporal_Distortion_Granularity_Step_Size / Cast(100000000 As Decimal(38, 29))) * Cast(@Hash_Seed_Andorian As Decimal(38, 29))))) End) --We normalise the temproal distortion of the Hash Seed, by harmonising with the distance between the Hash Seed and its polar limit... The Ceiling() function is used here, in order to correctly handle decimal @Temporal_Distortion_Granularity_Step_Size values, when positively distorting via an addition operand on this line of sourcecode...
+			End
+
+		--Please note, that here below, I have set different temproal distortion modifiers for the three different Hash Seed distortions... This is highly advisable, given that the algorithm is not designed to work when any of the three Hash Seeds are identical!!!
+		--Limit Modifier
+		--(We here need to worry about modifying on the hash seed range limits, because it is assumed that a temporal distortion could cause all three hash seeds to clash onto either 1 or 100,000,000...)
+		If @Hash_Seed_Terran = 1
+			Begin
+				If @Hash_Seed_Vulcan = 1
 					Begin
-						Set @Hash_Seed_Terran = 99999998
-						Set @Hash_Seed_Vulcan = 99999999
-						Set @Hash_Seed_Andorian = 100000000
+						If @Hash_Seed_Andorian = 1
+							Begin
+								Set @Hash_Seed_Terran = 1
+								Set @Hash_Seed_Vulcan = 2
+								Set @Hash_Seed_Andorian = 3
+							End
 					End
 			End
-	End
---Proximal Modifier
-Else If @Hash_Seed_Terran = @Hash_Seed_Vulcan
-	Begin
-		If @Hash_Seed_Andorian = @Hash_Seed_Vulcan
+		Else If @Hash_Seed_Terran = 100000000
 			Begin
-				Set @Hash_Seed_Terran = (@Hash_Seed_Andorian - 1)
-				Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
+				If @Hash_Seed_Vulcan = 100000000
+					Begin
+						If @Hash_Seed_Andorian = 100000000
+							Begin
+								Set @Hash_Seed_Terran = 99999998
+								Set @Hash_Seed_Vulcan = 99999999
+								Set @Hash_Seed_Andorian = 100000000
+							End
+					End
 			End
-	End
---Distal Terran Modifier
-Else If @Hash_Seed_Terran = @Hash_Seed_Vulcan
-	Begin
-		If @Hash_Seed_Andorian > @Hash_Seed_Terran
+		--Proximal Modifier
+		Else If @Hash_Seed_Terran = @Hash_Seed_Vulcan
 			Begin
-				Set @Hash_Seed_Terran = (@Hash_Seed_Terran - 1)
+				If @Hash_Seed_Andorian = @Hash_Seed_Vulcan
+					Begin
+						Set @Hash_Seed_Terran = (@Hash_Seed_Terran - 1)
+						Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
+					End
 			End
-		Else If @Hash_Seed_Andorian < @Hash_Seed_Terran
+		--Distal Terran Modifier
+		Else If @Hash_Seed_Terran = @Hash_Seed_Vulcan
 			Begin
-				Set @Hash_Seed_Terran = (@Hash_Seed_Terran + 1)
+				If @Hash_Seed_Andorian > @Hash_Seed_Terran
+					Begin
+						Set @Hash_Seed_Terran = (@Hash_Seed_Terran - 1)
+					End
+				Else If @Hash_Seed_Andorian < @Hash_Seed_Terran
+					Begin
+						Set @Hash_Seed_Terran = (@Hash_Seed_Terran + 1)
+					End
 			End
-	End
---Distal Andorian Modifier
-Else If @Hash_Seed_Andorian = @Hash_Seed_Vulcan
-	Begin
-		If @Hash_Seed_Terran > @Hash_Seed_Andorian
+		--Distal Andorian Modifier
+		Else If @Hash_Seed_Andorian = @Hash_Seed_Vulcan
 			Begin
-				Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian - 1)
+				If @Hash_Seed_Terran > @Hash_Seed_Andorian
+					Begin
+						Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian - 1)
+					End
+				Else If @Hash_Seed_Terran < @Hash_Seed_Andorian
+					Begin
+						Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
+					End
 			End
-		Else If @Hash_Seed_Terran < @Hash_Seed_Andorian
+		--Inverted Modifier
+		Else If @Hash_Seed_Terran = @Hash_Seed_Andorian
 			Begin
-				Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
-			End
-	End
---Inverted Modifier
-Else If @Hash_Seed_Terran = @Hash_Seed_Andorian
-Begin
-		If @Hash_Seed_Terran > @Hash_Seed_Vulcan
-			Begin
-				Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
-			End
-		Else If @Hash_Seed_Andorian < @Hash_Seed_Vulcan
-			Begin
-				Set @Hash_Seed_Terran = (@Hash_Seed_Terran - 1)
+				If @Hash_Seed_Terran > @Hash_Seed_Vulcan
+					Begin
+						Set @Hash_Seed_Andorian = (@Hash_Seed_Andorian + 1)
+					End
+				Else If @Hash_Seed_Andorian < @Hash_Seed_Vulcan
+					Begin
+						Set @Hash_Seed_Terran = (@Hash_Seed_Terran - 1)
+					End
 			End
 	End
 
