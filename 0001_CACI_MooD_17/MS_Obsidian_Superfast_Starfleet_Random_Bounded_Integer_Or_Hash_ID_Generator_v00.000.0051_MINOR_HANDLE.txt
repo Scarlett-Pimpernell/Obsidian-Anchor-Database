@@ -1,4 +1,4 @@
---MS_Obsidian_Superfast_Starfleet_Random_Integer_Hash_ID_Generator
+--MS_Obsidian_Superfast_Starfleet_Random_Bounded_Integer_Or_Hash_ID_Generator
 --With this algorithm, you're generating integer string hashes, comprised of single digit integer numbers (0 to 9), where each digit is indexed from a scrambled and deconstructed number partition, with π (pi) itself providing the necessary decimal sequence predicate for the partitioning regime (which is itself an irrational, class-balanced, almost certainly 'fully' randomicit, number, with an infinite decimal precision limit {so long as you don't run out of atoms in the universe to store it with}... This gives the algorithm theoretically 'infinite virtual potential')... As a result, the combinatorial search space for each digit of a generated Starfleet Integer Hash ID, is linearly proportional to its character length, as follows:
 --GENERAL COMBINATORIAL COMPLEXITY CALCULATION : (10 (single digit integer range) ^40 (typical digit hash length)) x 10^8 (Terran seed range {currently limited by the data type decimal precision in SQL Server}) x 10^8 (Vulcan seed range {currently limited by the data type decimal precision in SQL Server}) x 10^8 (Andorian seed range {currently limited by the data type decimal precision in SQL Server}) x 10^1 (maximum hash shift positions {currently limited by the data type decimal precision in SQL Server}) x 10^1 (space dilation {dimensional pillar delta}) x 10^1 (temporal distortion {system state clocking}) = 10^67... This is an extremely large number, much larger than a VI(R)GINTILLION in short-scale naming... In other words, insanely complex (and that's completely ignoring the fact that it is derived from a completely random foundation sequence)... No one is ever going to ever be able to cyber-hack this algorithm in any kind of reasonable (and I would say even significantly fictitious) reality, providing you don't do something really stupid with its application to your problem context...
 --As you can probably tell by now therefore, ChatGPT thinks that this is a very random number generator indeed!!!... Please be aware though, that cyber security is only ensured, so long as @Hash_Seeds (All of Terran, Vulcan, and Andorian) are kept private (and to be honest, you probably want to keep all the assigned global variable values private, for the same reason!!!)...
@@ -14,6 +14,7 @@
 --In conclusion, I would stop using all other random integer generators pronto, and come join +Raphael+ in the superiority-takes-all space conquest... It starts with Terran-operated bases on the moon this decade, and is quickly followed up by speciating-humanoid colonies on Mars, this half century!!!
 
 --Please note, that during very minimal testing, repeated executions of the query, while temporal distortion was engaged, sometimes generated the same Hash IDs... I can only imagine that this is because query caching is turned on... Please remember to disable query caching for this algorithm, if you are using temporal distortion features!!!... Of course, once the query has cached as temporally distorted, and you amend the associated toolean global variables, query caching will likely also adversely affect the desired output from the algorithm... SO PLEASE ALWAYS TURN OFF QUERY CACHING INFACT!!!
+--Also, please note, that due to SQL Server data type precision and clock timing precision shortcomings, both hashes and numbers that are served, do not include the capability of varying across the single most precsise digit ('ones')... In practice, this means we are waiting on Microsoft to improve SQL Server precision in order to unlock full and true pseudo-quantum randomicity generation... For now, if you use the algorithm, you will only experience randomicit granularity every 10 degrees of algorithmic freedom (ie_ every ten consecutive integer numbers on the 100,000,000 range scale {as the numbers inbetween will not currently be modelled})... This invariability is actually nugatory, because the number 10 is so small compared to 100,000,000, and so will simply be almost always rounded out of effect...
 
 --I also have theories regarding next-generation completely-superior advanced usecases for random number generators (algorithm blueprints designed already)... More on this, once I get a job or a customer...
 --One idea I will providing a solution for can be called something like Native Augmentable Physics Simulation (NAPS)... This is a trick I learned from Master Jedi 'Yoda the Best' himself!!!
@@ -24,6 +25,7 @@
 
 
 --(GLOBAL VARIABLES)
+--1. Random Hashes Variables
 Declare @Hash_Seed_Terran Bigint
 Set @Hash_Seed_Terran = 17 --1 >= x <= 100,000,000,000 ... Nota Bene: The lower the Hash Shift, the more likely it is that you will want a lower Hash Seed value... The Terran Hash Seed value must be different from the Vulcan and Andorian Hash Seed values, in order to avoid a Starfleet civil war!...
 
@@ -43,13 +45,30 @@ Declare @Hash_Array_Length Bigint
 Set @Hash_Array_Length = 1000 --1 >= x < As big as y're rig can handle... But, saying that, there is actually a precision limit which would eventually gradually nugify your Hash IDs at some point, as you increase Hash Array Length... The greater the data type precision they release for SQL Server, the greater this variable value can be... For now, I would not recommend any value above 1,000 (Although this is probably unnecessarily conservative)...
 
 Declare @Temporal_Distortion_Boolean Tinyint
-Set @Temporal_Distortion_Boolean = 0 --PLEASE BE AWARE: You shouldn't use the temporal distortion feature here, if you require repeatability as a property of your outputs... If repeatanbility is required, then set this variable to zero (0)... Otherwise to one (1) in order to engage temproal distortion...
+Set @Temporal_Distortion_Boolean = 1 --PLEASE BE AWARE: You shouldn't use the temporal distortion feature here, if you require repeatability as a property of your outputs... If repeatanbility is required, then set this variable to zero (0)... Otherwise to one (1) in order to engage temproal distortion...
 
 Declare @Temporal_Distortion_Flange As Tinyint
 Set @Temporal_Distortion_Flange = 33 --Standard protocol flange would be around 50%, with recommended range from 33% to 66%, and limits at 0% and 100%... This basically controls how much Hash Seed values get temporally distorted...
 
+--2. Random Numbers Variables
+Declare @Range_Bounded_Number_Generation_Boolean Tinyint
+Set @Range_Bounded_Number_Generation_Boolean = 1 --This variable can be set to either zero (0) --> random hash IDs will be generated... Or, it can be set to one (1) --> random integer numbers will be generated, according to the range bounds set on the @Obsidian_Digit_Bounds global table variable below...
+--Automatic override of the @Hash_Value_Length global variable from above...
+If @Range_Bounded_Number_Generation_Boolean = 1
+	Begin
+		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a scale from zero to one hundred million (0 to 100000000), with no highest precison variability in the 'ones' digit, due to SQL Server data type precision and CPU clock timing precision restrictions... In other words, there will always be a jump of 10 consecutive integers between each generated integer number or hash ID, from a perspective of varying the scale index, although, as mentioned elsewhere, this lack of granular variability is actually miniscule, given the massive size of the range (100,000,000) compared to the invariability range (10), and so almost always will have no effect...
+	End
 
---(EXECUTION)
+Declare @Obsidian_Digit_Bounds Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Digit_Bounds ([Lower_Bound], [Upper_Bound])
+--Please note, that boundary values here below must be between zero and one hundred million (0 to 100000000) inclusive...
+Values
+(1, 5),
+(46, 50),
+(496, 500)
+
+
+--(PART A: HASH EXECUTION)
 --The following If statement helps to avoid unnecessary compute...
 If @Temporal_Distortion_Boolean != 0
 	Begin
@@ -265,7 +284,9 @@ From @Obsidian_Index_Scaffold_Hash_Array A
 Cross Join @Obsidian_Index_Scaffold_Hash_Value B
 
 
---Hash_Serving
+--Hash_Servings
+Declare @Hash_Servings Table ([Order] Bigint, [Firmament_Feast] Varchar(Max))
+Insert Into @Hash_Servings ([Order], [Firmament_Feast])
 Select
 	[Array_Index] As [Order],
 	String_Agg(Sqrt(Square(Cast(Substring(Reverse(Cast(([A_Tiny_Mush_Of_Vulcan_Flan] - [A_Huge_Slice_Of_Andorian_Pie]) As Varchar(Max))), (Case When ([Value_Index] % @Hash_Shift) = 0 Then @Hash_Shift Else ([Value_Index] % @Hash_Shift) End), 1) As Tinyint))), '') Within Group (Order By [Scrambled_Eggs_Benedict] Asc) As [Firmament_Feast] --We can now serve a tasty pseudo-random integer meal... Please be aware that there is currently no particular order in which the courses and their constituents are brought together (which is one of the main strengths of the algorithm... of course... excuse the pun...)... As such, there may be some usecases or circumstances where this is unacceptable (Starfleet Standard Issue Blitz Rations don't exactly make the mouth water, eh???)... Here, we also use an index modulo shift technique, in order to increase the randomicit features and behaviours of the algorithm (It activates the Hash Shift control)... The core 'flan' minus 'pie' method here, basically dilates the combinatorial search space by the power of 10, such that you now have a double nested exponent on the overall complexity of the algorithm!!!... Just as a side, but the spatial dialtion implemented here, by using the two pillar dimensions, could possibly be used as part of a model of the extreme dimensional characteristics of a black hole (In essence, there is theoretically no limit to the amount of spatial dilation that one could model)...
@@ -275,3 +296,145 @@ Order By [Array_Index] Asc --You only need this line of code in SQL Server, beca
 
 
 --And so the three insatiable Starfleet God's of Gluttony are born into the cosmos: 1. Haon the Father of the Terrans; 2. Divad the brother of the Vulcans; and 3. Susej the friend of the Andorians...
+
+
+--(PART B: NUMBER EXECUTION)
+--We remove all duplicate bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct ([Lower_Bound], [Upper_Bound])
+Select Distinct
+	[Lower_Bound] As [Lower_Bound], 
+	[Upper_Bound] As [Upper_Bound]
+From @Obsidian_Digit_Bounds
+
+--We anchor the bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound])
+Select
+	Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
+	[Lower_Bound] As [Lower_Bound], 
+	[Upper_Bound] As [Upper_Bound]
+From @Obsidian_Digit_Bounds
+
+--We remove all subsidiary bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds ([Anchor_Order], [Lower_Bound], [Upper_Bound])
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	A.[Lower_Bound] As [Lower_Bound], 
+	A.[Upper_Bound] As [Upper_Bound]
+From @Obsidian_Bounds_Distinct_Anchored A
+Left Join @Obsidian_Bounds_Distinct_Anchored B
+	On (
+		B.[Anchor_Order] <> A.[Anchor_Order]
+		And B.[Lower_Bound] <= A.[Lower_Bound]
+		And B.[Upper_Bound] >= A.[Upper_Bound]
+	)
+Where 
+	B.[Lower_Bound] Is Null
+	And B.[Upper_Bound] Is Null
+	
+--We find the middle of chain overlapping bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle ([Anchor_Order], [Lower_Bound], [Upper_Bound])
+Select
+	Min(A.[Anchor_Order]) As [Anchor_Order],
+	Min(B.[Lower_Bound]) As [Lower_Bound], 
+	Max(B.[Upper_Bound]) As [Upper_Bound]
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds A
+Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds B
+Where
+	B.[Lower_Bound] >= A.[Lower_Bound]
+	And B.[Lower_Bound] <= A.[Upper_Bound]
+	Or
+	B.[Upper_Bound] >= A.[Lower_Bound]
+	And B.[Upper_Bound] <= A.[Upper_Bound]
+Group By A.[Anchor_Order]
+
+--We find the ends of chain overlapping bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends ([Anchor_Order], [Lower_Bound], [Upper_Bound])
+Select
+	Min(A.[Anchor_Order]) As [Anchor_Order],
+	Min(B.[Lower_Bound]) As [Lower_Bound], 
+	Max(B.[Upper_Bound]) As [Upper_Bound]
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle A
+Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle B
+Where
+	B.[Lower_Bound] >= A.[Lower_Bound]
+	And B.[Lower_Bound] <= A.[Upper_Bound]
+	Or
+	B.[Upper_Bound] >= A.[Lower_Bound]
+	And B.[Upper_Bound] <= A.[Upper_Bound]
+Group By A.[Anchor_Order]
+
+--We find all distinct chain bounds in the codeblock below.
+Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct ([Lower_Bound], [Upper_Bound])
+Select Distinct
+	[Lower_Bound] As [Lower_Bound], 
+	[Upper_Bound] As [Upper_Bound]
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends
+
+--We anchor the final bounds in the codeblock below, for use later on in this query.
+Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
+Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound])
+Select
+	Row_Number() Over(Order By [Lower_Bound] Asc) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
+	[Lower_Bound] As [Lower_Bound], 
+	[Upper_Bound] As [Upper_Bound]
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends
+
+--The following codeblock counts the unique integer classes within the digit bounds provided to the function. They handle digit boundary overlaps and chains appropriately.
+Declare @Unique_Integer_Class_Limit Bigint
+Set @Unique_Integer_Class_Limit = 
+(
+Select 
+	Sum((([Upper_Bound] - [Lower_Bound]) + 1))
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored
+)
+
+--Here, we accumulate unique integer class counts, by building a meta range boundary series...
+Declare @Unique_Integer_Class_Meta_Range_Boundary_Series Table ([Anchor_Order] Bigint, [Cumulative_Integer_Class_Count] Bigint)
+--We insert a prefixial row, in order to properly handle the lowest range boundary later on in the randomicity serving technique...
+Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
+Values
+(0, 0)
+--We then insert the rest of the actual range boundary ancillary data, which is also used later on in the randomicity serving technique...
+Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	Sum(((B.[Upper_Bound] - B.[Lower_Bound]) + 1)) As [Cumulative_Integer_Class_Count]
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored A
+Inner Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored B On
+	(B.[Lower_Bound] <= A.[Upper_Bound])
+Group By A.[Anchor_Order]
+
+
+--Randomicity_Serving
+If @Range_Bounded_Number_Generation_Boolean = 0 --If you have set global variables to serve Random Integer Hash IDs
+	Begin
+		Select * From @Hash_Servings Order By [Order]
+	End
+Else If @Range_Bounded_Number_Generation_Boolean = 1 --If you have set global variables to serve Random Numbers (As defined in the @Obsidian_Digit_Bounds global table variable)
+	Begin
+		Declare @Penultimate_Randomicity_Serving Table ([Order] Bigint, [Random_Meta_Range_Boundary_Index] Bigint)
+		Insert Into @Penultimate_Randomicity_Serving ([Order], [Random_Meta_Range_Boundary_Index])
+		Select
+			[Order],
+			Ceiling((Case When [Firmament_Feast] = '100000000' Then Cast(@Unique_Integer_Class_Limit As Float) Else (Cast(@Unique_Integer_Class_Limit As Float) * Cast(('0.' + [Firmament_Feast]) As Float)) End)) As [Random_Meta_Range_Boundary_Index] --We round our meta range boundary index to the nearest (greater than) whole integer (using the Ceiling() function), in order to get the overall index for the randomly selected number... This can then be used to map across all the ordered range boundaries from the global variable @Obsidian_Digit_Bounds, and therefore return the correct random number...
+		From @Hash_Servings
+		
+		Select
+			A.[Order],
+			((D.[Lower_Bound] - 1) + (A.[Random_Meta_Range_Boundary_Index] - B.[Cumulative_Integer_Class_Count])) As [Random_Numbers]
+		From @Penultimate_Randomicity_Serving A
+		Inner Join @Unique_Integer_Class_Meta_Range_Boundary_Series B On
+			(B.[Cumulative_Integer_Class_Count] < A.[Random_Meta_Range_Boundary_Index])
+		Left Join @Unique_Integer_Class_Meta_Range_Boundary_Series C On
+			(C.[Anchor_Order] > B.[Anchor_Order] And C.[Cumulative_Integer_Class_Count] < A.[Random_Meta_Range_Boundary_Index])
+		Inner Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored D On
+			(D.[Anchor_Order] = (B.[Anchor_Order] + 1))
+		Where C.Anchor_Order Is Null
+		Order By A.[Order]
+	End
