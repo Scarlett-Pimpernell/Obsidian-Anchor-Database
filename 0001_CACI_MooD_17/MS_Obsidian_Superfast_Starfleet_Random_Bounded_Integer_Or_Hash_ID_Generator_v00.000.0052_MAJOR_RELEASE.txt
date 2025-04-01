@@ -64,7 +64,10 @@ Insert Into @Obsidian_Digit_Bounds ([Lower_Bound], [Upper_Bound])
 --Please note, that boundary values here below must be between zero and one hundred million (0 to 100000000) inclusive...
 Values
 (1, 5),
+(2, 6),
+(45,47),
 (46, 50),
+(48, 52),
 (496, 500)
 
 
@@ -383,7 +386,7 @@ Select
 	Row_Number() Over(Order By [Lower_Bound] Asc) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
 	[Lower_Bound] As [Lower_Bound], 
 	[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends
+From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct
 
 --The following codeblock counts the unique integer classes within the digit bounds provided to the function. They handle digit boundary overlaps and chains appropriately.
 Declare @Unique_Integer_Class_Limit Bigint
