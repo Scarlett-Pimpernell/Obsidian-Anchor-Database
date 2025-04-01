@@ -56,19 +56,21 @@ Set @Range_Bounded_Number_Generation_Boolean = 1 --This variable can be set to e
 --Automatic override of the @Hash_Value_Length global variable from above...
 If @Range_Bounded_Number_Generation_Boolean = 1
 	Begin
-		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a scale from zero to one hundred million (0 to 100000000), with no highest precison variability in the 'ones' digit, due to SQL Server data type precision and CPU clock timing precision restrictions... In other words, there will always be a jump of 10 consecutive integers between each generated integer number or hash ID, from a perspective of varying the scale index, although, as mentioned elsewhere, this lack of granular variability is actually miniscule, given the massive size of the range (100,000,000) compared to the invariability range (10), and so almost always will have no effect...
+		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a scale from zero to around nine pentillion (0 to 9,223,372,036,854,775,807) {limited only really by the Bigint data type max value... Otherwise, theoretically, one could generate random numbers with up to hundreds of billions or more digits with this algorithm}, with no highest precison variability in the 'ones' digit, due to SQL Server data type precision and CPU clock timing precision restrictions... In other words, there will always be a jump of 10 consecutive integers between each generated integer number or hash ID, from a perspective of varying the scale index, although, as mentioned elsewhere, this lack of granular variability is actually miniscule, given the massive size of the randomicit hash range (100,000,000) compared to the invariability range (10), and so almost always will have no effect...
 	End
 
 Declare @Obsidian_Digit_Bounds Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
 Insert Into @Obsidian_Digit_Bounds ([Lower_Bound], [Upper_Bound])
---Please note, that boundary values here below must be between zero and one hundred million (0 to 100000000) inclusive...
+--Please note, that boundary values here below must be between zero and around nine pentillion (0 to 9,223,372,036,854,775,807) inclusive... Also, even if range bounds are duplicate or overlapping, this will be carefully handled later on, so don't worry too much about this aspect!!!
 Values
 (1, 5),
 (2, 6),
 (45,47),
 (46, 50),
 (48, 52),
-(496, 500)
+(496, 500),
+(250000000, 250000010),
+(9223372036854775800, 9223372036854775807)
 
 
 --(PART A: HASH EXECUTION)
@@ -425,7 +427,7 @@ Else If @Range_Bounded_Number_Generation_Boolean = 1 --If you have set global va
 		Insert Into @Penultimate_Randomicity_Serving ([Order], [Random_Meta_Range_Boundary_Index])
 		Select
 			[Order],
-			Ceiling((Case When [Firmament_Feast] = '100000000' Then Cast(@Unique_Integer_Class_Limit As Float) Else (Cast(@Unique_Integer_Class_Limit As Float) * Cast(('0.' + [Firmament_Feast]) As Float)) End)) As [Random_Meta_Range_Boundary_Index] --We round our meta range boundary index to the nearest (greater than) whole integer (using the Ceiling() function), in order to get the overall index for the randomly selected number... This can then be used to map across all the ordered range boundaries from the global variable @Obsidian_Digit_Bounds, and therefore return the correct random number...
+			Ceiling((Cast(@Unique_Integer_Class_Limit As Float) * Cast(('0.' + [Firmament_Feast]) As Float))) As [Random_Meta_Range_Boundary_Index] --We round our meta range boundary index to the nearest (greater than) whole integer (using the Ceiling() function), in order to get the overall index for the randomly selected number... This can then be used to map across all the ordered range boundaries from the global variable @Obsidian_Digit_Bounds, and therefore return the correct random number...
 		From @Hash_Servings
 		
 		Select
