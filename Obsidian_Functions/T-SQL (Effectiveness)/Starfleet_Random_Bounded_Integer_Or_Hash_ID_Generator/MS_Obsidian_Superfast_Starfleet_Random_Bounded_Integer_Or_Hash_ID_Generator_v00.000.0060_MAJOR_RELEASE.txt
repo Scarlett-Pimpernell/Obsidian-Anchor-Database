@@ -1,4 +1,4 @@
---MS_Obsidian_Superfast_Starfleet_Random_Bounded_Integer_Or_Hash_ID_Generator
+--MS_Obsidian_Superfast_Starfleet_Random_Bounded_Frequency_Integer_Or_Hash_ID_Generator
 --With this algorithm, you're generating integer string hashes, comprised of single digit integer numbers (0 to 9), where each digit is indexed from a scrambled and deconstructed number partition, with π (pi) itself providing the necessary decimal sequence predicate for the partitioning regime (which is itself an irrational, class-balanced, almost certainly 'fully' randomicit, number, with an infinite decimal precision limit {so long as you don't run out of atoms in the universe to store it with}... This gives the algorithm theoretically 'infinite virtual potential')... As a result, the combinatorial search space for each digit of a generated Starfleet Integer Hash ID, is linearly proportional to its character length, as follows:
 --GENERAL COMBINATORIAL COMPLEXITY CALCULATION : (10 (single digit integer range) ^40 (typical digit hash length)) x 10^8 (Terran seed range {currently limited by the data type decimal precision in SQL Server}) x 10^8 (Vulcan seed range {currently limited by the data type decimal precision in SQL Server}) x 10^8 (Andorian seed range {currently limited by the data type decimal precision in SQL Server}) x 10^1 (maximum hash shift positions {currently limited by the data type decimal precision in SQL Server}) x 10^1 (space dilation {dimensional pillar delta}) x 10^1 (temporal distortion {system state clocking}) = 10^67... This is an extremely large number, much larger than a VI(R)GINTILLION in short-scale naming... In other words, insanely complex (and that's completely ignoring the fact that it is derived from a completely random foundation sequence)... No one is ever going to ever be able to cyber-hack this algorithm in any kind of reasonable (and I would say even significantly fictitious) reality, providing you don't do something really stupid with its application to your problem context...
 --As you can probably tell by now therefore, ChatGPT thinks that this is a very random number generator indeed!!!... Please be aware though, that cyber security is only ensured, so long as @Hash_Seeds (All of Terran, Vulcan, and Andorian) are kept private (and to be honest, you probably want to keep all the assigned global variable values private, for the same reason!!!)...
@@ -16,9 +16,9 @@
 --Please note, that during very minimal testing, repeated executions of the query, while temporal distortion was engaged, sometimes generated the same Hash IDs... I can only imagine that this is because query caching is turned on... Please remember to disable query caching for this algorithm, if you are using temporal distortion features!!!... Of course, once the query has cached as temporally distorted, and you amend the associated toolean global variables, query caching will likely also adversely affect the desired output from the algorithm... SO PLEASE ALWAYS TURN OFF QUERY CACHING INFACT!!!
 --Also, please note, that due to SQL Server data type precision and clock timing precision shortcomings, both hashes and numbers that are served, do not include the capability of varying across the single most precsise digit ('ones')... In practice, this means we are waiting on Microsoft to improve SQL Server precision in order to unlock full and true pseudo-quantum randomicity generation... For now, if you use the algorithm, you will only experience randomicit granularity every 10 degrees of algorithmic freedom (ie_ every ten consecutive integer numbers on the 100,000,000 range scale {as the numbers inbetween will not currently be modelled})... This invariability is actually nugatory, because the number 10 is so small compared to 100,000,000, and so will simply be almost always rounded out of effect...
 
+--I now consider this algorithm functionally complete, in terms of being able to model any kind of randomicit series of Hash IDs / Numbers / Labels (You would simply use a Replace() function on the resulting random numbers, which correspond to your label classes {provided you have set the range bounds appropriately})... As such, if the functionality that you believe you require doesn't exist in this algorithm, you are probably trying to generate randomicity for the wrong reasons!!!
 --I also have theories regarding next-generation completely-superior advanced usecases for random number generators (algorithm blueprints designed already)... More on this, once I get a job or a customer...
 --One idea I will providing a solution for can be called something like Native Augmentable Physics Simulation (NAPS)... This is a trick I learned from Master Jedi 'Yoda the Best' himself!!!
-
 
 --(NECESSARY METAVARIABLE SETTINGS)
 --I would like a setting to turn of query caching for all plans in this query, without having to specify for individual statements, and I certainly don't want to turn of query plans for the whole database... Come on Microsoft... Why have you not already enabled this functionality???... It seems pretty universally useful!!!...
@@ -52,25 +52,38 @@ Set @Temporal_Distortion_Flange = 33 --Standard protocol flange would be around 
 
 --2. Random Numbers Variables
 Declare @Range_Bounded_Number_Generation_Boolean Tinyint
-Set @Range_Bounded_Number_Generation_Boolean = 1 --This variable can be set to either zero (0) --> random hash IDs will be generated... Or, it can be set to one (1) --> random integer numbers will be generated, according to the range bounds set on the @Obsidian_Digit_Bounds global table variable below...
+Set @Range_Bounded_Number_Generation_Boolean = 1 --This variable can be set to either zero (0) --> random hash IDs will be generated... Or, it can be set to one (1) --> random integer numbers will be generated, according to the range bounds set on the @Obsidian_Range_Bounds global table variable below...
 --Automatic override of the @Hash_Value_Length global variable from above...
 If @Range_Bounded_Number_Generation_Boolean = 1
 	Begin
 		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a scale from zero to around nine pentillion (0 to 9,223,372,036,854,775,807) {limited only really by the Bigint data type max value... Otherwise, theoretically, one could generate random numbers with up to hundreds of billions or more digits with this algorithm}, with no highest precison variability in the 'ones' digit, due to SQL Server data type precision and CPU clock timing precision restrictions... In other words, there will always be a jump of 10 consecutive integers between each generated integer number or hash ID, from a perspective of varying the scale index, although, as mentioned elsewhere, this lack of granular variability is actually miniscule, given the massive size of the randomicit hash range (100,000,000) compared to the invariability range (10), and so almost always will have no effect...
 	End
 
-Declare @Obsidian_Digit_Bounds Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Digit_Bounds ([Lower_Bound], [Upper_Bound])
---Please note, that boundary values here below must be between zero and around nine pentillion (0 to 9,223,372,036,854,775,807) inclusive... Also, even if range bounds are duplicate or overlapping, this will be carefully handled later on, so don't worry too much about this aspect!!!
+--Please note, that boundary values here below must be between around negative nine pentillion (-9,223,372,036,854,775,807) and around positive nine pentillion (9,223,372,036,854,775,807) inclusive... Also, even if range bounds are duplicate or overlapping, this will be carefully handled later on, so don't worry too much about this aspect!!!... Like I have said here, this algorithm can also handle negative integer range bounds, but just make sure that you have the bound values in the right order (The [Lower_Bound] column {most negative of the pair of bound values --> furthest from zero in the negative scale} and then the [Upper_Bound] column {least negative of the pair of bound values --> furthest from zero in the positive scale})
+--Frequencies are comparative, and so normalise against eachother onto a 100% probability scale... As such, this column can hold either whole numbers (with their decimals all set to zero), or fractional numbers... It's up to you... If you simply want to use a standard frequency for certain rows, the @Default_Frequency_Value variable can be used, as demonstrated... To get vanilla default behaviour ie_ no frequency skewing of the classes, then you have three options... Either: 1. Set the @Range_Bound_Frequency_Boolean variable value to zero (0)... or... 2. Set all frequencies to the same value (Ideally the number one {1})... or... 3. Set all frequencies to the @Default_Frequency_Value variable...
+Declare @Range_Bound_Frequency_Boolean As Tinyint
+Set @Range_Bound_Frequency_Boolean = 1 --Can turn frequency adjustment off, by assigning a value of zero (0)... Or on, by assigning a value of one (1)...
+
+Declare @Default_Frequency_Value As Decimal(25, 6) --We restrict the [Frequency] value onto a 0,000,000,000,000,000,000.000000 digit-scale... Please make sure that you normalise your [Frequency] values in the table @Obsidian_Range_Bounds (along with the variable @Default_Frequency_Value), so that they are all positive values that are less than or equal to 9,223,372,036,854,775,807... and no zero only values please, otherwise they will not receive any manifestation...
+Set @Default_Frequency_Value = 100.00 --Don't adjust this value (don't change it to something other than one hundred percent (100.00)), unless you know what you're doing!!!... You don't even need to use this variable at all, unless you are an advanced user...
+
+Declare @Obsidian_Range_Bounds Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(25, 6)) --We restrict the [Frequency] value onto a 0,000,000,000,000,000,000.000000 digit-scale... Please make sure that you normalise your [Frequency] values in the table @Obsidian_Range_Bounds (along with the variable @Default_Frequency_Value), so that they are all positive values that are less than or equal to 9,223,372,036,854,775,807... and no zero only values please, otherwise they will not receive any manifestation...
+Insert Into @Obsidian_Range_Bounds ([Lower_Bound], [Upper_Bound], [Frequency])
+--I'm advising users to set the lower and upper bounds to the same value, only if you want to configure a bound for a single integer value instead of a contiguous range of values... Should have been obvious, but I know that under high stress and time pressures, that from experience, software operators lose insight with regards to trivial things like this!
 Values
-(1, 5),
-(2, 6),
-(45,47),
-(46, 50),
-(48, 52),
-(496, 500),
-(250000000, 250000010),
-(9223372036854775800, 9223372036854775807)
+(-1, 5, 400.00),
+(2, 6, @Default_Frequency_Value),
+(45,47, 150.00),
+(46, 50, 150.00),
+(48, 52, 150.00),
+(-500, -496, @Default_Frequency_Value),
+(250000000, 250000010, @Default_Frequency_Value),
+(9223372036854775800, 9223372036854775807, @Default_Frequency_Value),
+(1000001, 1000003, 200.00),
+(1000002, 1000004, 200.00),
+(1000004, 1000005, 200.00),
+(1000005, 1000007, 200.00),
+(1000006, 1000008, 200.00)
 
 
 --(PART A: HASH EXECUTION)
@@ -304,135 +317,189 @@ Order By [Array_Index] Asc --You only need this line of code in SQL Server, beca
 
 
 --(PART B: NUMBER EXECUTION)
---We remove all duplicate bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct ([Lower_Bound], [Upper_Bound])
-Select Distinct
-	[Lower_Bound] As [Lower_Bound], 
-	[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Digit_Bounds
+If @Range_Bounded_Number_Generation_Boolean = 1
+	Begin
+		
+		Declare @Obsidian_Range_Bounds_Normalised Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9,6))
+		--Below, we normalise the digit range bounds onto a 100% [Frequency] scale, or we set all frequencies to 1.000000 (depending on the appropriate global variable, which activates distributive random sampling)...
+		If @Range_Bound_Frequency_Boolean = 0
+			Begin
+				
+				Insert Into @Obsidian_Range_Bounds_Normalised ([Lower_Bound], [Upper_Bound], [Frequency])
+				Select
+					[Lower_Bound] As [Lower_Bound],
+					[Upper_Bound] As [Upper_Bound],
+					1 As [Frequency] --Setting this value to one (1) across all rows, forces equal/balanced class distribution...
+				From @Obsidian_Range_Bounds
+			
+			End
+		Else If @Range_Bound_Frequency_Boolean = 1
+			Begin
 
---We anchor the bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound])
-Select
-	Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
-	[Lower_Bound] As [Lower_Bound], 
-	[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Digit_Bounds
+				Declare @Obsidian_Range_Bounds_Maximum_Frequency As Decimal(25, 6)
+				Set @Obsidian_Range_Bounds_Maximum_Frequency = (Select Max([Frequency]) From @Obsidian_Range_Bounds)
 
---We remove all subsidiary bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds ([Anchor_Order], [Lower_Bound], [Upper_Bound])
-Select
-	A.[Anchor_Order] As [Anchor_Order],
-	A.[Lower_Bound] As [Lower_Bound], 
-	A.[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored A
-Left Join @Obsidian_Bounds_Distinct_Anchored B
-	On (
-		B.[Anchor_Order] <> A.[Anchor_Order]
-		And B.[Lower_Bound] <= A.[Lower_Bound]
-		And B.[Upper_Bound] >= A.[Upper_Bound]
-	)
-Where 
-	B.[Lower_Bound] Is Null
-	And B.[Upper_Bound] Is Null
+				Insert Into @Obsidian_Range_Bounds_Normalised ([Lower_Bound], [Upper_Bound], [Frequency])
+				Select
+					[Lower_Bound] As [Lower_Bound],
+					[Upper_Bound] As [Upper_Bound],
+					Cast(([Frequency] / @Obsidian_Range_Bounds_Maximum_Frequency) As Decimal(9,6)) As [Frequency]
+				From @Obsidian_Range_Bounds
+			
+			End
+
+		--We remove all duplicate bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency]  Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct ([Lower_Bound], [Upper_Bound], [Frequency])
+		Select Distinct
+			[Lower_Bound] As [Lower_Bound], 
+			[Upper_Bound] As [Upper_Bound],
+			[Frequency] As [Frequency]
+		From @Obsidian_Range_Bounds_Normalised
+
+		--We anchor the bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound], [Frequency])
+		Select
+			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
+			[Lower_Bound] As [Lower_Bound], 
+			[Upper_Bound] As [Upper_Bound],
+			[Frequency] As [Frequency]
+		From @Obsidian_Bounds_Distinct
+
+		--We remove all subsidiary bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds ([Anchor_Order], [Lower_Bound], [Upper_Bound], [Frequency])
+		Select
+			A.[Anchor_Order] As [Anchor_Order],
+			A.[Lower_Bound] As [Lower_Bound], 
+			A.[Upper_Bound] As [Upper_Bound],
+			A.[Frequency] As [Frequency]
+		From @Obsidian_Bounds_Distinct_Anchored A
+		Left Join @Obsidian_Bounds_Distinct_Anchored B
+			On (
+				B.[Anchor_Order] <> A.[Anchor_Order]
+				And B.[Lower_Bound] <= A.[Lower_Bound]
+				And B.[Upper_Bound] >= A.[Upper_Bound]
+			)
+		Where 
+			B.[Lower_Bound] Is Null
+			And B.[Upper_Bound] Is Null
 	
---We find the middle of chain overlapping bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle ([Anchor_Order], [Lower_Bound], [Upper_Bound])
-Select
-	Min(A.[Anchor_Order]) As [Anchor_Order],
-	Min(B.[Lower_Bound]) As [Lower_Bound], 
-	Max(B.[Upper_Bound]) As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds A
-Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds B
-Where
-	B.[Lower_Bound] >= A.[Lower_Bound]
-	And B.[Lower_Bound] <= A.[Upper_Bound]
-	Or
-	B.[Upper_Bound] >= A.[Lower_Bound]
-	And B.[Upper_Bound] <= A.[Upper_Bound]
-Group By A.[Anchor_Order]
+		--We find the middle of chain overlapping bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle ([Anchor_Order], [Lower_Bound], [Upper_Bound], [Frequency])
+		Select
+			Min(A.[Anchor_Order]) As [Anchor_Order],
+			Min(B.[Lower_Bound]) As [Lower_Bound], 
+			Max(B.[Upper_Bound]) As [Upper_Bound],
+			Max(B.[Frequency]) As [Frequency]
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds A
+		Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds B
+		Where
+			B.[Lower_Bound] >= A.[Lower_Bound]
+			And B.[Lower_Bound] <= A.[Upper_Bound]
+			Or
+			B.[Upper_Bound] >= A.[Lower_Bound]
+			And B.[Upper_Bound] <= A.[Upper_Bound]
+		Group By A.[Anchor_Order]
 
---We find the ends of chain overlapping bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends ([Anchor_Order], [Lower_Bound], [Upper_Bound])
-Select
-	Min(A.[Anchor_Order]) As [Anchor_Order],
-	Min(B.[Lower_Bound]) As [Lower_Bound], 
-	Max(B.[Upper_Bound]) As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle A
-Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle B
-Where
-	B.[Lower_Bound] >= A.[Lower_Bound]
-	And B.[Lower_Bound] <= A.[Upper_Bound]
-	Or
-	B.[Upper_Bound] >= A.[Lower_Bound]
-	And B.[Upper_Bound] <= A.[Upper_Bound]
-Group By A.[Anchor_Order]
+		--We find the ends of chain overlapping bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends ([Anchor_Order], [Lower_Bound], [Upper_Bound], [Frequency])
+		Select
+			Min(A.[Anchor_Order]) As [Anchor_Order],
+			Min(B.[Lower_Bound]) As [Lower_Bound], 
+			Max(B.[Upper_Bound]) As [Upper_Bound],
+			Max(B.[Frequency]) As [Frequency]
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle A
+		Cross Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle B
+		Where
+			B.[Lower_Bound] >= A.[Lower_Bound]
+			And B.[Lower_Bound] <= A.[Upper_Bound]
+			Or
+			B.[Upper_Bound] >= A.[Lower_Bound]
+			And B.[Upper_Bound] <= A.[Upper_Bound]
+		Group By A.[Anchor_Order]
 
---We find all distinct chain bounds in the codeblock below.
-Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct ([Lower_Bound], [Upper_Bound])
-Select Distinct
-	[Lower_Bound] As [Lower_Bound], 
-	[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends
+		--We find all distinct chain bounds in the codeblock below.
+		Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct Table ([Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct ([Lower_Bound], [Upper_Bound], [Frequency])
+		Select Distinct
+			[Lower_Bound] As [Lower_Bound], 
+			[Upper_Bound] As [Upper_Bound],
+			[Frequency] As [Frequency]
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends
 
---We anchor the final bounds in the codeblock below, for use later on in this query.
-Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint)
-Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound])
-Select
-	Row_Number() Over(Order By [Lower_Bound] Asc) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
-	[Lower_Bound] As [Lower_Bound], 
-	[Upper_Bound] As [Upper_Bound]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct
+		--We anchor the final bounds in the codeblock below, for use later on in this query.
+		Declare @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored Table ([Anchor_Order] Bigint, [Lower_Bound] Bigint, [Upper_Bound] Bigint, [Frequency] Decimal(9, 6))
+		Insert Into @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored ([Anchor_Order], [Lower_Bound], [Upper_Bound], [Frequency])
+		Select
+			Row_Number() Over(Order By [Lower_Bound] Asc) As [Anchor_Order], --I have used a null returning subquery within the ordering clause, as this seems to optimise for greatest speed... I think the SQL Server engine simply ignores the ordering clause in this case, which is the exact behaviour we want.
+			[Lower_Bound] As [Lower_Bound], 
+			[Upper_Bound] As [Upper_Bound],
+			[Frequency] As [Frequency]
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct
+		
+		--The following codeblock counts the unique integer classes within the digit bounds provided to the function. They handle digit boundary overlaps and chains appropriately.
+		Declare @Unique_Integer_Class_Limit Bigint
+		Set @Unique_Integer_Class_Limit = 
+		(
+		Select 
+			(Case When @Range_Bound_Frequency_Boolean = 1 Then Round(Sum(((([Upper_Bound] - [Lower_Bound]) + 1) / [Frequency])), 0) Else (Case When @Range_Bound_Frequency_Boolean = 0 Then Sum((([Upper_Bound] - [Lower_Bound]) + 1)) Else Null End) End)
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored
+		)
 
---The following codeblock counts the unique integer classes within the digit bounds provided to the function. They handle digit boundary overlaps and chains appropriately.
-Declare @Unique_Integer_Class_Limit Bigint
-Set @Unique_Integer_Class_Limit = 
-(
-Select 
-	Sum((([Upper_Bound] - [Lower_Bound]) + 1))
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored
-)
+		--Here, we accumulate unique integer class counts, by building a meta range boundary series...
+		Declare @Unique_Integer_Class_Meta_Range_Boundary_Series Table ([Anchor_Order] Bigint, [Cumulative_Integer_Class_Count] Bigint)
+		--We insert a prefixial row, in order to properly handle the lowest range boundary later on in the randomicity serving technique...
+		Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
+		Values
+		(0, 0)
+		--We then insert the rest of the actual range boundary ancillary data, which is also used later on in the randomicity serving technique...
+		Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
+		Select
+			A.[Anchor_Order] As [Anchor_Order],
+			(Case When @Range_Bound_Frequency_Boolean = 1 Then Round(Sum((((B.[Upper_Bound] - B.[Lower_Bound]) + 1) / B.[Frequency])), 0) Else (Case When @Range_Bound_Frequency_Boolean = 0 Then Sum(((B.[Upper_Bound] - B.[Lower_Bound]) + 1)) Else Null End) End) As [Cumulative_Integer_Class_Count]
+		From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored A
+		Inner Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored B On
+			(B.[Lower_Bound] <= A.[Upper_Bound])
+		Group By A.[Anchor_Order]
 
---Here, we accumulate unique integer class counts, by building a meta range boundary series...
-Declare @Unique_Integer_Class_Meta_Range_Boundary_Series Table ([Anchor_Order] Bigint, [Cumulative_Integer_Class_Count] Bigint)
---We insert a prefixial row, in order to properly handle the lowest range boundary later on in the randomicity serving technique...
-Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
-Values
-(0, 0)
---We then insert the rest of the actual range boundary ancillary data, which is also used later on in the randomicity serving technique...
-Insert Into @Unique_Integer_Class_Meta_Range_Boundary_Series ([Anchor_Order], [Cumulative_Integer_Class_Count])
-Select
-	A.[Anchor_Order] As [Anchor_Order],
-	Sum(((B.[Upper_Bound] - B.[Lower_Bound]) + 1)) As [Cumulative_Integer_Class_Count]
-From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored A
-Inner Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored B On
-	(B.[Lower_Bound] <= A.[Upper_Bound])
-Group By A.[Anchor_Order]
-
+	End
 
 --Randomicity_Serving
 If @Range_Bounded_Number_Generation_Boolean = 0 --If you have set global variables to serve Random Integer Hash IDs
 	Begin
-		Select * From @Hash_Servings Order By [Order]
+		
+		Select
+			[Order] As [Order],
+			[Firmament_Feast] As [Firmament_Feast]
+		From @Hash_Servings
+		Order By [Order] --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio...
+	
 	End
-Else If @Range_Bounded_Number_Generation_Boolean = 1 --If you have set global variables to serve Random Numbers (As defined in the @Obsidian_Digit_Bounds global table variable)
+Else If @Range_Bounded_Number_Generation_Boolean = 1 --If you have set global variables to serve Random Numbers (As defined in the @Obsidian_Range_Bounds global table variable)
 	Begin
+		
 		Declare @Penultimate_Randomicity_Serving Table ([Order] Bigint, [Random_Meta_Range_Boundary_Index] Bigint)
 		Insert Into @Penultimate_Randomicity_Serving ([Order], [Random_Meta_Range_Boundary_Index])
 		Select
 			[Order],
-			Ceiling((Cast(@Unique_Integer_Class_Limit As Float) * Cast(('0.' + [Firmament_Feast]) As Float))) As [Random_Meta_Range_Boundary_Index] --We round our meta range boundary index to the nearest (greater than) whole integer (using the Ceiling() function), in order to get the overall index for the randomly selected number... This can then be used to map across all the ordered range boundaries from the global variable @Obsidian_Digit_Bounds, and therefore return the correct random number...
+			Cast(Ceiling((Cast(@Unique_Integer_Class_Limit As Decimal(38, 6)) * Cast(('0.' + [Firmament_Feast]) As Decimal(38, 6)))) As Bigint) As [Random_Meta_Range_Boundary_Index] --We round our meta range boundary index to the nearest (greater than) whole integer (using the Ceiling() function), in order to get the overall index for the randomly selected number... This can then be used to map across all the ordered range boundaries from the global variable @Obsidian_Range_Bounds, and therefore return the correct random number...
 		From @Hash_Servings
-		
+
+		Select Sum(([Upper_Bound]-[Lower_Bound] + 1)) From @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored
+		Select @Unique_Integer_Class_Limit
+		Select * From @Unique_Integer_Class_Meta_Range_Boundary_Series
+		Select * From @Penultimate_Randomicity_Serving
+
 		Select
 			A.[Order],
-			((D.[Lower_Bound] - 1) + (A.[Random_Meta_Range_Boundary_Index] - B.[Cumulative_Integer_Class_Count])) As [Random_Numbers]
+			D.[Lower_Bound],
+			A.[Random_Meta_Range_Boundary_Index],
+			B.[Cumulative_Integer_Class_Count],
+			Cast(Ceiling(((D.[Lower_Bound] - 1) + ((A.[Random_Meta_Range_Boundary_Index] - B.[Cumulative_Integer_Class_Count]) * D.[Frequency]))) As Bigint) As [Random_Numbers] --We use the Ceiling() function in order to correct for rounding errors, which have possibly arisen when mathematically operating on mixed data types of Bigints and Decimals... We also Cast( As Bigint), because of the unwanted injection of decimals from the [Frequency] term...
 		From @Penultimate_Randomicity_Serving A
 		Inner Join @Unique_Integer_Class_Meta_Range_Boundary_Series B On
 			(B.[Cumulative_Integer_Class_Count] < A.[Random_Meta_Range_Boundary_Index])
@@ -440,6 +507,7 @@ Else If @Range_Bounded_Number_Generation_Boolean = 1 --If you have set global va
 			(C.[Anchor_Order] > B.[Anchor_Order] And C.[Cumulative_Integer_Class_Count] < A.[Random_Meta_Range_Boundary_Index])
 		Inner Join @Obsidian_Bounds_Distinct_Anchored_Superbounds_Overlap_Chain_Middle_Ends_Distinct_Anchored D On
 			(D.[Anchor_Order] = (B.[Anchor_Order] + 1))
-		Where C.Anchor_Order Is Null
-		Order By A.[Order]
+		Where C.[Anchor_Order] Is Null
+		Order By A.[Order] --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio...
+		
 	End
