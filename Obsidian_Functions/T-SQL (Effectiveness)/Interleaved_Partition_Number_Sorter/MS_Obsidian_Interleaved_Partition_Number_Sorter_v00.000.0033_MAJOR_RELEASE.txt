@@ -80,7 +80,7 @@ If @Retain_Duplicates = 1
 	Begin
 		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
 		Select
-			Row_Number() Over(Order By (Select Null) Asc) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
+			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
 			[Arguement] As [Arguement]
 		From @Data
 	End
