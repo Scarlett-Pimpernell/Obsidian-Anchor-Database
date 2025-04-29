@@ -1,0 +1,486 @@
+--MS Obsidian Custom SQL Server User Activity Surge Simulator Algorithm
+--Please be aware, that concurrent user surge simulation incorporates a 'margin of error' characteristic, in that somewhat less than the indicated requirement, of peak concurrent user count in the surge, will nearly always occur... This tolerance quotient occurs, because we simultaneously stagger user activity, by using wait periods, so while tranches of 10 users are spooling up via simultaneous SQL Server Agent jobs, during the total lifecycle of the surge; we also have currently accumulated executing simultaneous SQL Server Agent jobs completing their simulated user activity, also in a staged manner...
+--Please also, DO NOT execute this query without reading all the comments, because it changes a SQL Server Instance configuration value which may be critical to multiple databases running on the same instance (max worker threads)...
+--NOTA BENE 0001: Before each execution, please amend the following variables to your desired values: 1. @Concurrent_User_Surge_Count; 2. ##Concurrent_User_Surge_Lifetime (This is a single row value in the [Concurrent_User_Surge_Lifetime] column of this global temporary table --> So that SQL Server Agent jobs can be fed input variables!!!)...
+--NOTA BENE 0002: Hey Bob Ward... aka The Microsoft Meat and Potatoes Man... This algorithm is 'Amazing Bossage!'... Don't ya think?
+
+
+--PRE-RUNTIME
+Execute sp_configure 'show advanced options', 1
+Reconfigure
+Execute sp_configure 'max worker threads', 32767 --Be careful here, you don't want to set it too high for your hardware to handle!!! (It should probably be less than 1,000 for say an 8 core CPU, SSD laptop, with ample spare RAM)... Also, please be aware, that this setting is SQL Server Instance defined, and so will affect all databases provisioned from the same instance...
+Reconfigure
+Execute sp_configure 'show advanced options', 0
+Reconfigure
+
+
+--TABLES
+If Object_ID('tempdb..##The_Meat_and_Potatoes_Table') Is Null
+	Begin
+		Create Table ##The_Meat_and_Potatoes_Table ([IP_Address] Nvarchar(4000), [SQL_Server_Node_Name] Nvarchar(4000), [Database_Name] Nvarchar(4000), [Schema_Name] Nvarchar(4000), [Table_Name] Nvarchar(4000), [Column_Name] Nvarchar(4000), [Session_ID] Bigint, [Data_Smash_Name] Nvarchar(4000), [Data_Smash_Name_Dependency] Nvarchar(4000), [Insert_Queue_Order] Bigint, [Priority] Bigint, [Try_Count] Bigint, [Creation_Datetime] Datetime2, [Destruction_Timeout] DateTime2)
+	End
+
+Delete From ##The_Meat_and_Potatoes_Table
+
+
+If Object_ID('tempdb..##Concurrent_User_Surge_Lifetime') Is Null
+	Begin
+		Create Table ##Concurrent_User_Surge_Lifetime ([Concurrent_User_Surge_Lifetime] Varchar(8))
+	End
+
+Delete From ##Concurrent_User_Surge_Lifetime
+
+
+--VARIABLES
+Declare @Concurrent_User_Surge_Count As Bigint
+Set @Concurrent_User_Surge_Count = 1000 --This value should be between 10 and 100,000 ... and is a concurrent user count value, which allows the algorithm to emulate a situation where there is a database utilisation surge of singles, tens, hundreds, thousands, tens of thousands, or even a hundred thousand users, after around 100 seconds has elapsed, since the beginning of query execution... The algorithm automatically adjusts this variable via 'exponential powers of ten laws' (Which correspond to the 10 SQL Server Agent Jobs indicated below)... I DON'T HOWEVER RECOMMEND YOU USE CONCURRENT USER COUNTS CLOSE TO 100K, BECAUSE LAST TIME I CHECKED, SQL SERVER WAS ONLY CAPABLE OF SERVING AROUND 75K CONCURRENT USERS FROM ONE DATABASE, UNDER BEST CASE SCENARIOS!!!...
+
+Declare @Concurrent_User_Surge_Count_Augmented As Decimal(38, 3)
+Set @Concurrent_User_Surge_Count_Augmented = Ceiling((@Concurrent_User_Surge_Count / 10)) --We divide by 10 here, because our simulator has been designed to generate concurrent users via 10 different simultaneous SQL Server agent jobs...
+
+Insert Into ##Concurrent_User_Surge_Lifetime ([Concurrent_User_Surge_Lifetime])
+Values ('00:01:00') --This value should ideally be between '00:00:10' (corresponds to 10 seconds) and '00:05:00' (corresponds to five minutes), and is a surge duration value, which controls how long the surge in concurrent users will accumulate for, as a time data type...
+
+Declare @Total_Lifetime_Seconds Bigint = 
+(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+
+Declare @Surge_Wait_For_Delay_Value As Varchar(100)
+Set @Surge_Wait_For_Delay_Value = ('Waitfor Delay ''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, Round(((Cast(10.000 As Decimal(38, 3)) / Cast(@Concurrent_User_Surge_Count As Decimal(38, 3))) * Cast(@Total_Lifetime_Seconds As Decimal(38, 3))), 3), '00:00:00.000') As Time(3)), 114) + '''')
+
+Declare @Cooldown_Wait_For_Delay_Value As Varchar(100)
+Set @Cooldown_Wait_For_Delay_Value = ('Waitfor Delay ''' + Convert(Varchar(12), Cast(((Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime) + '.000') As Time(3)), 114) + '''')
+
+
+
+/*
+>>>>>>>>>>(USE SOMETHING SIMILAR TO THIS CODE BELOW, IN A SET OF DIFFERENT SQL SERVER AGENT JOB CREATIONS AND INITIATIONS... PLEASE REMEMBER TO ADJUST @JOB_NAMES AND @PARTITION_INDEXES, AS WELL AS YOUR DESIRED USER ACTIVITY LOGIC ACCORDINGLY)<<<<<<<<<<
+Declare @Job_Name As Nvarchar(128)
+Set @Job_Name = (N'Insert_Test_Data_0001' + Cast(Sysdatetime() As Nvarchar(128)))
+
+
+Execute msdb.dbo.sp_add_job
+@job_name = @Job_Name,
+@delete_level = 3
+
+
+Execute msdb.dbo.sp_add_jobstep
+@job_name = @Job_Name,
+@step_name = N'Step_0001',
+@subsystem = N'TSQL',
+@command = N'
+Declare @Partition_Count As Tinyint
+Set @Partition_Count = 10
+
+Declare @Partition_Index As Tinyint
+Set @Partition_Index = 1
+
+Declare @Total_Lifetime_Milliseconds Bigint = 
+(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+
+Declare @Milliseconds_Per_Partition As Bigint
+Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+
+Declare @Milliseconds_For_This_Partition As Bigint
+Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+
+Declare @Wait_For_Delay_Value As Varchar(100)
+Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+
+Execute (@Wait_For_Delay_Value)
+Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+Values
+(1, 3, ''Happy_Clappy_Chappy_0001'', Sysdatetime()),
+(2, 3, ''Drunk_Skunk_Monk_0001'', Sysdatetime()),
+(3, 3, ''Lairy_Hairy_Fairy_0001'', Sysdatetime())
+
+'
+
+Execute msdb.dbo.sp_add_jobserver
+@job_name = @Job_Name
+
+Execute msdb.dbo.sp_start_job @Job_Name
+>>>>>>>>>>(USE SOMETHING SIMILAR TO THIS CODE ABOVE, IN A SET OF DIFFERENT SQL SERVER AGENT JOB CREATIONS AND INITIATIONS... PLEASE REMEMBER TO ADJUST @JOB_NAMES AND @PARTITION_INDEXES, AS WELL AS YOUR DESIRED USER ACTIVITY LOGIC ACCORDINGLY)<<<<<<<<<<
+*/
+
+
+--SIMULATION
+Declare @Loop_Count_0001 As Bigint
+Set @Loop_Count_0001 = 0
+Declare @Job_Name As Nvarchar(128)
+While @Loop_Count_0001 < @Concurrent_User_Surge_Count_Augmented --Be careful not to change this line of code, unless you really know what you are doing... You could utterly 'jam up' the machine you execute this query against, otherwise...
+	Begin
+
+		Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+		
+		Execute (@Surge_Wait_For_Delay_Value)
+		
+		--Obsidian_Test_User_Job_0001
+		Set @Job_Name = (N'Insert_Test_Data_0001' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 1
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0001'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0001'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0001'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0002
+		Set @Job_Name = (N'Insert_Test_Data_0002' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 3
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0002'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0002'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0002'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0003
+		Set @Job_Name = (N'Insert_Test_Data_0003' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 5
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0003'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0003'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0003'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0004
+		Set @Job_Name = (N'Insert_Test_Data_0004' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 7
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0004'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0004'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0004'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0005
+		Set @Job_Name = (N'Insert_Test_Data_0005' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 9
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0005'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0005'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0005'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0006
+		Set @Job_Name = (N'Insert_Test_Data_0006' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 2
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0006'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0006'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0006'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0007
+		Set @Job_Name = (N'Insert_Test_Data_0007' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 4
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0007'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0007'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0007'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0008
+		Set @Job_Name = (N'Insert_Test_Data_0008' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 6
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0008'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0008'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0008'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0009
+		Set @Job_Name = (N'Insert_Test_Data_0009' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 8
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0009'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0009'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0009'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+		--Obsidian_Test_User_Job_0010
+		Set @Job_Name = (N'Insert_Test_Data_0010' + Cast(Sysdatetime() As Nvarchar(128)))
+		Execute msdb.dbo.sp_add_job
+		@job_name = @Job_Name,
+		@delete_level = 3
+		Execute msdb.dbo.sp_add_jobstep
+		@job_name = @Job_Name,
+		@step_name = N'Step_0001',
+		@subsystem = N'TSQL',
+		@command = N'
+		Declare @Partition_Count As Tinyint
+		Set @Partition_Count = 10
+		Declare @Partition_Index As Tinyint
+		Set @Partition_Index = 10
+		Declare @Total_Lifetime_Milliseconds Bigint = 
+		(Datepart(Hour, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 3600000 + 
+		Datepart(Minute, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 60000 + 
+		Datepart(Second, (Select Min([Concurrent_User_Surge_Lifetime]) From ##Concurrent_User_Surge_Lifetime)) * 1000)
+		Declare @Milliseconds_Per_Partition As Bigint
+		Set @Milliseconds_Per_Partition = Ceiling((@Total_Lifetime_Milliseconds / @Partition_Count))
+		Declare @Milliseconds_For_This_Partition As Bigint
+		Set @Milliseconds_For_This_Partition = (@Milliseconds_Per_Partition * @Partition_Index)
+		Declare @Wait_For_Delay_Value As Varchar(100)
+		Set @Wait_For_Delay_Value = (''Waitfor Delay '''''' + Convert(Varchar(12), Cast(Dateadd(Millisecond, @Milliseconds_For_This_Partition, ''00:00:00.000'') As Time(3)), 114) + '''''''')
+		Execute (@Wait_For_Delay_Value)
+		Insert Into ##The_Meat_and_Potatoes_Table ([Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime])
+		Values
+		(1, 2, ''Happy_Clappy_Chappy_0010'', Sysdatetime()),
+		(2, 2, ''Drunk_Skunk_Monk_0010'', Sysdatetime()),
+		(3, 2, ''Lairy_Hairy_Fairy_0010'', Sysdatetime())
+		'
+		Execute msdb.dbo.sp_add_jobserver
+		@job_name = @Job_Name
+		Execute msdb.dbo.sp_start_job @Job_Name
+
+	End
+
+
+--MONITOR
+Execute (@Cooldown_Wait_For_Delay_Value)
+Waitfor Delay '00:03:33' --Please add some extra time delay here, depending on how badly your particular hardware handles the overhead caused by the additional queue coordination of obscene amounts of simultaneous SQL Server Agent inserts...
+Select [Insert_Queue_Order], [Priority], [Data_Smash_Name], [Creation_Datetime] From ##The_Meat_and_Potatoes_Table
+
+
+--POST-RUNTIME
+Execute sp_configure 'show advanced options', 1
+Reconfigure
+Execute sp_configure 'max worker threads', 0 --Be careful here, you don't want to set it too high for your hardware to handle!!! (It should probably be less than 1,000 for say an 8 core CPU, SSD laptop, with ample spare RAM)... Also, please be aware, that this setting is SQL Server Instance defined, and so will affect all databases provisioned from the same instance... I set my configuration here back to zero, only because I want the default SQL Server behaviour to be implemented again, which is calculated based apparently, on CPU count...
+Reconfigure
+Execute sp_configure 'show advanced options', 0
+Reconfigure
