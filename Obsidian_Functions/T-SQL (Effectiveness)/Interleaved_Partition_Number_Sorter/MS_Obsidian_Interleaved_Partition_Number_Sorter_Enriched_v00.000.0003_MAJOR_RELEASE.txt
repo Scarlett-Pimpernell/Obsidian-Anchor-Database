@@ -1,0 +1,320 @@
+--MS_Obsidian_Interleaved_Partition_Number_Sorter_Enriched (Magnitude Dense and Precision Dense)
+
+--COMMENTS:
+--THIS ALGORITHM IS CURRENTLY USELESS IN SQL SERVER IN TERMS OF IMPROVING COMPUTATION SPEEDS FOR SORTING NUMBERS... IT IS SIMPLY TO DEMONSTRATE THE CONCEPT, BUT WOULD ACTUALLY REQUIRE MICROSOFT TO ADD NEW FUNCTIONALITY TO T-SQL, THAT ALLOWS USERS TO USE A COMMAND THAT FIXES ROW ORDER, WHICH ONE COULD THEN SWITCH ON AND OFF AS APPROPRIATE!!!... AS SUCH, WITHOUT THIS ADDITIONAL FUCNTIONALITY, THIS ALGORITHM WILL RUN SLOWER THAN A SIMPLE ORDER BY CLAUSE, FOR OBVIOUS REASONS...
+--This algorithm will provide the best performance with input datasets that have a large range in numerical values (i.e. covering many different significant figures), and also when the digit length distribution of arguements across this input data range, is as flat/equal/balanced as possible across said significant figure classes.
+--For best performance (and this is necessary to take any advantage of the pratitioned sort technique), please remove all leading zeros from each arguement value integer component, and also please remove all trailing zeros from each arguement value decimal component, before feeding a dataset into this stored procedure!!!
+--In an alternative implementation, you would partition the data into separate partition tables, rather than simply labelling each row with a group label, and indeed, this alternative approach may be even quicker and more energy-efficient, because you would avoid the extra partition group checks, when building the final sorted table.
+--The reason why this algorithm is so powerful, is because it takes advantage of the ordinal nature of numbers, such that partitions of the input data are created based on number digit length (significant figures), and thereby massively reduces the exponential sorting penalty where usually every pair of arguements would have to be checked for order. Instead, because we now have significant figure or number digit length paritions, we only experience a very shallow exponentiation penalty, because we only have to check pairs of number arguements within a partition, and then we simply append the ordered partitions into a fully-ordered superset. You should experience maybe more than multiples of compute speed and energy efficiency performance improvements on truly big data problem spaces (Billions of arguement values), and especially on hyper data problem spaces (Trillions of arguement values), that need to be sorted.
+--Essentially, the algorithm works so effectively in speeding up ordering compute time, by doing a sizeable amount of linear pre-transformations and pre-partitions (TRUST THE SEEMING MADNESS... IT WILL SERIOUSLY REDUCE COMPUTATION EXPONENTIATION WITH BIG AND HYPER DATA VOLUMES), in order to eliminate most of the painfully exponential arguement-pair-wise ordering computations (which would otherwise become prohibitive in big and hyper data volumes)... We implement separate partitions for digits in the integer component but not the decimal component (because the decimal component would require us to resolve integer component splits, which would necessarily require at least one cross join, which would therefore make the algorithm always slower than a native SQL single ordering cross join)... In this way, maximal number sorting speed can be achieved...
+
+--NOTA BENE 0001: I understand that Min() and Max() require a basic ordering algorithm which is 'slow' (and would otherwise lead to a longer compute time due to the fact there are multiple calls to the functions Min() and Max() in this algorithm), but, because we have massively group partitioned data whenever we use these functions against a result set, the exponential detriment of the basic ordering algorithm is absolutely minimised... You should still find that overall, this algorithm is significantly speedier than the native SQL Server 'Order By' clause on its own, when applied directly to a table of input numbers!!!...
+--NOTA BENE 0002: I have now implemented here, an enriched partition sort algorithm, that allows you to partition based on arguement decimal compoenents as well, by adding a resolution global variable... This particular algorithm should be used instead of the standard vanilla partition sorter, if your dataset usecase makes dense use of the decimal place digits across all the input dataset arguements... But please remember, that you will still have to optimise this resolution variable at test time, using representative data distributions and counts...
+
+--LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million arguements that need to be sorted (possibly even less than this will experience significant speed improvements)...
+
+--FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
+
+--GLOBAL VARIABLES
+Declare @Sort_Polarity As Varchar(10)
+Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
+
+Declare @Retain_Duplicates As Int
+Set @Retain_Duplicates = 1 --If you want to retain duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
+
+Declare @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal As Int
+Set @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0 --Figure this one out yourself... You can choose assigned values of either one (1) or zero (0)...
+
+Declare @Decimal_Component_Digit_Resolution_Count As Tinyint
+Set @Decimal_Component_Digit_Resolution_Count = 3 --Must be greater than zero (0), and less than nineteen (19) {nineteen being the greatest decimal precision that this algorithm has currently been designed to handle}... Lower variable values here, will usually give fewer dataset partition counts, in comparison to dataset arguement counts, and therefore a much quicker compute speed (up to a point), but it depends on the actual distributional profile of the dataset arguements, which are fed into each sort... The recommended test initiation value is 3, but you will need to carry out your own comprehensive testing which suits your particular data usecase, in order to optimise this value...  I HAVEN'T ANALYSED THE FOLLOWING CLAIM, BUT IT SEEMS TO ME THAT OPTIMISING FOR A PARTITION COUNT WHICH IS AROUND HALF THAT OF THE ARGUEMENT COUNT, WILL PROBABLY OBTAIN THE QUICKEST COMPUTE SPEED PERFORMANCE (The reason I say this, is because you want as few partitions as possible in order to minimise the inter-partition sort ordering compute time... but simultaneously, you want as few arguements in each partition as is possible in order to once again minimise the intra-partition sort compute time!!!)...
+
+Declare @Data Table ([Data] Varchar(Max))
+Insert Into @Data ([Data])
+Values
+('90.1167842'),
+('90.1167849'),
+('01.50000'),
+('1.58000'),
+('3'),
+('2'),
+('00000107'),
+('107'),
+('89'),
+('110'),
+('16390'),
+('17380'),
+('11110.56'),
+('11110.53'),
+('001'),
+('0001.20')
+
+
+--DATA VALIDATION CHECKS (For Out Of Scope Parameters)
+--(@Sort Polarity)
+If @Sort_Polarity Is Null GoTo Invalid_Sort_Polarity_Input_Arguement
+If @Sort_Polarity <> 'Ascending' --Dual If Statement With the Line Afterwards.
+	If @Sort_Polarity <> 'Descending' GoTo Invalid_Sort_Polarity_Input_Arguement
+
+--(@Data)
+If (Select Count(1) From @Data) Is Null GoTo Invalid_Data_Input_Arguement
+If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
+
+
+--INTERNAL VARIABLES
+Declare @Data_Anchored Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max))
+Declare @Decimal_Data_Type_Zero_Scaffolds Table ([Zeros] Varchar(Max), [Zero_Count] Int)
+Declare @Data_Zero_Trimmed_Intermediate_A Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Integer_Component_Trim_Zero_Count] Int, [Decimal_Component_Trim_Zero_Count] Int)
+Declare @Data_Zero_Trimmed_Intermediate_B Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Maximum_Integer_Component_Trim_Zero_Count] Int, [Maximum_Decimal_Component_Trim_Zero_Count] Int)
+Declare @Data_Zero_Trimmed_Final_A Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
+Declare @Data_Zero_Trimmed_Final_B Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
+Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Integer_Component_Length] BigInt, [Decimal_Component_Resolution] Varchar(Max))
+Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
+Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
+Declare @Loop_Count_0001 As BigInt
+Declare @Partition_Row_Count As Bigint
+Declare @Partition_Minimum_Extent As Decimal(38, 19)
+Declare @Partition_Maximum_Extent As Decimal(38, 19)
+Declare @Interleaved_Partition_Sort_Merge As Table ([Order] Bigint, [Arguement] Varchar(Max))
+Declare @Cumulative_Sort_Order_Limit As Bigint
+
+--ALGORITHM EXECUTION
+--Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Retain_Duplicates global variable to one (1)...
+If @Retain_Duplicates = 1
+	Begin
+		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Select
+			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
+			[Data] As [Arguement]
+		From @Data
+	End
+Else If @Retain_Duplicates = 0
+	Begin
+		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Select
+			0 As [Anchor_Order], --Possibly a bit of an inefficient shortcut fudge, but I need to move onto other algorithms soon... May swoop back round at a later time to fix this unecessary facet...
+			[Data] As [Arguement]
+		From @Data
+		Group By [Data]
+	End
+
+
+--Trim leading integer component zeros, and trim trailing decimal component zeros...
+Insert Into @Decimal_Data_Type_Zero_Scaffolds ([Zeros], [Zero_Count])
+Values --Decimal(38, 19) can only hold 19 zeros at most in each coponent (integer or decimal)... Thus we create zero scaffolds for up to 18 consecutive zeros...
+('0', 1),
+('00', 2),
+('000', 3),
+('0000', 4),
+('00000', 5),
+('000000', 6),
+('0000000', 7),
+('00000000', 8),
+('000000000', 9),
+('0000000000', 10),
+('00000000000', 11),
+('000000000000', 12),
+('0000000000000', 13),
+('00000000000000', 14),
+('000000000000000', 15),
+('0000000000000000', 16),
+('00000000000000000', 17),
+('000000000000000000', 18)
+
+Insert Into @Data_Zero_Trimmed_Intermediate_A ([Anchor_Order], [Arguement], [Integer_Component_Trim_Zero_Count], [Decimal_Component_Trim_Zero_Count])
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	A.[Arguement] As [Arguement],
+	B.[Zero_Count] As [Integer_Component_Trim_Zero_Count],
+	0 As [Decimal_Component_Trim_Zeros]
+From @Data_Anchored A
+Cross Join @Decimal_Data_Type_Zero_Scaffolds B
+Inner Join @Decimal_Data_Type_Zero_Scaffolds C On
+	(C.[Zero_Count] = B.[Zero_Count])
+Where B.[Zeros] Like Left(A.[Arguement], B.[Zero_Count])
+Union All
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	A.[Arguement] As [Arguement],
+	0 As [Integer_Component_Trim_Zeros],
+	C.[Zero_Count] As [Decimal_Component_Trim_Zero_Count]
+From @Data_Anchored A
+Cross Join @Decimal_Data_Type_Zero_Scaffolds B
+Inner Join @Decimal_Data_Type_Zero_Scaffolds C On
+	(C.[Zero_Count] = B.[Zero_Count])
+Where Patindex('%.%', A.[Arguement]) > 0
+And B.[Zero_Count] < (Len(A.[Arguement]) - Patindex('%.%', A.[Arguement]))
+And B.[Zeros] Like Right(A.[Arguement], B.[Zero_Count])
+
+Insert Into @Data_Zero_Trimmed_Intermediate_B ([Anchor_Order], [Arguement], [Maximum_Integer_Component_Trim_Zero_Count] , [Maximum_Decimal_Component_Trim_Zero_Count])
+Select
+	[Anchor_Order] As [Anchor_Order],
+	[Arguement] As [Arguement],
+	Max([Integer_Component_Trim_Zero_Count]) As [Maximum_Integer_Component_Trim_Zero_Count],
+	Max([Decimal_Component_Trim_Zero_Count]) As [Maximum_Decimal_Component_Trim_Zero_Count]
+From @Data_Zero_Trimmed_Intermediate_A
+Group By [Anchor_Order], [Arguement]
+
+Insert Into @Data_Zero_Trimmed_Final_A ([Anchor_Order], [Arguement], [Trimmed_Arguement])
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	A.[Arguement] As [Arguement],
+	A.[Arguement] As [Trimmed_Arguement]
+From @Data_Anchored A
+Left Join @Data_Zero_Trimmed_Intermediate_B B On
+	(B.[Anchor_Order] = A.[Anchor_Order] And B.[Arguement] = A.[Arguement])
+Where B.[Anchor_Order] Is Null
+Union All
+Select
+	[Anchor_Order] As [Anchor_Order],
+	[Arguement] As [Arguement],
+	(Case When [Maximum_Integer_Component_Trim_Zero_Count] Is Not Null Then (Case When [Maximum_Decimal_Component_Trim_Zero_Count] Is Not Null Then Left(Right([Arguement], (Len([Arguement]) - [Maximum_Integer_Component_Trim_Zero_Count])), ((Len([Arguement]) - [Maximum_Integer_Component_Trim_Zero_Count]) - [Maximum_Decimal_Component_Trim_Zero_Count])) Else Right([Arguement], (Len([Arguement]) - [Maximum_Integer_Component_Trim_Zero_Count])) End) Else Left([Arguement], (Len([Arguement]) - [Maximum_Decimal_Component_Trim_Zero_Count])) End) As [Trimmed_Arguement]
+From @Data_Zero_Trimmed_Intermediate_B
+
+If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0
+	Begin
+		Insert Into @Data_Zero_Trimmed_Final_B ([Arguement], [Trimmed_Arguement])
+		Select
+			Max([Arguement]) As [Arguement], --If you want to retain the [Arguement] value with the most peripheral zeros, then change this to a Min() function... Actually, I have implemented this ith a global variable up top, and a corresponding if statement here!...
+			(Case When Len([Trimmed_Arguement]) = 0 Then '0' Else [Trimmed_Arguement] End) As [Trimmed_Arguement] --We have to make sure that we don't lose any values which were originally zero (0)...
+		From @Data_Zero_Trimmed_Final_A
+		Group By [Anchor_Order], [Trimmed_Arguement]
+	End
+Else If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 1
+	Begin
+	Insert Into @Data_Zero_Trimmed_Final_B ([Arguement], [Trimmed_Arguement])
+		Select
+			Min([Arguement]) As [Arguement], --If you want to retain the [Arguement] value with the least peripheral zeros, then change this to a Max() function... Actually, I have implemented this ith a global variable up top, and a corresponding if statement here!...
+			(Case When Len([Trimmed_Arguement]) = 0 Then '0' Else [Trimmed_Arguement] End) As [Trimmed_Arguement] --We have to make sure that we don't lose any values which were originally zero (0)...
+		From @Data_Zero_Trimmed_Final_A
+		Group By [Anchor_Order], [Trimmed_Arguement]
+	End
+
+
+--The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-length-partition sort the input data arguement column.
+Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Integer_Component_Length], [Decimal_Component_Resolution])
+Select
+	[Arguement] As [Arguement],
+	Cast([Trimmed_Arguement] As Decimal(38, 19)) As [Trimmed_Arguement],
+	Greatest(1, (Case When Patindex('%.%', Cast([Trimmed_Arguement] As Varchar(Max))) > 0 Then (Patindex('%.%', Cast([Trimmed_Arguement] As Varchar(Max))) - 1) Else Len(Cast([Trimmed_Arguement] As Varchar(Max))) End)) As [Integer_Component_Length], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether... Also, here, we only want the integer component of the number... Nota Bene: We subtract 1 from the integer component length, in order to find the length  of the integer component of any numbers... By the way, the Greatest() function call is completely superfluous, and I have only used it, in order to compensate for a perceived bug in SQL Server, where zero integer component decimal values seem to get treated as second class citizens when using the Patindex() function (This line of sourceode will give them an integer component length of zero, whereas numbers 1 through 9 get a length assigned of one... I can;t imagine why!!!)...
+	Left([Trimmed_Arguement], @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution]
+From @Data_Zero_Trimmed_Final_B
+
+
+--Build Partition Resolution Extents
+Insert Into @Partition_Resolution_Extents ([Minimum_Extent], [Maximum_Extent])
+Select
+	Min([Trimmed_Arguement]) As [Minimum_Extent],
+	Max([Trimmed_Arguement]) As [Maximum_Extent]
+From @Pre_Transformed_Data
+Group By [Integer_Component_Length], [Decimal_Component_Resolution]
+
+
+--The following codeblocks return sorted data as desired.
+--Ascending Sort
+If @Sort_Polarity = 'Ascending'
+Begin
+	
+	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Select
+		Row_Number() Over(Order By [Minimum_Extent] Asc) As [Partition], --We are ordering by ascension, so Asc is used here...
+		[Minimum_Extent] As [Maximum_Extent],
+		[Maximum_Extent] As [Maximum_Extent]
+	From @Partition_Resolution_Extents
+	
+	--Interleaved Partition Sort Merge
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+		
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+				[Arguement]
+			From @Pre_Transformed_Data
+			Where
+			[Trimmed_Arguement] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			Or
+			[Trimmed_Arguement] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+		
+		End
+
+End
+
+--Descending Sort
+If @Sort_Polarity = 'Descending'
+Begin
+	
+	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Select
+		Row_Number() Over(Order By [Minimum_Extent] Desc) As [Partition], --We are ordering by ascension, so Asc is used here...
+		[Minimum_Extent] As [Maximum_Extent],
+		[Maximum_Extent] As [Maximum_Extent]
+	From @Partition_Resolution_Extents
+
+	--Interleaved Partition Sort Merge
+	 --References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+			
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+				[Arguement]
+			From @Pre_Transformed_Data
+			Where
+			[Trimmed_Arguement] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			Or
+			[Trimmed_Arguement] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+
+		End
+
+End
+
+
+--The Results
+Select
+	[Order] As [Order],
+	[Arguement] As [Arguement]
+From @Interleaved_Partition_Sort_Merge
+Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
+
+--The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
+Return
+
+
+--Other exception cases...
+Invalid_Sort_Polarity_Input_Arguement:
+Select 'Exception: The first global variable value (@Sort_Polarity), is out of scope for one of the following reasons... It is either not the string "Ascending" (without the double-quotes of course), is not the string "Descending" (without the double-quotes of course), or is either empty or null.'
+
+
+Invalid_Data_Input_Arguement:
+Select 'Exception: The second global variable value (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
