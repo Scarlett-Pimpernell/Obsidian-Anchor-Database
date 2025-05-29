@@ -1,4 +1,4 @@
---MS_Obsidian_Interleaved_Partition_Number_Sorter_Precision_Dense (Precision Dense)
+--MS_Obsidian_Interleaved_Partition_Number_Sorter_Magnitude_Precision_Density_Balanced
 
 --COMMENTS:
 --THIS ALGORITHM IS CURRENTLY USELESS IN SQL SERVER IN TERMS OF IMPROVING COMPUTATION SPEEDS FOR SORTING NUMBERS... IT IS SIMPLY TO DEMONSTRATE THE CONCEPT, BUT WOULD ACTUALLY REQUIRE MICROSOFT TO ADD NEW FUNCTIONALITY TO T-SQL, THAT ALLOWS USERS TO USE A COMMAND THAT FIXES ROW ORDER, WHICH ONE COULD THEN SWITCH ON AND OFF AS APPROPRIATE!!!... AS SUCH, WITHOUT THIS ADDITIONAL FUCNTIONALITY, THIS ALGORITHM WILL RUN SLOWER THAN A SIMPLE ORDER BY CLAUSE, FOR OBVIOUS REASONS...
@@ -9,7 +9,8 @@
 --Essentially, the algorithm works so effectively in speeding up ordering compute time, by doing a sizeable amount of linear pre-transformations and pre-partitions (TRUST THE SEEMING MADNESS... IT WILL SERIOUSLY REDUCE COMPUTATION EXPONENTIATION WITH BIG AND HYPER DATA VOLUMES), in order to eliminate most of the painfully exponential arguement-pair-wise ordering computations (which would otherwise become prohibitive in big and hyper data volumes)... We implement separate partitions for digits in the integer component but not the decimal component (because the decimal component would require us to resolve integer component splits, which would necessarily require at least one cross join, which would therefore make the algorithm always slower than a native SQL single ordering cross join)... In this way, maximal number sorting speed can be achieved...
 
 --NOTA BENE 0001: I understand that Min() and Max() require a basic ordering algorithm which is 'slow' (and would otherwise lead to a longer compute time due to the fact there are multiple calls to the functions Min() and Max() in this algorithm), but, because we have massively group partitioned data whenever we use these functions against a result set, the exponential detriment of the basic ordering algorithm is absolutely minimised... You should still find that overall, this algorithm is significantly speedier than the native SQL Server 'Order By' clause on its own, when applied directly to a table of input numbers!!!...
---NOTA BENE 0002: I have now implemented here, an enriched partition sort algorithm, that allows you to partition based on arguement decimal compoenents as well, by adding a resolution global variable... This particular algorithm should be used instead of the standard vanilla partition sorter, if your dataset usecase makes dense use of the decimal place digits across all the input dataset arguements... But please remember, that you will still have to optimise this resolution variable at test time, using representative data distributions and counts...
+--NOTA BENE 0002: This version of the sorting algorithm is intended for situations where the dataset to be order sorted, is genuinely balanced in terms of magnitude and precision components, when arguments are taken on aggregate... OR where the user is unsure of usecase dataset magnitude and precision distributional profile characteristics, or where these aspects are highly dynamic in nature... It is, if you like, a sort of almost best of both worlds, but of course, if you genuinely have either predominantly magnitude or precision dense datasaets that you want to order, then please use one of the other appropriate sibling algorithms... 
+--NOTA BENE 0003: I should add, that I have not even ascertained whether nesting the magnitude dense and precision dense approaches into a hybrid algorithm (as is done here), is actually superlatively compute speed beneficial!!! --> PLEASE CHECK THIS YOURSELF!!!
 
 --LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million arguements that need to be sorted (possibly even less than this will experience significant speed improvements)...
 
@@ -31,6 +32,7 @@ Set @Decimal_Component_Digit_Resolution_Count = 1 --Must be greater than zero (0
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
 Values
+('-332'),
 ('90.1167842'),
 ('90.1167849'),
 ('01.50000'),
@@ -49,12 +51,14 @@ Values
 ('001'),
 ('1234567890123456789.1234567890123456789'),
 ('0001.20'),
+('-40.04'),
 ('0.53'),
 ('11000.53729'),
 ('0.0'),
 ('0'),
 ('1.0'),
-('1')
+('1'),
+('-333')
 
 
 --DATA VALIDATION CHECKS (For Out Of Scope Parameters)
@@ -75,13 +79,20 @@ Declare @Data_Zero_Trimmed_Intermediate_A Table ([Anchor_Order] Bigint, [Argueme
 Declare @Data_Zero_Trimmed_Intermediate_B Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Maximum_Integer_Component_Trim_Zero_Count] Int)
 Declare @Data_Zero_Trimmed_Final_A Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
 Declare @Data_Zero_Trimmed_Final_B Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
-Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Integer_Component] Bigint, [Decimal_Component_Resolution] Varchar(Max))
+Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement_Varchar] Varchar(Max), [Trimmed_Arguement_Decimal] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component_Length] Bigint)
 Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Minimum_Extent As Decimal(38, 19)
 Declare @Partition_Maximum_Extent As Decimal(38, 19)
+Declare @Pre_Transformed_Data_Nested As Table ([Arguement] Varchar(Max), [Trimmed_Arguement_Decimal] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component] Bigint, [Decimal_Component_Resolution] Varchar(Max))
+Declare @Partition_Resolution_Extents_Nested As Table ([Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
+Declare @Partition_Map_Interleaved_Nested As Table ([Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
+Declare @Loop_Count_0001_Nested As BigInt
+Declare @Partition_Row_Count_Nested As Bigint
+Declare @Partition_Minimum_Extent_Nested As Decimal(38, 19)
+Declare @Partition_Maximum_Extent_Nested As Decimal(38, 19)
 Declare @Interleaved_Partition_Sort_Merge As Table ([Order] Bigint, [Arguement] Varchar(Max))
 Declare @Cumulative_Sort_Order_Limit As Bigint
 
@@ -187,23 +198,24 @@ Else If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 1
 	End
 
 
---The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-length-partition sort the input data arguement column.
-Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Integer_Component], [Decimal_Component_Resolution])
+--The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-stem-partition sort the input data arguement column.
+Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement_Varchar], [Trimmed_Arguement_Decimal], [Number_Polarity], [Integer_Component_Length])
 Select
 	[Arguement] As [Arguement],
-	Cast([Trimmed_Arguement] As Decimal(38, 19)) As [Trimmed_Arguement],
-	Cast((Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then Substring([Trimmed_Arguement], 1, (Patindex('%.%', [Trimmed_Arguement]) - 1)) Else [Trimmed_Arguement] End) As Bigint) As [Integer_Component], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
-	Substring(Cast(Cast([Trimmed_Arguement] As Decimal(38, 19)) As Varchar(Max)), ((Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then (Patindex('%.%', [Trimmed_Arguement]) - 1) Else Len([Trimmed_Arguement]) End) + 2), @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution] --Duplication of calculation I know, but preferable in terms of compute speed versus the time it would take to intermediately store results to another table object... Also, the doble cast on the first term of the substring method is necessary, because we want to fill in with decimal zeros wherever possible...
+	[Trimmed_Arguement] As [Trimmed_Arguement_Varchar],
+	Cast([Trimmed_Arguement] As Decimal(38, 19)) As [Trimmed_Arguement_Decimal],
+	Sign(Cast([Trimmed_Arguement] As Decimal(38, 19))) As [Number_Polarity],
+	Cast((Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then (Patindex('%.%', [Trimmed_Arguement]) - 1) Else Len([Trimmed_Arguement]) End) As Bigint) As [Integer_Component_Length] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
 From @Data_Zero_Trimmed_Final_B
 
 
 --Build Partition Resolution Extents
 Insert Into @Partition_Resolution_Extents ([Minimum_Extent], [Maximum_Extent])
 Select
-	Min([Trimmed_Arguement]) As [Minimum_Extent],
-	Max([Trimmed_Arguement]) As [Maximum_Extent]
+	Min([Trimmed_Arguement_Decimal]) As [Minimum_Extent],
+	Max([Trimmed_Arguement_Decimal]) As [Maximum_Extent]
 From @Pre_Transformed_Data
-Group By [Integer_Component], [Decimal_Component_Resolution]
+Group By [Number_Polarity], [Integer_Component_Length]
 
 
 --The following codeblocks return sorted data as desired.
@@ -233,20 +245,74 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
 			
-			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			--NESTED PRECISION DENSE SORTING!!!!!
+			Insert Into @Pre_Transformed_Data_Nested ([Arguement], [Trimmed_Arguement_Decimal], [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
-				[Arguement]
+				[Arguement] As [Arguement],
+				[Trimmed_Arguement_Decimal] As [Trimmed_Arguement_Decimal],
+				[Number_Polarity] As [Number_Polarity],
+				Cast((Case When Patindex('%.%', [Trimmed_Arguement_Varchar]) > 0 Then Substring([Trimmed_Arguement_Varchar], 1, (Patindex('%.%', [Trimmed_Arguement_Varchar]) - 1)) Else [Trimmed_Arguement_Varchar] End) As Bigint) As [Integer_Component], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+				Substring(Cast(Cast([Trimmed_Arguement_Varchar] As Decimal(38, 19)) As Varchar(Max)), ((Case When Patindex('%.%', [Trimmed_Arguement_Varchar]) > 0 Then (Patindex('%.%', [Trimmed_Arguement_Varchar]) - 1) Else Len([Trimmed_Arguement_Varchar]) End) + 2), @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution] --Duplication of calculation I know, but preferable in terms of compute speed versus the time it would take to intermediately store results to another table object... Also, the doble cast on the first term of the substring method is necessary, because we want to fill in with decimal zeros wherever possible...
 			From @Pre_Transformed_Data
 			Where
-			[Trimmed_Arguement] >= @Partition_Minimum_Extent
-			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent
 			Or
-			[Trimmed_Arguement] >= @Partition_Minimum_Extent
-			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent
 			
-			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+			--Build Partition Resolution Extents
+			Insert Into @Partition_Resolution_Extents_Nested ([Minimum_Extent], [Maximum_Extent])
+			Select
+				Min([Trimmed_Arguement_Decimal]) As [Minimum_Extent],
+				Max([Trimmed_Arguement_Decimal]) As [Maximum_Extent]
+			From @Pre_Transformed_Data_Nested
+			Group By [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution]
+
+
+			--The following codeblocks return sorted data as desired.
+			--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+			Insert Into @Partition_Map_Interleaved_Nested ([Partition], [Minimum_Extent], [Maximum_Extent])
+			Select
+				Row_Number() Over(Order By [Minimum_Extent] Asc) As [Partition], --We are ordering by ascension, so Asc is used here...
+				[Minimum_Extent] As [Maximum_Extent],
+				[Maximum_Extent] As [Maximum_Extent]
+			From @Partition_Resolution_Extents_Nested
+	
+			--Interleaved Partition Sort Merge
+			Set @Loop_Count_0001_Nested = 0
+			Set @Partition_Row_Count_Nested = (Select Count(1) From @Partition_Map_Interleaved_Nested) --Partition rowset count calculation...
+			While @Loop_Count_0001_Nested < @Partition_Row_Count_Nested
+				Begin
 		
+					Set @Loop_Count_0001_Nested = (@Loop_Count_0001_Nested + 1)
+
+					--The actual sorting
+					--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+					Set @Partition_Minimum_Extent_Nested = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
+					Set @Partition_Maximum_Extent_Nested = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
+			
+					Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+					Select
+						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+						[Arguement]
+					From @Pre_Transformed_Data_Nested
+					Where
+					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+					Or
+					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+			
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+		
+				End
+			
+			--Because we have nested loop table variables, we must empty them every outer loop cycle... You may be able to significantly speed up the algorithm, by simply inserting into new nested tables in each outer loop cycle, because deletion of data can indeed be rather slow!!!...
+			Delete From @Pre_Transformed_Data_Nested
+			Delete From @Partition_Resolution_Extents_Nested
+			Delete From @Partition_Map_Interleaved_Nested
+
 		End
 
 End
@@ -278,19 +344,74 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
 			
-			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			--NESTED PRECISION DENSE SORTING!!!!!
+			Insert Into @Pre_Transformed_Data_Nested ([Arguement], [Trimmed_Arguement_Decimal], [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
-				[Arguement]
+				[Arguement] As [Arguement],
+				[Trimmed_Arguement_Decimal] As [Trimmed_Arguement_Decimal],
+				[Number_Polarity] As [Number_Polarity],
+				Cast((Case When Patindex('%.%', [Trimmed_Arguement_Varchar]) > 0 Then Substring([Trimmed_Arguement_Varchar], 1, (Patindex('%.%', [Trimmed_Arguement_Varchar]) - 1)) Else [Trimmed_Arguement_Varchar] End) As Bigint) As [Integer_Component], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+				Substring(Cast(Cast([Trimmed_Arguement_Varchar] As Decimal(38, 19)) As Varchar(Max)), ((Case When Patindex('%.%', [Trimmed_Arguement_Varchar]) > 0 Then (Patindex('%.%', [Trimmed_Arguement_Varchar]) - 1) Else Len([Trimmed_Arguement_Varchar]) End) + 2), @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution] --Duplication of calculation I know, but preferable in terms of compute speed versus the time it would take to intermediately store results to another table object... Also, the doble cast on the first term of the substring method is necessary, because we want to fill in with decimal zeros wherever possible...
 			From @Pre_Transformed_Data
 			Where
-			[Trimmed_Arguement] >= @Partition_Minimum_Extent
-			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent
 			Or
-			[Trimmed_Arguement] >= @Partition_Minimum_Extent
-			And [Trimmed_Arguement] <= @Partition_Maximum_Extent
+			[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent
 			
-			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+			--Build Partition Resolution Extents
+			Insert Into @Partition_Resolution_Extents_Nested ([Minimum_Extent], [Maximum_Extent])
+			Select
+				Min([Trimmed_Arguement_Decimal]) As [Minimum_Extent],
+				Max([Trimmed_Arguement_Decimal]) As [Maximum_Extent]
+			From @Pre_Transformed_Data_Nested
+			Group By [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution]
+
+
+			--The following codeblocks return sorted data as desired.
+			--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+			Insert Into @Partition_Map_Interleaved_Nested ([Partition], [Minimum_Extent], [Maximum_Extent])
+			Select
+				Row_Number() Over(Order By [Minimum_Extent] Desc) As [Partition], --We are ordering by ascension, so Asc is used here...
+				[Minimum_Extent] As [Maximum_Extent],
+				[Maximum_Extent] As [Maximum_Extent]
+			From @Partition_Resolution_Extents_Nested
+
+			--Interleaved Partition Sort Merge
+				--References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
+			Set @Loop_Count_0001_Nested = 0
+			Set @Partition_Row_Count_Nested = (Select Count(1) From @Partition_Map_Interleaved_Nested) --Partition rowset count calculation...
+			While @Loop_Count_0001_Nested < @Partition_Row_Count_Nested
+				Begin
+			
+					Set @Loop_Count_0001_Nested = (@Loop_Count_0001_Nested + 1)
+
+					--The actual sorting
+					--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+					Set @Partition_Minimum_Extent_Nested = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
+					Set @Partition_Maximum_Extent_Nested = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
+			
+					Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+					Select
+						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+						[Arguement]
+					From @Pre_Transformed_Data_Nested
+					Where
+					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+					Or
+					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+			
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+
+				End
+			
+			--Because we have nested loop table variables, we must empty them every outer loop cycle... You may be able to significantly speed up the algorithm, by simply inserting into new nested tables in each outer loop cycle, because deletion of data can indeed be rather slow!!!...
+			Delete From @Pre_Transformed_Data_Nested
+			Delete From @Partition_Resolution_Extents_Nested
+			Delete From @Partition_Map_Interleaved_Nested
 
 		End
 
@@ -302,7 +423,7 @@ Select
 	[Order] As [Order],
 	[Arguement] As [Arguement]
 From @Interleaved_Partition_Sort_Merge
-Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
+--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 
 --The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
 Return

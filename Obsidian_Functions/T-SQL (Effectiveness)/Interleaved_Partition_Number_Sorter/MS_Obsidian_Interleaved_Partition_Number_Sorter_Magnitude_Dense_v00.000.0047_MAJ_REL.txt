@@ -28,6 +28,7 @@ Set @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0 --Figur
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
 Values
+('-332'),
 ('90.1167842'),
 ('90.1167849'),
 ('01.50000'),
@@ -46,12 +47,14 @@ Values
 ('001'),
 ('1234567890123456789.1234567890123456789'),
 ('0001.20'),
+('-40.04'),
 ('0.53'),
 ('11000.53729'),
 ('0.0'),
 ('0'),
 ('1.0'),
-('1')
+('1'),
+('-333')
 
 
 --DATA VALIDATION CHECKS (For Out Of Scope Parameters)
@@ -72,7 +75,7 @@ Declare @Data_Zero_Trimmed_Intermediate_A Table ([Anchor_Order] Bigint, [Argueme
 Declare @Data_Zero_Trimmed_Intermediate_B Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Maximum_Integer_Component_Trim_Zero_Count] Int)
 Declare @Data_Zero_Trimmed_Final_A Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
 Declare @Data_Zero_Trimmed_Final_B Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
-Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Integer_Component_Length] Bigint)
+Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component_Length] Bigint)
 Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Loop_Count_0001 As BigInt
@@ -185,10 +188,11 @@ Else If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 1
 
 
 --The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-length-partition sort the input data arguement column.
-Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Integer_Component_Length])
+Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Number_Polarity], [Integer_Component_Length])
 Select
 	[Arguement] As [Arguement],
 	Cast([Trimmed_Arguement] As Decimal(38, 19)) As [Trimmed_Arguement],
+	Sign(Cast([Trimmed_Arguement] As Decimal(38, 19))) As [Number_Polarity],
 	Cast((Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then (Patindex('%.%', [Trimmed_Arguement]) - 1) Else Len([Trimmed_Arguement]) End) As Bigint) As [Integer_Component_Length] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
 From @Data_Zero_Trimmed_Final_B
 
@@ -199,7 +203,7 @@ Select
 	Min([Trimmed_Arguement]) As [Minimum_Extent],
 	Max([Trimmed_Arguement]) As [Maximum_Extent]
 From @Pre_Transformed_Data
-Group By [Integer_Component_Length]
+Group By [Number_Polarity], [Integer_Component_Length]
 
 
 --The following codeblocks return sorted data as desired.
@@ -298,7 +302,7 @@ Select
 	[Order] As [Order],
 	[Arguement] As [Arguement]
 From @Interleaved_Partition_Sort_Merge
-Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
+--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 
 --The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
 Return
