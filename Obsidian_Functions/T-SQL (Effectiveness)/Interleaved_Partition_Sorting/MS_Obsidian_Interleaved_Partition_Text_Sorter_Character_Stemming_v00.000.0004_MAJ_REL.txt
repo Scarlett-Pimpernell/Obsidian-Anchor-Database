@@ -61,7 +61,7 @@ If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
 
 
 --INTERNAL VARIABLES
-Declare @Data_Anchored Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max))
+Declare @Data_Augmented Table ([Arguement] Varchar(Max))
 Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Character_Stem_Resolution] Varchar(Max))
 Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
 Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
@@ -76,17 +76,15 @@ Declare @Cumulative_Sort_Order_Limit As Bigint
 --Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Retain_Duplicates global variable to one (1)...
 If @Retain_Duplicates = 1
 	Begin
-		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Insert Into @Data_Augmented ([Arguement])
 		Select
-			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
 			[Data] As [Arguement]
 		From @Data
 	End
 Else If @Retain_Duplicates = 0
 	Begin
-		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Insert Into @Data_Augmented ([Arguement])
 		Select
-			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
 			[Data] As [Arguement]
 		From @Data
 		Group By [Data]
@@ -98,7 +96,7 @@ Insert Into @Pre_Transformed_Data ([Arguement], [Character_Stem_Resolution])
 Select
 	[Arguement] As [Arguement],
 	Substring([Arguement], 1, @Character_Resolution_Count) As [Character_Stem_Resolution]
-From @Data_Anchored
+From @Data_Augmented
 
 
 --Build Partition Resolution Extents
