@@ -1,0 +1,221 @@
+--MS_Obsidian_Interleaved_Partition_Text_Sorter_Character_Stemming
+
+--COMMENTS:
+--This algorithm will provide the best performance with input datasets that have a large variety of textual values (i.e. covering many different combinations of characters), and also when the textual variety distribution of arguements across this input data range, is as flat/equal/balanced as possible across said charcter combination classes.
+--In an alternative implementation, you would partition the data into separate partition tables, rather than simply labelling each row with a group label, and indeed, this alternative approach may be even quicker and more energy-efficient, because you would avoid the extra partition group checks, when building the final sorted table.
+--The reason why this algorithm is so powerful, is because it takes advantage of the stemmable nature of words, such that partitions of the input data are created based on character stems (the leading patterns of characters for each argument string), and thereby massively reduces the exponential sorting penalty where usually every pair of arguements would have to be checked for order. Instead, because we now have character stem paritions, we only experience a very shallow exponentiation penalty, because we only have to check pairs of textual arguements within a partition, and then we simply append the ordered partitions into a fully-ordered superset. You should experience maybe more than multiples of compute speed and energy efficiency performance improvements on truly big data problem spaces (Billions of arguement values), and especially on hyper data problem spaces (Trillions of arguement values), that need to be sorted.
+--Essentially, the algorithm works so effectively in speeding up ordering compute time, by doing a sizeable amount of linear pre-transformations and pre-partitions (TRUST THE SEEMING MADNESS... IT WILL SERIOUSLY REDUCE COMPUTATION EXPONENTIATION WITH BIG AND HYPER DATA VOLUMES), in order to eliminate most of the painfully exponential arguement-pair-wise ordering computations (which would otherwise become prohibitive in big and hyper data volumes)... We implement separate partitions for leading character stems ... In this way, maximal number sorting speed can be achieved...
+
+--NOTA BENE 0001: I understand that Min() and Max() require a basic ordering algorithm which is 'slow' (and would otherwise lead to a longer compute time due to the fact there are multiple calls to the functions Min() and Max() in this algorithm), but, because we have massively group partitioned data whenever we use these functions against a result set, the exponential detriment of the basic ordering algorithm is absolutely minimised... You should still find that overall, this algorithm is significantly speedier than the native SQL Server 'Order By' clause on its own, when applied directly to a table of input text strings!!!...
+--NOTA BENE 0002: I have now implemented here, an advanced partition sort algorithm, that allows you to partition based on arguement character stems, by adding a resolution global variable... This particular algorithm should be used instead of the number partition sorter algorithms, if your dataset contains non-numeric text charcters in any of your arguments... But please remember, that you will still have to optimise this resolution variable at test time, using representative data distributions and counts...
+
+--LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data text sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million arguements that need to be sorted (possibly even less than this will experience significant speed improvements)...
+
+--FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
+
+--GLOBAL VARIABLES
+Declare @Sort_Polarity As Varchar(10)
+Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
+
+Declare @Retain_Duplicates As Int
+Set @Retain_Duplicates = 1 --If you want to retain duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
+
+Declare @Character_Resolution_Count As Tinyint
+Set @Character_Resolution_Count = 1 --Must be greater than zero (0), and less than around 2 billion (or more precisely 2,147,483,646) {this number being the greatest number of characters that this algorithm has currently been designed to handle}... Lower variable values here, will usually give fewer dataset partition counts, in comparison to dataset arguement counts, and therefore a much quicker compute speed (up to a point), but it depends on the actual distributional profile of the dataset arguements, which are fed into each sort... The recommended test initiation value is 1, but you will need to carry out your own comprehensive testing which suits your particular data usecase, by incrementing this variable value, in order to optimise this value...  I HAVEN'T ANALYSED THE FOLLOWING CLAIM, BUT IT SEEMS TO ME THAT OPTIMISING FOR A PARTITION COUNT WHICH IS AROUND HALF THAT OF THE ARGUEMENT COUNT, WILL PROBABLY OBTAIN THE QUICKEST COMPUTE SPEED PERFORMANCE (The reason I say this, is because you want as few partitions as possible in order to minimise the INTER-partition sort ordering compute time... but simultaneously, you want as few arguments in each partition as is possible in order to minimise the INTRA-partition sort compute time!!!)... MORE IMPORTANTLY THOUGH, you certainly don't want a partition with one argument in it, if at all possible, as this defeats the power of partitions... Note that datasets wont usually be capable of reaching the ideal of 2 arguments per partition, due to distribution profile characteristics, and so will as such, have typically significantly less than half of the argument count as partition count, no matter what algorithmic resolution variable value you use...  this is simply to be accepted, and you should NOT simply use high resolution values always, because this will only be effective, if your dataset arguments mostly have a high degree of character variability, which is spread out across lots of different string lengths for each given character stem...
+
+Declare @Data Table ([Data] Varchar(Max))
+Insert Into @Data ([Data])
+Values
+('CRM Data Cleanup'),
+('ABCDEF1234567890 Quarterly Sales Report'),
+('ABCDEF1234567890 Client Onboarding Checklist'),
+('ABCDEF1234567890 Marketing Strategy Draft'),
+('Budget Approval Pending'),
+('Internal Memo – Confidential'),
+('ABCDEF1234567890 Employee Feedback Summary'),
+('ABCDEF1234567890 Invoice #32789 Sent'),
+('ABCDEF1234567890 Supply Chain Update'),
+('1234567890ABCDEF Team Meeting Notes'),
+('1234567890ABCDEF Legal Review Required'),
+('1234567890ABCDEF Social Media Metrics'),
+('ABCDEF1234567890 Product Launch Timeline'),
+('ABC12345DEF67890 Customer Retention Plan'),
+('ABC12345DEF67890 Performance Bonus Criteria'),
+('ABC12345DEF67890 Project Milestone Reached'),
+('ABC12345DEF67890 Vendor Contract Review'),
+('ABCDEF1234567890 Compliance Training Due'),
+('ABCDEF1234567890 Financial Forecast Q3'),
+('CRM Data Cleanup'),
+('ABCDEF1234567890 Board Meeting Agenda')
+
+
+--DATA VALIDATION CHECKS (For Out Of Scope Parameters)
+--(@Sort Polarity)
+If @Sort_Polarity Is Null GoTo Invalid_Sort_Polarity_Input_Arguement
+If @Sort_Polarity <> 'Ascending' --Dual If Statement With the Line Afterwards.
+	If @Sort_Polarity <> 'Descending' GoTo Invalid_Sort_Polarity_Input_Arguement
+
+--(@Data)
+If (Select Count(1) From @Data) Is Null GoTo Invalid_Data_Input_Arguement
+If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
+
+
+--INTERNAL VARIABLES
+Declare @Data_Anchored Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max))
+Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Character_Stem_Resolution] Varchar(Max))
+Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
+Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
+Declare @Loop_Count_0001 As BigInt
+Declare @Partition_Row_Count As Bigint
+Declare @Partition_Minimum_Extent As  Varchar(Max)
+Declare @Partition_Maximum_Extent As  Varchar(Max)
+Declare @Interleaved_Partition_Sort_Merge As Table ([Order] Bigint, [Arguement] Varchar(Max))
+Declare @Cumulative_Sort_Order_Limit As Bigint
+
+--ALGORITHM EXECUTION
+--Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Retain_Duplicates global variable to one (1)...
+If @Retain_Duplicates = 1
+	Begin
+		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Select
+			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
+			[Data] As [Arguement]
+		From @Data
+	End
+Else If @Retain_Duplicates = 0
+	Begin
+		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
+		Select
+			Row_Number() Over(Order By (Select Null)) As [Anchor_Order], --Ideally we want to be able to add a row number without ordering!!!... Please enable this functionality Microsoft, otherwise this algorithm is completely useless in SQL Server... Although very useful in other coding paradigms, where it is trivial to just add an order column without actually ordering your data...
+			[Data] As [Arguement]
+		From @Data
+		Group By [Data]
+	End
+
+
+--The following codeblocks partition character stems of each arguement, and then sort the input data arguement column based on the partitions of these stems.
+Insert Into @Pre_Transformed_Data ([Arguement], [Character_Stem_Resolution])
+Select
+	[Arguement] As [Arguement],
+	Substring([Arguement], 1, @Character_Resolution_Count) As [Character_Stem_Resolution]
+From @Data_Anchored
+
+
+--Build Partition Resolution Extents
+Insert Into @Partition_Resolution_Extents ([Minimum_Extent], [Maximum_Extent])
+Select
+	Min([Arguement]) As [Minimum_Extent],
+	Max([Arguement]) As [Maximum_Extent]
+From @Pre_Transformed_Data
+Group By [Character_Stem_Resolution]
+
+
+--The following codeblocks return sorted data as desired.
+--Ascending Sort
+If @Sort_Polarity = 'Ascending'
+Begin
+	
+	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Select
+		Row_Number() Over(Order By [Minimum_Extent] Asc) As [Partition], --We are ordering by ascension, so Asc is used here...
+		[Minimum_Extent] As [Maximum_Extent],
+		[Maximum_Extent] As [Maximum_Extent]
+	From @Partition_Resolution_Extents
+	
+	--Interleaved Partition Sort Merge
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+		
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Asc)) As [Order],
+				[Arguement]
+			From @Pre_Transformed_Data
+			Where
+			[Arguement] >= @Partition_Minimum_Extent
+			And [Arguement] <= @Partition_Maximum_Extent
+			Or
+			[Arguement] >= @Partition_Minimum_Extent
+			And [Arguement] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+		
+		End
+
+End
+
+--Descending Sort
+If @Sort_Polarity = 'Descending'
+Begin
+	
+	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
+	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Select
+		Row_Number() Over(Order By [Minimum_Extent] Desc) As [Partition], --We are ordering by ascension, so Asc is used here...
+		[Minimum_Extent] As [Maximum_Extent],
+		[Maximum_Extent] As [Maximum_Extent]
+	From @Partition_Resolution_Extents
+
+	--Interleaved Partition Sort Merge
+	 --References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+			
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Desc)) As [Order],
+				[Arguement]
+			From @Pre_Transformed_Data
+			Where
+			[Arguement] >= @Partition_Minimum_Extent
+			And [Arguement] <= @Partition_Maximum_Extent
+			Or
+			[Arguement] >= @Partition_Minimum_Extent
+			And [Arguement] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+
+		End
+
+End
+
+
+--The Results
+Select
+	[Order] As [Order],
+	[Arguement] As [Arguement]
+From @Interleaved_Partition_Sort_Merge
+--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
+
+--The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
+Return
+
+
+--Other exception cases...
+Invalid_Sort_Polarity_Input_Arguement:
+Select 'Exception: The first global variable value (@Sort_Polarity), is out of scope for one of the following reasons... It is either not the string "Ascending" (without the double-quotes of course), is not the string "Descending" (without the double-quotes of course), or is either empty or null.'
+
+
+Invalid_Data_Input_Arguement:
+Select 'Exception: The second global variable value (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
