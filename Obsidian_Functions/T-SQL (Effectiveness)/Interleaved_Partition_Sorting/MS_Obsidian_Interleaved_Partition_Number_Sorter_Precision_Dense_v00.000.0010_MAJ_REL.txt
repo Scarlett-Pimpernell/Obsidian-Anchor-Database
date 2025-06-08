@@ -1,7 +1,6 @@
---MS_Obsidian_Interleaved_Partition_Number_Sorter_Magnitude_Dense
+--MS_Obsidian_Interleaved_Partition_Number_Sorter_Precision_Dense
 
 --COMMENTS:
---THIS ALGORITHM IS CURRENTLY USELESS IN SQL SERVER IN TERMS OF IMPROVING COMPUTATION SPEEDS FOR SORTING NUMBERS... IT IS SIMPLY TO DEMONSTRATE THE CONCEPT, BUT WOULD ACTUALLY REQUIRE MICROSOFT TO ADD NEW FUNCTIONALITY TO T-SQL, THAT ALLOWS USERS TO USE A COMMAND THAT FIXES ROW ORDER, WHICH ONE COULD THEN SWITCH ON AND OFF AS APPROPRIATE!!!... AS SUCH, WITHOUT THIS ADDITIONAL FUCNTIONALITY, THIS ALGORITHM WILL RUN SLOWER THAN A SIMPLE ORDER BY CLAUSE, FOR OBVIOUS REASONS...
 --This algorithm will provide the best performance with input datasets that have a large range in numerical values (i.e. covering many different significant figures), and also when the digit length distribution of arguements across this input data range, is as flat/equal/balanced as possible across said significant figure classes.
 --For best performance (and this is necessary to take any advantage of the pratitioned sort technique), please remove all leading zeros from each arguement value integer component (this is now done for you in the algorithm), before feeding a dataset into this stored procedure!!!
 --In an alternative implementation, you would partition the data into separate partition tables, rather than simply labelling each row with a group label, and indeed, this alternative approach may be even quicker and more energy-efficient, because you would avoid the extra partition group checks, when building the final sorted table.
@@ -9,7 +8,7 @@
 --Essentially, the algorithm works so effectively in speeding up ordering compute time, by doing a sizeable amount of linear pre-transformations and pre-partitions (TRUST THE SEEMING MADNESS... IT WILL SERIOUSLY REDUCE COMPUTATION EXPONENTIATION WITH BIG AND HYPER DATA VOLUMES), in order to eliminate most of the painfully exponential arguement-pair-wise ordering computations (which would otherwise become prohibitive in big and hyper data volumes)... We implement separate partitions for digits in the integer component but not the decimal component (because the decimal component would require us to resolve integer component splits, which would necessarily require at least one cross join, which would therefore make the algorithm always slower than a native SQL single ordering cross join)... In this way, maximal number sorting speed can be achieved...
 
 --NOTA BENE 0001: I understand that Min() and Max() require a basic ordering algorithm which is 'slow' (and would otherwise lead to a longer compute time due to the fact there are multiple calls to the functions Min() and Max() in this algorithm), but, because we have massively group partitioned data whenever we use these functions against a result set, the exponential detriment of the basic ordering algorithm is absolutely minimised... You should still find that overall, this algorithm is significantly speedier than the native SQL Server 'Order By' clause on its own, when applied directly to a table of input numbers!!!...
---NOTA BENE 0002: I have implemented here, maybe a more typically useful partition sort algorithm, that allows you to partition based on arguement integer compoenents predominantly... This particular algorithm should be used instead of the precision dense partition sorter, if your dataset usecase makes dense use of the inter digits across all the input dataset arguements...
+--NOTA BENE 0002: I have now implemented here, an enriched partition sort algorithm, that allows you to partition based on arguement decimal compoenents as well, by adding a resolution global variable... This particular algorithm should be used instead of the standard vanilla partition sorter, if your dataset usecase makes dense use of the decimal place digits across all the input dataset arguements... But please remember, that you will still have to optimise this resolution variable at test time, using representative data distributions and counts...
 
 --LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million arguements that need to be sorted (possibly even less than this will experience significant speed improvements)...
 
@@ -17,7 +16,7 @@
 
 --GLOBAL VARIABLES
 Declare @Sort_Polarity As Varchar(10)
-Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
+Set @Sort_Polarity = 'Descending' --As opposed to the other option ('Descending')
 
 Declare @Remove_Duplicates As Tinyint
 Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
@@ -27,6 +26,9 @@ Set @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 --Figure this 
 
 Declare @Remove_Leading_Zeroes As Tinyint
 Set @Remove_Leading_Zeroes = 1 --Be careful here with this global variable... THIS VARIABLE CAN BE DANGEROUS FOR SYSTEM STABILITY AND PERFORMANCE!!!!!... You must analyse your expected data characteristics profile properly before implementing this algorithm for each usecase... You don't want to turn this feature on (with a value of one {1}), if you can avoid it, for example, because you know that you have input data arguments that already don't have any leading zeroes, because of 'upstream' data types or pre-processing, as this zero trimming feature, here, slows down the algorithm somewhat... HOWEVER, serious system crashes could occur if you turn it off (with an assigned value of zero {0}), due to the then subsequently produced possibly massive duplications of unsorted rows of data upon execution... If you are sure that your input data arguments will likely contain leading zeroes, or if there is even a remote chance that they will, then it is almost certainly a very good idea to definitely consider turning this feature on (by assigning a variable value of one {1}), because in this circumstance (the presence of leading zeroes in the input arguments) it can seriously speed up the sorting process, especially when many of the values to sort contain leading zeroes... To turn this feature off, assign the variable a value of zero (0)...
+
+Declare @Decimal_Component_Digit_Resolution_Count As Tinyint
+Set @Decimal_Component_Digit_Resolution_Count = 1 --Must be greater than zero (0), and less than nineteen (19) {nineteen being the greatest decimal precision that this algorithm has currently been designed to handle}... Lower variable values here, will usually give fewer dataset partition counts, in comparison to dataset arguement counts, and therefore a much quicker compute speed (up to a point), but it depends on the actual distributional profile of the dataset arguements, which are fed into each sort... The recommended test initiation value is 1, but you will need to carry out your own comprehensive testing which suits your particular data usecase, by incrementing this variable value, in order to optimise this value...  I HAVEN'T ANALYSED THE FOLLOWING CLAIM, BUT IT SEEMS TO ME THAT OPTIMISING FOR A PARTITION COUNT WHICH IS AROUND HALF THAT OF THE ARGUEMENT COUNT, WILL PROBABLY OBTAIN THE QUICKEST COMPUTE SPEED PERFORMANCE (The reason I say this, is because you want as few partitions as possible in order to minimise the INTER-partition sort ordering compute time... but simultaneously, you want as few arguments in each partition as is possible in order to minimise the INTRA-partition sort compute time!!!)... MORE IMPORTANTLY THOUGH, you certainly don't want a partition with one argument in it, if at all possible, as this defeats the power of partitions... Note that datasets wont usually be capable of reaching the ideal of 2 arguments per partition, due to distribution profile characteristics, and so will as such, have typically significantly less than half of the argument count as partition count, no matter what algorithmic resolution variable value you use...  this is simply to be accepted, and you should NOT simply use high resolution values always, because this will only be effective, if your dataset arguments mostly have a high decimal precision, which is spread out across the decimal ranges for each given 'integer stem' component...
 
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
@@ -80,7 +82,7 @@ Declare @Data_Zero_Trimmed_Intermediate_A Table ([Anchor_Order] Bigint, [Argueme
 Declare @Data_Zero_Trimmed_Intermediate_B Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Maximum_Integer_Component_Trim_Zero_Count] Int)
 Declare @Data_Zero_Trimmed_Final_A Table ([Anchor_Order] Bigint, [Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
 Declare @Data_Zero_Trimmed_Final_B Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Varchar(Max))
-Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component_Length] Bigint)
+Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Trimmed_Arguement] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component] Varchar(Max), [Decimal_Component_Resolution] Varchar(Max))
 Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Loop_Count_0001 As BigInt
@@ -195,27 +197,29 @@ If @Remove_Leading_Zeroes = 1
 			End
 
 		--The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-length-partition sort the input data arguement column.
-		Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Number_Polarity], [Integer_Component_Length])
+		Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution])
 		Select
 			[Arguement] As [Arguement],
 			Cast([Trimmed_Arguement] As Decimal(38, 19)) As [Trimmed_Arguement],
 			Sign(Cast([Trimmed_Arguement] As Decimal(38, 19))) As [Number_Polarity],
-			Cast((Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then (Patindex('%.%', [Trimmed_Arguement]) - 1) Else Len([Trimmed_Arguement]) End) As Bigint) As [Integer_Component_Length] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+			(Case When Patindex('%.%', [Trimmed_Arguement]) > 0 Then Substring([Trimmed_Arguement], 1, (Patindex('%.%', [Trimmed_Arguement]) - 1)) Else [Trimmed_Arguement] End) As [Integer_Component], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+			Substring(Cast(Cast([Trimmed_Arguement] As Decimal(38, 19)) As Varchar(Max)), (Patindex('%.%', Cast(Cast([Trimmed_Arguement] As Decimal(38, 19)) As Varchar(Max))) + 1), @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution] --Duplication of calculation I know, but preferable in terms of compute speed versus the time it would take to intermediately store results to another table object... Also, the doble cast on the first term of the substring method is necessary, because we want to fill in with decimal zeros wherever possible...
 		From @Data_Zero_Trimmed_Final_B
-
+		
 	End
 
 Else If @Remove_Leading_Zeroes = 0
 
 	Begin
-
+		
 		--The following codeblocks partition integer and decimal components of each arguement, and then intra-integer-length-partition decimal-length-partition sort the input data arguement column.
-		Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Number_Polarity], [Integer_Component_Length])
+		Insert Into @Pre_Transformed_Data ([Arguement], [Trimmed_Arguement], [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution])
 		Select
 			[Arguement] As [Arguement],
 			Cast([Arguement] As Decimal(38, 19)) As [Trimmed_Arguement],
 			Sign(Cast([Arguement] As Decimal(38, 19))) As [Number_Polarity],
-			Cast((Case When Patindex('%.%', [Arguement]) > 0 Then (Patindex('%.%', [Arguement]) - 1) Else Len([Arguement]) End) As Bigint) As [Integer_Component_Length] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+			(Case When Patindex('%.%', [Arguement]) > 0 Then Substring([Arguement], 1, (Patindex('%.%', [Arguement]) - 1)) Else [Arguement] End) As [Integer_Component], --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
+			Substring(Cast(Cast([Arguement] As Decimal(38, 19)) As Varchar(Max)), (Patindex('%.%', Cast(Cast([Arguement] As Decimal(38, 19)) As Varchar(Max))) + 1), @Decimal_Component_Digit_Resolution_Count) As [Decimal_Component_Resolution] --Duplication of calculation I know, but preferable in terms of compute speed versus the time it would take to intermediately store results to another table object... Also, the doble cast on the first term of the substring method is necessary, because we want to fill in with decimal zeros wherever possible...
 		From @Data_Anchored
 
 	End
@@ -227,8 +231,7 @@ Select
 	Min([Trimmed_Arguement]) As [Minimum_Extent],
 	Max([Trimmed_Arguement]) As [Maximum_Extent]
 From @Pre_Transformed_Data
-Group By [Number_Polarity], [Integer_Component_Length]
-
+Group By [Number_Polarity], [Integer_Component], [Decimal_Component_Resolution]
 
 --The following codeblocks return sorted data as desired.
 --Ascending Sort
@@ -259,7 +262,7 @@ Begin
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 				[Arguement]
 			From @Pre_Transformed_Data
 			Where
@@ -304,7 +307,7 @@ Begin
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase...
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 				[Arguement]
 			From @Pre_Transformed_Data
 			Where

@@ -137,7 +137,7 @@ Begin
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Asc)) As [Order],
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Asc)) As [Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 				[Arguement]
 			From @Pre_Transformed_Data
 			Where
@@ -182,7 +182,7 @@ Begin
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
-				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Desc)) As [Order],
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement] Desc)) As [Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 				[Arguement]
 			From @Pre_Transformed_Data
 			Where
