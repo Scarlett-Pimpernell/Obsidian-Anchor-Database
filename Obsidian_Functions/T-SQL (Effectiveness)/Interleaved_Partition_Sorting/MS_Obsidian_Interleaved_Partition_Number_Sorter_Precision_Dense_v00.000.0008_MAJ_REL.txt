@@ -19,11 +19,11 @@
 Declare @Sort_Polarity As Varchar(10)
 Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
 
-Declare @Retain_Duplicates As Int
-Set @Retain_Duplicates = 1 --If you want to retain duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
+Declare @Remove_Duplicates As Int
+Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
 
-Declare @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal As Int
-Set @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0 --Figure this one out yourself... You can choose assigned values of either one (1) or zero (0)...
+Declare @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal As Int
+Set @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 --Figure this one out yourself... You can choose assigned values of either one (1) or zero (0)...
 
 Declare @Decimal_Component_Digit_Resolution_Count As Tinyint
 Set @Decimal_Component_Digit_Resolution_Count = 1 --Must be greater than zero (0), and less than nineteen (19) {nineteen being the greatest decimal precision that this algorithm has currently been designed to handle}... Lower variable values here, will usually give fewer dataset partition counts, in comparison to dataset arguement counts, and therefore a much quicker compute speed (up to a point), but it depends on the actual distributional profile of the dataset arguements, which are fed into each sort... The recommended test initiation value is 1, but you will need to carry out your own comprehensive testing which suits your particular data usecase, by incrementing this variable value, in order to optimise this value...  I HAVEN'T ANALYSED THE FOLLOWING CLAIM, BUT IT SEEMS TO ME THAT OPTIMISING FOR A PARTITION COUNT WHICH IS AROUND HALF THAT OF THE ARGUEMENT COUNT, WILL PROBABLY OBTAIN THE QUICKEST COMPUTE SPEED PERFORMANCE (The reason I say this, is because you want as few partitions as possible in order to minimise the INTER-partition sort ordering compute time... but simultaneously, you want as few arguments in each partition as is possible in order to minimise the INTRA-partition sort compute time!!!)... MORE IMPORTANTLY THOUGH, you certainly don't want a partition with one argument in it, if at all possible, as this defeats the power of partitions... Note that datasets wont usually be capable of reaching the ideal of 2 arguments per partition, due to distribution profile characteristics, and so will as such, have typically significantly less than half of the argument count as partition count, no matter what algorithmic resolution variable value you use...  this is simply to be accepted, and you should NOT simply use high resolution values always, because this will only be effective, if your dataset arguments mostly have a high decimal precision, which is spread out across the decimal ranges for each given 'integer stem' component...
@@ -89,8 +89,8 @@ Declare @Interleaved_Partition_Sort_Merge As Table ([Order] Bigint, [Arguement] 
 Declare @Cumulative_Sort_Order_Limit As Bigint
 
 --ALGORITHM EXECUTION
---Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Retain_Duplicates global variable to one (1)...
-If @Retain_Duplicates = 1
+--Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Remove_Duplicates global variable to one (1)...
+If @Remove_Duplicates = 0
 	Begin
 		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
 		Select
@@ -98,14 +98,14 @@ If @Retain_Duplicates = 1
 			[Data] As [Arguement]
 		From @Data
 	End
-Else If @Retain_Duplicates = 0
+Else If @Remove_Duplicates = 1
 	Begin
 		Insert Into @Data_Anchored ([Anchor_Order], [Arguement])
 		Select
 			0 As [Anchor_Order], --Possibly a bit of an inefficient shortcut fudge, but I need to move onto other algorithms soon... May swoop back round at a later time to fix this unecessary facet...
-			[Data] As [Arguement]
+			(Case When @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 Then Min([Data]) Else Max([Data]) End) As [Arguement]
 		From @Data
-		Group By [Data]
+		Group By Cast([Data] As Decimal(38, 19))
 	End
 
 
@@ -170,7 +170,7 @@ Select
 	Substring([Arguement], ([Maximum_Integer_Component_Trim_Zero_Count] + 1), (Len([Arguement]) - [Maximum_Integer_Component_Trim_Zero_Count])) As [Trimmed_Arguement]
 From @Data_Zero_Trimmed_Intermediate_B
 
-If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0
+If @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0
 	Begin
 		Insert Into @Data_Zero_Trimmed_Final_B ([Arguement], [Trimmed_Arguement])
 		Select
@@ -179,7 +179,7 @@ If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 0
 		From @Data_Zero_Trimmed_Final_A
 		Group By [Anchor_Order], [Trimmed_Arguement]
 	End
-Else If @Retain_Instance_Of_Most_Arguement_Zeros_After_Duplicate_Removal = 1
+Else If @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 1
 	Begin
 	Insert Into @Data_Zero_Trimmed_Final_B ([Arguement], [Trimmed_Arguement])
 		Select
