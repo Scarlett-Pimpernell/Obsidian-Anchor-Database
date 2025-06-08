@@ -1,4 +1,4 @@
---MS_Obsidian_Interleaved_Partition_Text_Sorter_Character_Stemming
+--MS_Obsidian_Partition_Text_Sorter_Character_Stemming
 
 --COMMENTS:
 --This algorithm will provide the best performance with input datasets that have a large variety of textual values (i.e. covering many different combinations of characters), and also when the textual variety distribution of arguements across this input data range, is as flat/equal/balanced as possible across said charcter combination classes.

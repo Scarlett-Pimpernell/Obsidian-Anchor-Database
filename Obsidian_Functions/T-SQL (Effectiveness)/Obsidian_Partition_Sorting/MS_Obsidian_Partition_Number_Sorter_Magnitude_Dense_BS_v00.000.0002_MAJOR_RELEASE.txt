@@ -1,0 +1,238 @@
+--MS_Obsidian_Partition_Number_Sorter_Magnitude_Dense_Bootstrapped
+
+--COMMENTS:
+--This algorithm will provide the best performance with input datasets that have a large range in numerical values (i.e. covering many different significant figures), and also when the digit length distribution of arguements across this input data range, is as flat/equal/balanced as possible across said significant figure classes.
+--For best performance (and this is necessary to take any advantage of the pratitioned sort technique), please remove all leading zeros from each arguement value integer component (this is now done for you in the algorithm), before feeding a dataset into this stored procedure!!!
+--In an alternative implementation, you would partition the data into separate partition tables, rather than simply labelling each row with a group label, and indeed, this alternative approach may be even quicker and more energy-efficient, because you would avoid the extra partition group checks, when building the final sorted table.
+--The reason why this algorithm is so powerful, is because it takes advantage of the ordinal nature of numbers, such that partitions of the input data are created based on number digit length (significant figures), and thereby massively reduces the exponential sorting penalty where usually every pair of arguements would have to be checked for order. Instead, because we now have significant figure or number digit length paritions, we only experience a very shallow exponentiation penalty, because we only have to check pairs of number arguements within a partition, and then we simply append the ordered partitions into a fully-ordered superset. You should experience maybe more than multiples of compute speed and energy efficiency performance improvements on truly big data problem spaces (Billions of arguement values), and especially on hyper data problem spaces (Trillions of arguement values), that need to be sorted.
+--Essentially, the algorithm works so effectively in speeding up ordering compute time, by doing a sizeable amount of linear pre-transformations and pre-partitions (TRUST THE SEEMING MADNESS... IT WILL SERIOUSLY REDUCE COMPUTATION EXPONENTIATION WITH BIG AND HYPER DATA VOLUMES), in order to eliminate most of the painfully exponential arguement-pair-wise ordering computations (which would otherwise become prohibitive in big and hyper data volumes)... We implement separate partitions for digits in the integer component but not the decimal component (because the decimal component would require us to resolve integer component splits, which would necessarily require at least one cross join, which would therefore make the algorithm always slower than a native SQL single ordering cross join)... In this way, maximal number sorting speed can be achieved...
+
+--NOTA BENE 0001: I understand that Min() and Max() require a basic ordering algorithm which is 'slow' (and would otherwise lead to a longer compute time due to the fact there are multiple calls to the functions Min() and Max() in this algorithm), but, because we have massively group partitioned data whenever we use these functions against a result set, the exponential detriment of the basic ordering algorithm is absolutely minimised... You should still find that overall, this algorithm is significantly speedier than the native SQL Server 'Order By' clause on its own, when applied directly to a table of input numbers!!!...
+--NOTA BENE 0002: I have implemented here, maybe a more typically useful partition sort algorithm, that allows you to partition based on arguement integer compoenents predominantly... This particular algorithm should be used instead of the precision dense partition sorter, if your dataset usecase makes dense use of the inter digits across all the input dataset arguements...
+--NOTA BENE 0003: This is a bootstrapped version of the corresponding vanilla algorithm, and as such, it is almost always going to be quicker than the vanilla version as data volumes increase... Just make sure that if you are re-implementing with different core data types, that you amend the hardcoded partion map accordingly to handle less or more integer component maginitude digit (at the moment our core data type is Decimal(38, 19), which means we want 38 partitions spanning negative and positive numbers within the overall maximal bound!!!)...
+
+--LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million arguements that need to be sorted (possibly even less than this will experience significant speed improvements)...
+
+--FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
+
+--GLOBAL VARIABLES
+Declare @Sort_Polarity As Varchar(10)
+Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
+
+Declare @Remove_Duplicates As Tinyint
+Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
+
+Declare @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal As Tinyint
+Set @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 --Figure this one out yourself... You can choose assigned values of either one (1) or zero (0)...
+
+Declare @Data Table ([Data] Varchar(Max))
+Insert Into @Data ([Data])
+Values
+('-332'),
+('90.1167842'),
+('90.1167849'),
+('01.50000'),
+('001.50000'),
+('1.58000'),
+('3'),
+('2'),
+('00000107'),
+('107'),
+('107.50'),
+('89'),
+('110'),
+('16390'),
+('17380'),
+('11110.56'),
+('11110.5378'),
+('11110.5375'),
+('001'),
+('1234567890123456789.1234567890123456789'),
+('0001.20'),
+('-40.04'),
+('0.53'),
+('11000.53729'),
+('0.0'),
+('0'),
+('1.0'),
+('1'),
+('-333')
+
+
+--DATA VALIDATION CHECKS (For Out Of Scope Parameters)
+--(@Sort Polarity)
+If @Sort_Polarity Is Null GoTo Invalid_Sort_Polarity_Input_Arguement
+If @Sort_Polarity <> 'Ascending' --Dual If Statement With the Line Afterwards.
+	If @Sort_Polarity <> 'Descending' GoTo Invalid_Sort_Polarity_Input_Arguement
+
+--(@Data)
+If (Select Count(1) From @Data) Is Null GoTo Invalid_Data_Input_Arguement
+If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
+
+
+--INTERNAL VARIABLES
+Declare @Data_Augmented Table ([Arguement] Varchar(Max), [Arguement_Decimal] Decimal(38,19))
+Declare @Integer_Component_Magnitudinal_Digit_Partition_Map As Table ([Ascending_Partition] Bigint, [Descending_Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
+Declare @Loop_Count_0001 As BigInt
+Declare @Partition_Row_Count As Bigint
+Declare @Partition_Minimum_Extent As Decimal(38, 19)
+Declare @Partition_Maximum_Extent As Decimal(38, 19)
+Declare @Interleaved_Partition_Sort_Merge As Table ([Order] Bigint, [Arguement] Varchar(Max))
+Declare @Cumulative_Sort_Order_Limit As Bigint
+
+--ALGORITHM EXECUTION
+--Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Remove_Duplicates global variable to one (1)...
+If @Remove_Duplicates = 0
+	Begin
+		Insert Into @Data_Augmented ([Arguement], [Arguement_Decimal])
+		Select
+			[Data] As [Arguement],
+			Cast([Data] As Decimal(38, 19)) As [Arguement_Decimal]
+		From @Data
+	End
+Else If @Remove_Duplicates = 1
+	Begin
+		Insert Into @Data_Augmented ([Arguement], [Arguement_Decimal])
+		Select
+			(Case When @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 Then Min([Data]) Else Max([Data]) End) As [Arguement],
+			Cast([Data] As Decimal(38, 19)) As [Arguement_Decimal]
+		From @Data
+		Group By Cast([Data] As Decimal(38, 19))
+	End
+
+--Here we bootstrap the partitions, by hardcoding the order and ranges of each magnitudinal partition.
+Insert Into @Integer_Component_Magnitudinal_Digit_Partition_Map ([Ascending_Partition], [Descending_Partition], [Minimum_Extent], [Maximum_Extent])
+Values
+(1, 38, -9999999999999999999.9999999999999999999, -1000000000000000000.0000000000000000000),
+(2, 37, -999999999999999999.9999999999999999999, -100000000000000000.0000000000000000000),
+(3, 36, -99999999999999999.9999999999999999999, -10000000000000000.0000000000000000000),
+(4, 35, -9999999999999999.9999999999999999999, -1000000000000000.0000000000000000000),
+(5, 34, -999999999999999.9999999999999999999, -100000000000000.0000000000000000000),
+(6, 33, -99999999999999.9999999999999999999, -10000000000000.0000000000000000000),
+(7, 32, -9999999999999.9999999999999999999, -1000000000000.0000000000000000000),
+(8, 31, -999999999999.9999999999999999999, -100000000000.0000000000000000000),
+(9, 30, -99999999999.9999999999999999999, -10000000000.0000000000000000000),
+(10, 29, -9999999999.9999999999999999999, -1000000000.0000000000000000000),
+(11, 28, -999999999.9999999999999999999, -100000000.0000000000000000000),
+(12, 27, -99999999.9999999999999999999, -10000000.0000000000000000000),
+(13, 26, -9999999.9999999999999999999, -1000000.0000000000000000000),
+(14, 25, -999999.9999999999999999999, -100000.0000000000000000000),
+(15, 24, -99999.9999999999999999999, -10000.0000000000000000000),
+(16, 23, -9999.9999999999999999999, -1000.0000000000000000000),
+(17, 22, -999.9999999999999999999, -100.0000000000000000000),
+(18, 21, -99.9999999999999999999, -10.0000000000000000000),
+(19, 20, -9.9999999999999999999, 0.0000000000000000000), --Be careful that the two range clomun values are in the correct order hereafter!!!... Also, take note of the necessary lack of negative sign for the zero, as well as all subsequent rows of the partition map...
+(20, 19, 0.0000000000000000001, 9.9999999999999999999), --Also, be careful that the lower bound of each minimum extent is slightly shifted, for all subsequent rows of the partition map, in order to acommodate the unique nature of the number zero, as the meta-range inverts!!!
+(21, 18, 10.0000000000000000001, 99.9999999999999999999),
+(22, 17, 100.0000000000000000001, 999.9999999999999999999),
+(23, 16, 1000.0000000000000000001, 9999.9999999999999999999),
+(24, 15, 10000.0000000000000000001, 99999.9999999999999999999),
+(25, 14, 100000.0000000000000000001, 999999.9999999999999999999),
+(26, 13, 1000000.0000000000000000001, 9999999.9999999999999999999),
+(27, 12, 10000000.0000000000000000001, 99999999.9999999999999999999),
+(28, 11, 100000000.0000000000000000001, 999999999.9999999999999999999),
+(29, 10, 1000000000.0000000000000000001, 9999999999.9999999999999999999),
+(30, 9, 10000000000.0000000000000000001, 99999999999.9999999999999999999),
+(31, 8, 100000000000.0000000000000000001, 999999999999.9999999999999999999),
+(32, 7, 1000000000000.0000000000000000001, 9999999999999.9999999999999999999),
+(33, 6, 10000000000000.0000000000000000001, 99999999999999.9999999999999999999),
+(34, 5, 100000000000000.0000000000000000001, 999999999999999.9999999999999999999),
+(35, 4, 1000000000000000.0000000000000000001, 9999999999999999.9999999999999999999),
+(36, 3, 10000000000000000.0000000000000000001, 99999999999999999.9999999999999999999),
+(37, 2, 100000000000000000.0000000000000000001, 999999999999999999.9999999999999999999),
+(38, 1, 1000000000000000000.0000000000000000001, 9999999999999999999.9999999999999999999)
+
+
+--The following codeblocks return sorted data as desired.
+--Ascending Sort
+If @Sort_Polarity = 'Ascending'
+Begin
+	
+	--Interleaved Partition Sort Merge
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Integer_Component_Magnitudinal_Digit_Partition_Map) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+		
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Ascending_Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Ascending_Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement_Decimal] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+				[Arguement]
+			From @Data_Augmented
+			Where
+			[Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Arguement_Decimal] <= @Partition_Maximum_Extent
+			Or
+			[Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Arguement_Decimal] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+		
+		End
+
+End
+
+--Descending Sort
+If @Sort_Polarity = 'Descending'
+Begin
+	
+	--Interleaved Partition Sort Merge
+	--References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
+	Set @Loop_Count_0001 = 0
+	Set @Partition_Row_Count = (Select Count(1) From @Integer_Component_Magnitudinal_Digit_Partition_Map) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
+	While @Loop_Count_0001 < @Partition_Row_Count
+		Begin
+			
+			Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+
+			--The actual sorting
+			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Descending_Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Descending_Partition] = @Loop_Count_0001)
+			
+			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+			Select
+				(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Arguement_Decimal] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+				[Arguement]
+			From @Data_Augmented
+			Where
+			[Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Arguement_Decimal] <= @Partition_Maximum_Extent
+			Or
+			[Arguement_Decimal] >= @Partition_Minimum_Extent
+			And [Arguement_Decimal] <= @Partition_Maximum_Extent
+			
+			Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+
+		End
+
+End
+
+
+--The Results
+Select
+	[Order] As [Order],
+	[Arguement] As [Arguement]
+From @Interleaved_Partition_Sort_Merge
+--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
+
+--The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
+Return
+
+
+--Other exception cases...
+Invalid_Sort_Polarity_Input_Arguement:
+Select 'Exception: The first global variable value (@Sort_Polarity), is out of scope for one of the following reasons... It is either not the string "Ascending" (without the double-quotes of course), is not the string "Descending" (without the double-quotes of course), or is either empty or null.'
+
+
+Invalid_Data_Input_Arguement:
+Select 'Exception: The second global variable value (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
