@@ -20,6 +20,9 @@
 Declare @Sort_Polarity As Varchar(10)
 Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
 
+Declare @Sort_Fidelity As Varchar(9)
+Set @Sort_Fidelity = 'Imperfect' --As opposed to the other option ('Perfect'), which would be possibly up to twice as slow, and is only really necessary for mission critical usecases...
+
 Declare @Remove_Duplicates As Tinyint
 Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
 
@@ -341,18 +344,52 @@ Begin
 					--We first store the partition extents in variables in order to minimise subsequent data lookup time...
 					Set @Partition_Minimum_Extent_Nested = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
 					Set @Partition_Maximum_Extent_Nested = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
-			
-					Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
-					Select
-						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Asc, Len([Arguement]) Asc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
-						[Arguement]
-					From @Pre_Transformed_Data_Nested
-					Where
-					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
-					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
-					Or
-					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
-					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+					
+					If @Remove_Duplicates = 1 --If we have removed duplicates, then we always want to execute the quicker or more efficient imperfect sort fidelity...
+						Begin
+							Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+							Select
+								(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Asc)) As [Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+								[Arguement]
+							From @Pre_Transformed_Data_Nested
+							Where
+							[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+							Or
+							[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+						End
+					Else If  @Remove_Duplicates = 0
+						Begin
+							If @Sort_Fidelity = 'Imperfect'
+								Begin
+									Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+									Select
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Asc)) As [Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										[Arguement]
+									From @Pre_Transformed_Data_Nested
+									Where
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+									Or
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+								End
+							Else If @Sort_Fidelity = 'Perfect'
+								Begin
+									Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+									Select
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Asc, [Arguement] Asc)) As [Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										[Arguement]
+									From @Pre_Transformed_Data_Nested
+									Where
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+									Or
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+								End
+						End
 			
 					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
 		
@@ -434,17 +471,51 @@ Begin
 					Set @Partition_Minimum_Extent_Nested = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
 					Set @Partition_Maximum_Extent_Nested = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved_Nested Where [Partition] = @Loop_Count_0001_Nested)
 			
-					Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
-					Select
-						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Desc, Len([Arguement]) Desc)) As [Order], --We have to also order by length, otherwise an ordering artefact manifests, when two numbers with different amounts of leading zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
-						[Arguement]
-					From @Pre_Transformed_Data_Nested
-					Where
-					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
-					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
-					Or
-					[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
-					And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+					If @Remove_Duplicates = 1 --If we have removed duplicates, then we always want to execute the quicker or more efficient imperfect sort fidelity...
+						Begin
+							Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+							Select
+								(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Desc)) As [Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+								[Arguement]
+							From @Pre_Transformed_Data_Nested
+							Where
+							[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+							Or
+							[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+						End
+					Else If  @Remove_Duplicates = 0
+						Begin
+							If @Sort_Fidelity = 'Imperfect'
+								Begin
+									Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+									Select
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Desc)) As [Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										[Arguement]
+									From @Pre_Transformed_Data_Nested
+									Where
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+									Or
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+								End
+							Else If @Sort_Fidelity = 'Perfect'
+								Begin
+									Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
+									Select
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Trimmed_Arguement_Decimal] Desc, [Arguement] Desc)) As [Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										[Arguement]
+									From @Pre_Transformed_Data_Nested
+									Where
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+									Or
+									[Trimmed_Arguement_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Trimmed_Arguement_Decimal] <= @Partition_Maximum_Extent_Nested
+								End
+						End
 			
 					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
 
