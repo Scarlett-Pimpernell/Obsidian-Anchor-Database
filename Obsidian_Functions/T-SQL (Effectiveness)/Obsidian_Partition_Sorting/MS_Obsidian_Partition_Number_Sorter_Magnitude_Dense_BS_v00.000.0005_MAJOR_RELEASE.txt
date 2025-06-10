@@ -175,9 +175,6 @@ Begin
 					Where
 					[Arguement_Decimal] >= @Partition_Minimum_Extent
 					And [Arguement_Decimal] <= @Partition_Maximum_Extent
-					Or
-					[Arguement_Decimal] >= @Partition_Minimum_Extent
-					And [Arguement_Decimal] <= @Partition_Maximum_Extent
 				End
 			Else If @Remove_Duplicates = 0
 				Begin
@@ -191,9 +188,6 @@ Begin
 							Where
 							[Arguement_Decimal] >= @Partition_Minimum_Extent
 							And [Arguement_Decimal] <= @Partition_Maximum_Extent
-							Or
-							[Arguement_Decimal] >= @Partition_Minimum_Extent
-							And [Arguement_Decimal] <= @Partition_Maximum_Extent
 						End
 					Else If @Sort_Fidelity = 'Perfect'
 						Begin
@@ -203,9 +197,6 @@ Begin
 								[Arguement]
 							From @Data_Augmented
 							Where
-							[Arguement_Decimal] >= @Partition_Minimum_Extent
-							And [Arguement_Decimal] <= @Partition_Maximum_Extent
-							Or
 							[Arguement_Decimal] >= @Partition_Minimum_Extent
 							And [Arguement_Decimal] <= @Partition_Maximum_Extent
 						End
@@ -246,9 +237,6 @@ Begin
 					Where
 					[Arguement_Decimal] >= @Partition_Minimum_Extent
 					And [Arguement_Decimal] <= @Partition_Maximum_Extent
-					Or
-					[Arguement_Decimal] >= @Partition_Minimum_Extent
-					And [Arguement_Decimal] <= @Partition_Maximum_Extent
 				End
 			Else If @Remove_Duplicates = 0
 				Begin
@@ -262,9 +250,6 @@ Begin
 							Where
 							[Arguement_Decimal] >= @Partition_Minimum_Extent
 							And [Arguement_Decimal] <= @Partition_Maximum_Extent
-							Or
-							[Arguement_Decimal] >= @Partition_Minimum_Extent
-							And [Arguement_Decimal] <= @Partition_Maximum_Extent
 						End
 					Else If @Sort_Fidelity = 'Perfect'
 						Begin
@@ -274,9 +259,6 @@ Begin
 								[Arguement]
 							From @Data_Augmented
 							Where
-							[Arguement_Decimal] >= @Partition_Minimum_Extent
-							And [Arguement_Decimal] <= @Partition_Maximum_Extent
-							Or
 							[Arguement_Decimal] >= @Partition_Minimum_Extent
 							And [Arguement_Decimal] <= @Partition_Maximum_Extent
 						End
