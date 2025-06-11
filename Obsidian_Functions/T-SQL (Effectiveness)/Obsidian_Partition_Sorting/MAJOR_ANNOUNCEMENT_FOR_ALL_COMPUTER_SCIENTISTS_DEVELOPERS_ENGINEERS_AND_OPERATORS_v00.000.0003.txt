@@ -8,6 +8,10 @@ You will almost certainly obtain tens, hundreds, or even thousands of multiples,
 
 Essentially, all data selects, data inserts, data updates, and data deletes, as well as their equivalents in other databases and programming languages, should all leverage Obsidian Partition Maps, which execute on data which is natively stored in partitions/sub-tables.
 
+...and remember the end-game... Multiple serial executions of Obsidian Partition Maps, which navigate down through a meta-data-structure of nested partitions/sub-tables, where each level of nesting is based on a different data column...
+
+... But stick to single level partitions as a first attempt. Get that working reliably first, because nesting partitions/sub-tables from the start, will probably be very complex and difficult to do, without a basic working and optimised single partition/sub-table level approach.
+
 Oh, and remember the 1% 'mandatory' #Obsidian_Levy!
 
 Ciao for now,
