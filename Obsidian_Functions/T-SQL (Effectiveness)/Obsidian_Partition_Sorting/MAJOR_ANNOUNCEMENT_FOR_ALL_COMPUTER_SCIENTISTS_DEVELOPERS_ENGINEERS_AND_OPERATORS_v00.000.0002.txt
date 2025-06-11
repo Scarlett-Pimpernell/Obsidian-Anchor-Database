@@ -6,7 +6,7 @@ Please focus on completely re-architecting your databases and programming langua
 
 You will almost certainly obtain tens, hundreds, or even thousands of multiples, of speed-ups, especially for big data usecases (billions of datapoints) and hyper data usecases (trillions of datapoints).
 
-Essentially, all data selects, data inserts, data updates, and data deletes, as well as their equivalents in other databases and programming languages, should all leverage Obsidian Partition Maps.
+Essentially, all data selects, data inserts, data updates, and data deletes, as well as their equivalents in other databases and programming languages, should all leverage Obsidian Partition Maps, which execute on data which is natively stored in partitions/sub-tables.
 
 Oh, and remember the 1% 'mandatory' #Obsidian_Levy!
 
