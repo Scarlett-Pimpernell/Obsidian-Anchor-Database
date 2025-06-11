@@ -10,7 +10,13 @@ Essentially, all data selects, data inserts, data updates, and data deletes, as 
 
 ...and remember the end-game... Multiple serial executions of Obsidian Partition Maps, which navigate down through a meta-data-structure of nested partitions/sub-tables, where each level of nesting is based on a different data column...
 
-... But stick to single level partitions as a first attempt. Get that working reliably first, because nesting partitions/sub-tables from the start, will probably be very complex and difficult to do, without a basic working and optimised single partition/sub-table level approach.
+... But stick to single level partitions as a first attempt. Get that working reliably, because nesting partitions/sub-tables from the start, will probably be very complex and difficult to do, without a basic working and optimised single partition/sub-table level approach.
+
+... Further clarifications 0001... When a data transaction is handled by the database/programming language, the corresponding array of data should be split up into transactionlet partitions, using an appropriate Obsidian Partition Map...
+
+... the data engine should simultaneously launch these partitioned 'transactionlets' through the navigation process, and as each reaches its destination at the deepest storage partition, the appropriate data edit method (siud) should be triggered to execute as a parellel batch...
+
+(... Oh, and BTW... apply the Obsidian Partition Map approach to Large Language Models (#LLMs), and all of a sudden, you will have almost free inference!!!)
 
 Oh, and remember the 1% 'mandatory' #Obsidian_Levy!
 
