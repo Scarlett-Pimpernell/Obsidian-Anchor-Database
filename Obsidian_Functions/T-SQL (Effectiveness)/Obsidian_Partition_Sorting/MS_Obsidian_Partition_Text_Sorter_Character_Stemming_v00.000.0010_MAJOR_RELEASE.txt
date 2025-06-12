@@ -64,7 +64,7 @@ If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
 Declare @Data_Augmented Table ([Arguement] Varchar(Max))
 Declare @Pre_Transformed_Data As Table ([Arguement] Varchar(Max), [Character_Stem_Resolution] Varchar(Max))
 Declare @Partition_Resolution_Extents As Table ([Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
-Declare @Partition_Map_Interleaved As Table ([Partition] Bigint, [Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
+Declare @Character_Stem_Partition_Map As Table ([Partition] Bigint, [Minimum_Extent] Varchar(Max), [Maximum_Extent] Varchar(Max))
 Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Minimum_Extent As  Varchar(Max)
@@ -114,7 +114,7 @@ If @Sort_Polarity = 'Ascending'
 Begin
 	
 	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
-	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Insert Into @Character_Stem_Partition_Map ([Partition], [Minimum_Extent], [Maximum_Extent])
 	Select
 		Row_Number() Over(Order By [Minimum_Extent] Asc) As [Partition], --We are ordering by ascension, so Asc is used here...
 		[Minimum_Extent] As [Maximum_Extent],
@@ -123,7 +123,7 @@ Begin
 	
 	--Interleaved Partition Sort Merge
 	Set @Loop_Count_0001 = 0
-	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Partition_Row_Count = (Select Count(1) From @Character_Stem_Partition_Map) --Partition rowset count calculation...
 	Set @Cumulative_Sort_Order_Limit = 0
 	While @Loop_Count_0001 < @Partition_Row_Count
 		Begin
@@ -132,8 +132,8 @@ Begin
 
 			--The actual sorting
 			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
-			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
-			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
@@ -155,7 +155,7 @@ If @Sort_Polarity = 'Descending'
 Begin
 	
 	--Order every partition against every other partition, rather than every arguement against every arguement... A type of reduced-map equality checking technique...
-	Insert Into @Partition_Map_Interleaved ([Partition], [Minimum_Extent], [Maximum_Extent])
+	Insert Into @Character_Stem_Partition_Map ([Partition], [Minimum_Extent], [Maximum_Extent])
 	Select
 		Row_Number() Over(Order By [Minimum_Extent] Desc) As [Partition], --We are ordering by ascension, so Asc is used here...
 		[Minimum_Extent] As [Maximum_Extent],
@@ -165,7 +165,7 @@ Begin
 	--Interleaved Partition Sort Merge
 	 --References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
 	Set @Loop_Count_0001 = 0
-	Set @Partition_Row_Count = (Select Count(1) From @Partition_Map_Interleaved) --Partition rowset count calculation...
+	Set @Partition_Row_Count = (Select Count(1) From @Character_Stem_Partition_Map) --Partition rowset count calculation...
 	Set @Cumulative_Sort_Order_Limit = 0
 	While @Loop_Count_0001 < @Partition_Row_Count
 		Begin
@@ -174,8 +174,8 @@ Begin
 
 			--The actual sorting
 			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
-			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
-			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Partition_Map_Interleaved Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
+			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			
 			Insert Into @Interleaved_Partition_Sort_Merge ([Order], [Arguement])
 			Select
