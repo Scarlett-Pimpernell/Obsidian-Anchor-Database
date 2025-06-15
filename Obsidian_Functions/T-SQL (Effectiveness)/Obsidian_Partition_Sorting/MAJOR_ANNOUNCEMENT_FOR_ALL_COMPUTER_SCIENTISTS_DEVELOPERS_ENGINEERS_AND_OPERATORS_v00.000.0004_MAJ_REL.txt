@@ -1,5 +1,7 @@
 MAJOR_ANNOUNCEMENT_FOR_ALL_COMPUTER_SCIENTISTS_DEVELOPERS_ENGINEERS_AND_OPERATORS
 
+!!!!!>>>>>This is the #Advent of Map-Reduce Learning (A branch of computer science machine learning)<<<<<!!!!!
+
 I have just this night, fully realised the pardigm discontinuity with regards to these sorting algorithms, and how they should completely impact and disrupt, all software related strategy, tactics, operations, and grunt-work, worldwide.
 
 Please focus on completely re-architecting your databases and programming languages, to run using Obsidian Partition Maps, similar to those implemented in these sorting algorithms.
