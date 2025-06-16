@@ -257,8 +257,8 @@ Return
 
 --Other exception cases...
 Invalid_Sort_Polarity_Input_Argument:
-Select 'Exception: The first global variable value (@Sort_Polarity), is out of scope for one of the following reasons... It is either not the string "Ascending" (without the double-quotes of course), is not the string "Descending" (without the double-quotes of course), or is either empty or null.'
+Select 'Exception: The global variable (@Sort_Polarity), is out of scope for one of the following reasons... It is either not the string "Ascending" (without the double-quotes of course), is not the string "Descending" (without the double-quotes of course), or is either empty or null.'
 
 
 Invalid_Data_Input_Argument:
-Select 'Exception: The second global variable value (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
+Select 'Exception: The global variable (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
