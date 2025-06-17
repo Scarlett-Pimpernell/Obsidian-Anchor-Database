@@ -18,8 +18,8 @@
 --FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
 
 --GLOBAL VARIABLES
-Declare @Partition_Transactionlet_Payload_Type As Varchar(1000)
-Set @Partition_Transactionlet_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
+Declare @Partition_Transaction_Payload_Type As Varchar(1000)
+Set @Partition_Transaction_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
 
 Declare @Sort_Polarity As Varchar(10)
 Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
@@ -90,7 +90,10 @@ Declare @Contains_Character_Pattern_Partition_Map As Table ([Partition] Bigint, 
 Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Character_Pattern As Varchar(Max)
-Declare @Interleaved_Partition_Sort_Merge As Table ([Partition_Order] Bigint, [Partition_Character_Pattern] Varchar(Max), [Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Sort As Table ([Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Insert As Table ([Partition_Order] Bigint, [Partition_Character_Pattern] Varchar(Max), [Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Cumulative_Sort_Order_Limit As Bigint
+
 
 --ALGORITHM EXECUTION
 --Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Remove_Duplicates global variable to one (1)...
@@ -187,6 +190,7 @@ Begin
 	--Interleaved Partition Sort Merge
 	Set @Loop_Count_0001 = 0
 	Set @Partition_Row_Count = (Select Count(1) From @Contains_Character_Pattern_Partition_Map) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
 	While @Loop_Count_0001 < @Partition_Row_Count
 		Begin
 		
@@ -196,20 +200,19 @@ Begin
 			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
 			Set @Partition_Character_Pattern = (Select [Character_Pattern] As [Character_Pattern] From @Contains_Character_Pattern_Partition_Map Where [Partition] = @Loop_Count_0001)
 			
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 					Select
-						@Loop_Count_0001 As [Partition_Order],
-						[Contained_Character_Pattern] As [Partition_Character_Pattern],
-						(Row_Number() Over(Order By [Argument] Asc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument] Asc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 						[Argument]
 					From @Pre_Transformed_Data
 					Where @Partition_Character_Pattern = [Contained_Character_Pattern]
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert'
+			Else If  @Partition_Transaction_Payload_Type = 'Insert'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						[Contained_Character_Pattern] As [Partition_Character_Pattern],
@@ -238,6 +241,7 @@ Begin
 	 --References to these two variables (@Loop_Count_0001 and @Data_Row_Count) are inverted here and in the subsequent sourcecode of this loop  (when compared to the ascending implementation above), because we are ordering by descent...
 	Set @Loop_Count_0001 = 0
 	Set @Partition_Row_Count = (Select Count(1) From @Contains_Character_Pattern_Partition_Map) --Partition rowset count calculation...
+	Set @Cumulative_Sort_Order_Limit = 0
 	While @Loop_Count_0001 < @Partition_Row_Count
 		Begin
 			
@@ -247,20 +251,19 @@ Begin
 			--We first store the partition extents in variables in order to minimise subsequent data lookup time...
 			Set @Partition_Character_Pattern = (Select [Character_Pattern] As [Character_Pattern] From @Contains_Character_Pattern_Partition_Map Where [Partition] = @Loop_Count_0001)
 
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 					Select
-						@Loop_Count_0001 As [Partition_Order],
-						[Contained_Character_Pattern] As [Partition_Character_Pattern],
-						(Row_Number() Over(Order By [Argument] Desc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument] Desc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 						[Argument]
 					From @Pre_Transformed_Data
 					Where @Partition_Character_Pattern = [Contained_Character_Pattern]
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert'
+			Else If  @Partition_Transaction_Payload_Type = 'Insert'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Character_Pattern], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						[Contained_Character_Pattern] As [Partition_Character_Pattern],
@@ -276,22 +279,22 @@ End
 
 
 --The Results
-If @Partition_Transactionlet_Payload_Type = 'Sort'
+If @Partition_Transaction_Payload_Type = 'Sort'
 	Begin
 		Select
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Sort
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
-Else If @Partition_Transactionlet_Payload_Type = 'Insert'
+Else If @Partition_Transaction_Payload_Type = 'Insert'
 	Begin
 		Select
 			[Partition_Order] As [Partition_Order],
 			[Partition_Character_Pattern] As[Partition_Character_Pattern],
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Insert
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
 

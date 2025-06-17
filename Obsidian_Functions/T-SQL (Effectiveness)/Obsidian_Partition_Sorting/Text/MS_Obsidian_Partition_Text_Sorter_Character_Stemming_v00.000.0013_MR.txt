@@ -14,8 +14,8 @@
 --FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
 
 --GLOBAL VARIABLES
-Declare @Partition_Transactionlet_Payload_Type As Varchar(1000)
-Set @Partition_Transactionlet_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
+Declare @Partition_Transaction_Payload_Type As Varchar(1000)
+Set @Partition_Transaction_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
 
 Declare @Sort_Polarity As Varchar(10)
 Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
@@ -72,7 +72,8 @@ Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Minimum_Extent As  Varchar(Max)
 Declare @Partition_Maximum_Extent As  Varchar(Max)
-Declare @Interleaved_Partition_Sort_Merge As Table ([Partition_Order] Bigint, [Partition_Minimum_Extent] Varchar(Max), [Partition_Maximum_Extent] Varchar(Max), [Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Sort As Table ([Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Insert As Table ([Partition_Order] Bigint, [Partition_Minimum_Extent] Varchar(Max), [Partition_Maximum_Extent] Varchar(Max), [Argument_Order] Bigint, [Argument] Varchar(Max))
 Declare @Cumulative_Sort_Order_Limit As Bigint
 
 --ALGORITHM EXECUTION
@@ -138,9 +139,9 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 					Select
 						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument] Asc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 						[Argument]
@@ -149,11 +150,11 @@ Begin
 					[Argument] >= @Partition_Minimum_Extent
 					And [Argument] <= @Partition_Maximum_Extent
 
-					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert'
+			Else If  @Partition_Transaction_Payload_Type = 'Insert'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						@Partition_Minimum_Extent As [Partition_Minimum_Extent],
@@ -197,22 +198,22 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Character_Stem_Partition_Map Where [Partition] = @Loop_Count_0001)
 			
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 					Select
-						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument] Desc)) As [Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+						(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument] Desc)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 						[Argument]
 					From @Pre_Transformed_Data
 					Where
 					[Argument] >= @Partition_Minimum_Extent
 					And [Argument] <= @Partition_Maximum_Extent
 
-					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert'
+			Else If  @Partition_Transaction_Payload_Type = 'Insert'
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						@Partition_Minimum_Extent As [Partition_Minimum_Extent],
@@ -231,15 +232,15 @@ End
 
 
 --The Results
-If @Partition_Transactionlet_Payload_Type = 'Sort'
+If @Partition_Transaction_Payload_Type = 'Sort'
 	Begin
 		Select
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Sort
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
-Else If @Partition_Transactionlet_Payload_Type = 'Insert'
+Else If @Partition_Transaction_Payload_Type = 'Insert'
 	Begin
 		Select
 			[Partition_Order] As [Partition_Order],
@@ -247,7 +248,7 @@ Else If @Partition_Transactionlet_Payload_Type = 'Insert'
 			[Partition_Maximum_Extent] As[Partition_Maximum_Extent],
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Insert
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
 

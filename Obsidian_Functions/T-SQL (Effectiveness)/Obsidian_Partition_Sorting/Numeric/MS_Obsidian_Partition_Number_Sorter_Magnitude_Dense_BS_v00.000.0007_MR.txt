@@ -16,8 +16,8 @@
 --FINAL COMMENTS ABOUT USAGE: I reasonably theorise, that if you plan to sort on multiple columns, the speed improvements will get exponentially superior by using this algorithm, in proportion to the number of columns that use it in order to sort...
 
 --GLOBAL VARIABLES
-Declare @Partition_Transactionlet_Payload_Type As Varchar(1000)
-Set @Partition_Transactionlet_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
+Declare @Partition_Transaction_Payload_Type As Varchar(1000)
+Set @Partition_Transaction_Payload_Type = 'Insert' --Options: 1. 'Sort'; 2. 'Select'; 3. 'Insert'; 4. 'Update'; 5. 'Delete';... 6. 'Other'...
 
 Declare @Sort_Polarity As Varchar(10)
 Set @Sort_Polarity = 'Ascending' --As opposed to the other option ('Descending')
@@ -83,7 +83,8 @@ Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Minimum_Extent As Decimal(38, 19)
 Declare @Partition_Maximum_Extent As Decimal(38, 19)
-Declare @Interleaved_Partition_Sort_Merge As Table ([Partition_Order] Bigint, [Partition_Minimum_Extent]  Decimal(38, 19), [Partition_Maximum_Extent]  Decimal(38, 19), [Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Sort As Table ([Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Insert As Table ([Partition_Order] Bigint, [Partition_Minimum_Extent]  Decimal(38, 19), [Partition_Maximum_Extent]  Decimal(38, 19), [Argument_Order] Bigint, [Argument] Varchar(Max))
 Declare @Cumulative_Sort_Order_Limit As Bigint
 
 --ALGORITHM EXECUTION
@@ -168,11 +169,11 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Ascending_Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Ascending_Partition] = @Loop_Count_0001)
 			
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
 					If @Remove_Duplicates = 1 --If we have removed duplicates, then we always want to execute the quicker or more efficient imperfect sort fidelity...
 						Begin
-							Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+							Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 							Select
 								(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 								[Argument]
@@ -185,7 +186,7 @@ Begin
 						Begin
 							If @Sort_Fidelity = 'Imperfect'
 								Begin
-									Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
 										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
@@ -196,7 +197,7 @@ Begin
 								End
 							Else If @Sort_Fidelity = 'Perfect'
 								Begin
-									Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
 										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc, [Argument] Asc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
@@ -206,11 +207,11 @@ Begin
 									And [Argument_Decimal] <= @Partition_Maximum_Extent
 								End
 						End
-					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
+			Else If  @Partition_Transaction_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						@Partition_Minimum_Extent As [Partition_Minimum_Extent],
@@ -246,11 +247,11 @@ Begin
 			Set @Partition_Minimum_Extent = (Select [Minimum_Extent] As [Minimum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Descending_Partition] = @Loop_Count_0001)
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Descending_Partition] = @Loop_Count_0001)
 			
-			If @Partition_Transactionlet_Payload_Type = 'Sort'
+			If @Partition_Transaction_Payload_Type = 'Sort'
 				Begin
 					If @Remove_Duplicates = 1 --If we have removed duplicates, then we always want to execute the quicker or more efficient imperfect sort fidelity...
 						Begin
-							Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+							Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 							Select
 								(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 								[Argument]
@@ -263,7 +264,7 @@ Begin
 						Begin
 							If @Sort_Fidelity = 'Imperfect'
 								Begin
-									Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
 										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
@@ -274,7 +275,7 @@ Begin
 								End
 							Else If @Sort_Fidelity = 'Perfect'
 								Begin
-									Insert Into @Interleaved_Partition_Sort_Merge ([Argument_Order], [Argument])
+									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
 										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc, [Argument] Desc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
@@ -284,11 +285,11 @@ Begin
 									And [Argument_Decimal] <= @Partition_Maximum_Extent
 								End
 						End
-					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge)
+					Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 				End
-			Else If  @Partition_Transactionlet_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
+			Else If  @Partition_Transaction_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
 				Begin
-					Insert Into @Interleaved_Partition_Sort_Merge ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
+					Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Partition_Order], [Partition_Minimum_Extent], [Partition_Maximum_Extent], [Argument_Order], [Argument])
 					Select
 						@Loop_Count_0001 As [Partition_Order],
 						@Partition_Minimum_Extent As [Partition_Minimum_Extent],
@@ -307,15 +308,15 @@ End
 
 
 --The Results
-If @Partition_Transactionlet_Payload_Type = 'Sort'
+If @Partition_Transaction_Payload_Type = 'Sort'
 	Begin
 		Select
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Sort
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
-Else If @Partition_Transactionlet_Payload_Type = 'Insert'
+Else If @Partition_Transaction_Payload_Type = 'Insert'
 	Begin
 		Select
 			[Partition_Order] As [Partition_Order],
@@ -323,7 +324,7 @@ Else If @Partition_Transactionlet_Payload_Type = 'Insert'
 			[Partition_Maximum_Extent] As[Partition_Maximum_Extent],
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
-		From @Interleaved_Partition_Sort_Merge
+		From @Interleaved_Partition_Sort_Merge_Insert
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
 
