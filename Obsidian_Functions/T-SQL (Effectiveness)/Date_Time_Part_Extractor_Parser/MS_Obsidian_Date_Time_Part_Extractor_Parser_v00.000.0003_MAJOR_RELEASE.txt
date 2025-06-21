@@ -77,7 +77,7 @@ If (Select Count(1) From @Data) < 2
 		Set @Exception_Message = ('Exception: Invalid_Data_Input_Argument: Not_Enough_Date_String_Arguments_Inputed... No specific offending argument: ...')
 		GoTo Invalid_Data_Input_Argument_Not_Enough_Date_String_Arguments_Inputed
 	End
-Set @Exception_Value = (Select Min([Data]) From @Data Where Len([Data]) > 25)
+Set @Exception_Value = (Select Min([Data]) From @Data Where Len([Data]) > 27)
 If @Exception_Value Is Not Null
 	Begin
 		Set @Exception_Message = ('Exception: Invalid_Data_Input_Argument: Date_Strings_That_Are_Too_Long... A specific offending argument: ' + @Exception_Value)
