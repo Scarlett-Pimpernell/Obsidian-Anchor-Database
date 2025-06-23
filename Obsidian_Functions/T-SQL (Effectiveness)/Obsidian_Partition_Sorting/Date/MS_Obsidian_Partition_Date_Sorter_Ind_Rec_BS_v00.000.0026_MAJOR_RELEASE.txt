@@ -32,7 +32,7 @@ Set @Sort_Fidelity = 'Imperfect' --As opposed to the other option ('Perfect'), w
 Declare @Remove_Duplicates As Tinyint
 Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
 
------
+-----Intrinsic SQL Server Data Type Constants
 --Be very careful with changing these delimiters... I found that for example some characters may need to be escaped, but especially because the dash character is used to indicate ranges, if you want to use a dash as a delimiter character in your date @Data arguments, it must go as the first 'Like' character in the compound search string... There may be other characters that require this kind of sensitive handling!...
 Declare @Date_Part_Delimiter_Character Varchar(1)
 Set @Date_Part_Delimiter_Character = '-'
@@ -42,7 +42,7 @@ Declare @Magnitudinal_Time_Delimiter_Character Varchar(1)
 Set @Magnitudinal_Time_Delimiter_Character = ':'
 Declare @Precisional_Time_Delimiter_Character Varchar(1)
 Set @Precisional_Time_Delimiter_Character = '.'
------
+-----Intrinsic SQL Server Data Type Constants
 
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
