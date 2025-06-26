@@ -1,4 +1,4 @@
---MS_Obsidian_Ind_Rec_DT_Val_Reversion_Function
+--MS_Obsidian_Index_Recompiled_Datetime2_Value_Reversion_Function
 
 
 --The following few blocks of code create a new stored procedure which can be used in order to revert index recompiled datetime values to their datetime2 native data type.
