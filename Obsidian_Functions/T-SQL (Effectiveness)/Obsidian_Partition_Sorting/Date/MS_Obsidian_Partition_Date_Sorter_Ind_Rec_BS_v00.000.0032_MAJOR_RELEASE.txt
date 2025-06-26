@@ -1,5 +1,4 @@
---DEPRECATED_MS_Obsidian_Partition_Date_Sorter_Expansion_Normalised_Index_Recompiled_and_Bootstrapped_DEPRECATED
---THIS ALGORITHM IS ONLY TO ILLUSTRATE AN APPROACH WHICH CAN BE REPURPOSED FOR USE IN ORDER TO VISUALISE DATE VALUES WITHOUT RANGE GAPS --> BY EXPANSION NORMALISING DATEPARTS SEPARATELY... FOR ALL OTHER USES, USE THE UNDEPRECATED VERSION!!!
+--MS_Obsidian_Partition_Date_Sorter_Index_Recompiled_and_Bootstrapped
 
 --COMMENTS:
 --This algorithm will provide the best performance with input datasets that have a large range in numerical values (i.e. covering many different significant figures), and also when the digit length distribution of Arguments across this input data range, is as flat/equal/balanced as possible across said significant figure classes.
@@ -12,10 +11,10 @@
 --NOTA BENE 0002: This version of the sorting algorithm is intended for situations where the dataset to be order sorted, is genuinely balanced in terms of magnitude and precision components, when arguments are taken on aggregate... OR where the user is unsure of usecase dataset magnitude and precision distributional profile characteristics, or where these aspects are highly dynamic in nature... It is, if you like, a sort of almost best of both worlds, but of course, if you genuinely have either predominantly magnitude or precision dense datasaets that you want to order, then please use one of the other appropriate sibling algorithms... 
 --NOTA BENE 0003: I should add, that I have not even ascertained whether nesting the magnitude dense and precision dense approaches into a hybrid algorithm (as is done here), is actually superlatively compute speed beneficial!!! --> PLEASE CHECK THIS YOURSELF!!!
 --NOTA BENE 0004: This is a bootstrapped version of the corresponding vanilla algorithm, and as such, it is almost always going to be quicker than the vanilla version as data volumes increase... Just make sure that if you are re-implementing with different core data types, that you amend the hardcoded partion map accordingly to handle less or more integer component maginitude digit (at the moment our core data type is Decimal(38, 19), which means we want 38 partitions spanning negative and positive numbers within the overall maximal bound!!!)...
---NOTA BENE 0005: This algorithm is similar to the numeric version, except an extra step to pre-index date arguments has been added... In this case, all dateparts before the datetime2 data type decimal point are treated as magnitudinal, and all dateparts after the datetime2 data type decimal point are treated as precisional... BUT THERE IS MORE... In order to maximise the balance/distribution of arguments across all possible classes/partitions, I have implemented techniques to expand/decompress and then normalise the date arguments... These special techniques can be applied to other data types that have narrow ranges compared to Decimal(38 ,19), or multi-partite ranges where there are gaps in the overall range where argument values can't be assumed. One other example of such a usecase could be something like postcodes maybe...
---NOTA BENE 0006:If you would like to enable a date range which is greater than the 9999th year, simply adjust the [Year] datepart logic accordingly... This algorithm essentially can handle any date value up to a very large number, which is only restricted by the Decimal(38,19) data type...
+--NOTA BENE 0005: This algorithm is similar to the numeric version, except an extra step to pre-index date arguments has been added... In this case, all dateparts before the datetime2 data type decimal point are treated as magnitudinal, and all dateparts after the datetime2 data type decimal point are treated as precisional... BUT THERE IS MORE...
+--NOTA BENE 0006: If you would like to enable a date range which is greater than the beginning of the 9999th year, simply adjust the [Year] datepart logic accordingly, as well as the ascending and descending nested partition maximum extent augmentations... This algorithm essentially can handle any date value up to a very large number, which is only restricted by the Decimal(38,19) data type...
 --NOTA BENE 0007: Also, please be aware, that time alone values (without a year/month/date portion), all get ordered to one side of full datetime values...
---NOTA BENE 0008: I am aware that some people will be upset that the partition extents for dates are human-unusable... This is by design, as only machines should ever really be manipulating partition extents... If you need a human-usable version of partition extents, then you would simply implement a reverse function for expansion normalised index recompilation, and apply that to the appropriate final partition table columns... Get in touch if you'd like this, I work for a 'small fee'!...
+--NOTA BENE 0008: Please find also, a companion function algorithm, which has been designed to convert index recompiled datetime values, into datetime2 SQL Server native values... This function should not be used on expansion normalised index recompiled datetime values, as these require extra logic to reverse the incumbent transformations which produced them!!!...
 
 --LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million Arguments that need to be sorted (possibly even less than this will experience significant speed improvements)...
 
@@ -34,7 +33,7 @@ Set @Sort_Fidelity = 'Imperfect' --As opposed to the other option ('Perfect'), w
 Declare @Remove_Duplicates As Tinyint
 Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
 
------
+-----Intrinsic SQL Server Data Type Constants...
 --Be very careful with changing these delimiters... I found that for example some characters may need to be escaped, but especially because the dash character is used to indicate ranges, if you want to use a dash as a delimiter character in your date @Data arguments, it must go as the first 'Like' character in the compound search string... There may be other characters that require this kind of sensitive handling!...
 Declare @Date_Part_Delimiter_Character Varchar(1)
 Set @Date_Part_Delimiter_Character = '-'
@@ -44,7 +43,7 @@ Declare @Magnitudinal_Time_Delimiter_Character Varchar(1)
 Set @Magnitudinal_Time_Delimiter_Character = ':'
 Declare @Precisional_Time_Delimiter_Character Varchar(1)
 Set @Precisional_Time_Delimiter_Character = '.'
------
+-----Intrinsic SQL Server Data Type Constants...
 
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
@@ -164,8 +163,7 @@ If @Exception_Value Is Not Null
 --INTERNAL VARIABLES
 Declare @Data_Anchored Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Argument_Reversed] Varchar(Max))
 Declare @Data_Anchored_Parsed_Padded Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100))
-Declare @Data_Anchored_Parsed_Padded_Expansion_Normalised Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100), [Expansion_Normalised_Month] Varchar(100), [Expansion_Normalised_Day] Varchar(100), [Expansion_Normalised_Hour] Varchar(100), [Expansion_Normalised_Minute] Varchar(100), [Expansion_Normalised_Second] Varchar(100))
-Declare @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100), [Expansion_Normalised_Month] Varchar(100), [Expansion_Normalised_Day] Varchar(100), [Expansion_Normalised_Hour] Varchar(100), [Expansion_Normalised_Minute] Varchar(100), [Expansion_Normalised_Second] Varchar(100), [Recompiled_Argument] Varchar(Max))
+Declare @Data_Anchored_Parsed_Padded_Index_Recompiled Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100), [Recompiled_Argument] Varchar(Max))
 Declare @Integer_Component_Magnitudinal_Digit_Partition_Map As Table ([Ascending_Partition] Bigint, [Descending_Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
@@ -222,6 +220,12 @@ From @Data_Anchored
 
 
 --(@Data PART 0002: POST-DATEPART PARSING/EXTRACTION)... You can turn these into specific exception messages if you like, but I simply can't be bothered right now, so simply put: Your input dates @Data is corrupt in some way... Please check for the correct formatting, and re-execute the algorithm once appropriate changes have been made, if you desire!!!...
+Set @Exception_Value = (Select Min([Argument]) From @Data_Anchored_Parsed_Padded Where Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) < 10101000000.0000000 Or Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) > 99991231000000.0000000)
+If @Exception_Value Is Not Null
+	Begin
+		Set @Exception_Message = ('Exception: Invalid_Data_Input_Argument: Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values___For_Example_A_Date_Which_Is_Less_Than_0001-01-01 00:00:00.0000000_Or_Greater_Than_9999-12-31 00:00:00.0000000... A specific offending argument: ' + @Exception_Value)
+		GoTo Invalid_Data_Input_Argument_Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values
+	End
 Set @Exception_Value = (Select Min([Argument]) From @Data_Anchored_Parsed_Padded A Left Join @Days_Of_the_Month B On (B.[Month] = A.[Month]) Where Cast(A.[Year] As Int) < 1 Or Cast(A.[Year] As Int) > 9999 Or Cast(A.[Month] As Int) < 1  Or Cast(A.[Month] As Int) > 12 Or Cast(A.[Day] As Int) < 1 Or Cast(A.[Day] As Int) > (Case When Cast(A.[Year] As Int) % 400 = 0 Then B.[Leap_Days] Else (Case When Cast(A.[Year] AS Int) % 100 = 0 Then B.[Normal_Days] Else (Case When Cast(A.[Year] As Int) % 4 = 0 Then B.[Leap_Days] Else B.[Normal_Days] End) End) End) Or Cast(A.[Hour] As Int) < 0 Or Cast(A.[Hour] As Int) > 24 Or Cast(A.[Minute] As Int) < 0 Or Cast(A.[Minute] As Int) > 59 Or Cast(A.[Second] As Int) < 0 Or Cast(A.[Second] As Int) > 59 Or Cast(A.[Fractional_Second] As Int) < 0 Or Cast(A.[Fractional_Second] As Int) > 9999999) --You could rather easily change the algorithm logic so that all the casting becomes unnecessary here (which it is at the moment, due to the use of varchar-based numbers)... Please_Also_Know_That_HERE_WE_HANDLE_LEAP_YEARS_AUTOMATICALLY...
 If @Exception_Value Is Not Null
 	Begin
@@ -230,29 +234,8 @@ If @Exception_Value Is Not Null
 	End
 
 
---Need to expand dateparts here in order to make full use of the density of the date index Decimal(38,19) range... Otherwise, certain dateparts would only cover partial sections of the overall datetime range (there are only 59 minutes in an hour rather than 99 {you will never find a datetime value with 60 in the minutes datepart... the maximum here is 59, because the 60th minute is tallied in the more abstract datepart, which is hours})... If you don't expand the appropriate dateparts, then algorithmic efficiency is reduced significantly... We round the expansion normalised decimal values, regardless of the apparent risk of datetime index clashing, because we know that these worrisome clashes will never occur, due to the fact that we are always expanding dateparts, and therefore pushing datetimes apart, rather than compressing them together (which could cause clashing issues)... We also re-pad after datepart expansion... This expansion technique only works, because we are simply interested in indexing for the partitioning and sorting, rather than directly manipulating the exact datetime values for real value usecases... Oh, and BTW, this expansion approach, is actually a form of normalisation...
-Insert Into @Data_Anchored_Parsed_Padded_Expansion_Normalised ([Anchor_Order], [Argument], [Year], [Month], [Day], [Hour], [Minute], [Second], [Fractional_Second], [Expansion_Normalised_Month], [Expansion_Normalised_Day], [Expansion_Normalised_Hour], [Expansion_Normalised_Minute], [Expansion_Normalised_Second])
-Select
-	A.[Anchor_Order] As [Anchor_Order],
-	A.[Argument] As [Argument],
-	A.[Year] As [Year],
-	A.[Month] As [Month],
-	A.[Day] As [Day],
-	A.[Hour] As [Hour], 
-	A.[Minute] As [Minute],
-	A.[Second] As [Second],
-	A.[Fractional_Second] As [Fractional_Second],
-	Right(('0' + Cast(Cast(Round(((Cast(A.[Month] As Decimal(38, 19)) / Cast(12 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Month],
-	Right(('0' + Cast(Cast(Round(((Cast(A.[Day] As Decimal(38, 19)) / Cast((Case When Cast(A.[Year] As Int) % 400 = 0 Then B.[Leap_Days] Else (Case When Cast(A.[Year] AS Int) % 100 = 0 Then B.[Normal_Days] Else (Case When Cast(A.[Year] As Int) % 4 = 0 Then B.[Leap_Days] Else B.[Normal_Days] End) End) End) As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Day],
-	Right(('0' + Cast(Cast(Round(((Cast(A.[Hour] As Decimal(38, 19)) / Cast(23 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Hour], 
-	Right(('0' + Cast(Cast(Round(((Cast(A.[Minute] As Decimal(38, 19)) / Cast(59 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))),0 ) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Minute],
-	Right(('0' + Cast(Cast(Round(((Cast(A.[Second] As Decimal(38, 19)) / Cast(59 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Second]
-From @Data_Anchored_Parsed_Padded A
-Left Join @Days_Of_the_Month B On
-	(B.[Month] = A.[Month])
-
 --BTW, this index recompile of input date @Data arguments is very powerful, because it means that under-partitioned and severely unbalanced dateparts (which arise because only part of a datepart digit range is used in raw date values {for example the momnth datepart will only ever have values 01 through 12, whereas the partitioning capacity for a two digit number is actually 01 through 99}), can be more evenly and maximally partitioned!!!...
-Insert Into @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled ([Anchor_Order], [Argument], [Year], [Month], [Day], [Hour], [Minute], [Second], [Fractional_Second], [Expansion_Normalised_Month], [Expansion_Normalised_Day], [Expansion_Normalised_Hour], [Expansion_Normalised_Minute], [Expansion_Normalised_Second], [Recompiled_Argument])
+Insert Into @Data_Anchored_Parsed_Padded_Index_Recompiled ([Anchor_Order], [Argument], [Year], [Month], [Day], [Hour], [Minute], [Second], [Fractional_Second], [Recompiled_Argument])
 Select
 	[Anchor_Order] As [Anchor_Order],
 	[Argument] As [Argument],
@@ -263,13 +246,8 @@ Select
 	[Minute] As [Minute],
 	[Second] As [Second],
 	[Fractional_Second] As [Fractional_Second],
-	[Expansion_Normalised_Month] As [Expansion_Normalised_Month],
-	[Expansion_Normalised_Day] As [Expansion_Normalised_Day],
-	[Expansion_Normalised_Hour] As [Expansion_Normalised_Hour], 
-	[Expansion_Normalised_Minute] As [Expansion_Normalised_Minute],
-	[Expansion_Normalised_Second] As [Expansion_Normalised_Second],
-	(Case When [Year] Is Not Null Then (Case When [Hour] Is Not Null Then (Case When [Fractional_Second] Is Not Null Then ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + [Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.' + [Fractional_Second]) Else ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + [Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.0000000') End) Else ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + '000000.0000000') End) Else (Case When [Fractional_Second] Is Not Null Then ([Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.' + [Fractional_Second]) Else ([Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.0000000') End) End) As [Recompiled_Argument]
-From @Data_Anchored_Parsed_Padded_Expansion_Normalised
+	(Case When [Year] Is Not Null Then (Case When [Hour] Is Not Null Then (Case When [Fractional_Second] Is Not Null Then ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.0000000') End) Else ([Year] + [Month] + [Day] + '000000.0000000') End) Else (Case When [Fractional_Second] Is Not Null Then ([Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ([Hour] + [Minute] + [Second] + '.0000000') End) End) As [Recompiled_Argument]
+From @Data_Anchored_Parsed_Padded
 
 
 --Here we bootstrap the partitions, by hardcoding the order and ranges of each magnitudinal partition.
@@ -341,7 +319,7 @@ Begin
 				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Argument_Decimal],
 				Sign(Cast([Recompiled_Argument] As Decimal(38, 19))) As [Number_Polarity],
 				Cast(Floor(Cast((Case When Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) > 0 Then Substring([Recompiled_Argument], 1, (Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) - 1)) Else [Recompiled_Argument] End) As Decimal(38, 19))) As Bigint) As [Integer_Component] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
-			From @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled
+			From @Data_Anchored_Parsed_Padded_Index_Recompiled
 			Where
 			Cast([Recompiled_Argument] As Decimal(38, 19)) >= @Partition_Minimum_Extent
 			And Cast([Recompiled_Argument] As Decimal(38, 19)) <= @Partition_Maximum_Extent
@@ -352,7 +330,7 @@ Begin
 			Select
 				Row_Number() Over(Order By [Integer_Component] Asc) As [Ascending_Partition], --Slow sort, but because we pre-group, the exponential nature is massively reduced...
 				(Case When Min([Number_Polarity]) = -1 Then (Cast([Integer_Component] As Decimal(38, 19)) - Cast(0.9999999999999999999 As Decimal(38, 19))) Else (Case When Min([Number_Polarity]) = 0 Then Cast(-0.9999999999999999999 As Decimal(38, 19)) Else Cast([Integer_Component] As Decimal(38, 19)) End) End) As [Minimum_Extent], --Taken with the line of code below, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments...
-				(Case When Max([Number_Polarity]) = -1 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Case When Max([Number_Polarity]) = 0 Then Cast(0.9999999999999999999 As Decimal(38, 19)) Else (Cast([Integer_Component] As Decimal(38, 19)) + Cast(0.9999999999999999999 As Decimal(38, 19))) End) End) As [Maximum_Extent] --Taken with the line of code above, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments...
+				(Case When Max([Number_Polarity]) = -1 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Case When Max([Number_Polarity]) = 0 Then Cast(0.9999999999999999999 As Decimal(38, 19)) Else (Case When Cast([Integer_Component] As Decimal(38, 19)) = 99991231000000.0000000 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Cast([Integer_Component] As Decimal(38, 19)) + Cast(0.9999999999999999999 As Decimal(38, 19))) End) End) End) As [Maximum_Extent] --Taken with the line of code above, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments... ALSO, NOTICE THE ADDITIONAL AUGMENTATION, IN ORDER TO HANDLE THE UPPER DATETIME2 BOUNDARY VALUE OF 9999-12-31 00:00:00.0000000...
 			From @Pre_Transformed_Data_Nested
 			Group By [Integer_Component] --We bascially want to create a partition for each unique integer component value, irrespective of leading zeroes and decimal place precision digit values...
 
@@ -468,7 +446,7 @@ Begin
 				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Argument_Decimal],
 				Sign(Cast([Recompiled_Argument] As Decimal(38, 19))) As [Number_Polarity],
 				Cast(Floor(Cast((Case When Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) > 0 Then Substring([Recompiled_Argument], 1, (Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) - 1)) Else [Recompiled_Argument] End) As Decimal(38, 19))) As Bigint) As [Integer_Component] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
-			From @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled
+			From @Data_Anchored_Parsed_Padded_Index_Recompiled
 			Where
 			Cast([Recompiled_Argument] As Decimal(38, 19)) >= @Partition_Minimum_Extent
 			And Cast([Recompiled_Argument] As Decimal(38, 19)) <= @Partition_Maximum_Extent
@@ -479,7 +457,7 @@ Begin
 			Select
 				Row_Number() Over(Order By [Integer_Component] Asc) As [Ascending_Partition], --Slow sort, but because we pre-group, the exponential nature is massively reduced...
 				(Case When Min([Number_Polarity]) = -1 Then (Cast([Integer_Component] As Decimal(38, 19)) - Cast(0.9999999999999999999 As Decimal(38, 19))) Else (Case When Min([Number_Polarity]) = 0 Then Cast(-0.9999999999999999999 As Decimal(38, 19)) Else Cast([Integer_Component] As Decimal(38, 19)) End) End) As [Minimum_Extent], --Taken with the line of code below, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments...
-				(Case When Max([Number_Polarity]) = -1 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Case When Max([Number_Polarity]) = 0 Then Cast(0.9999999999999999999 As Decimal(38, 19)) Else (Cast([Integer_Component] As Decimal(38, 19)) + Cast(0.9999999999999999999 As Decimal(38, 19))) End) End) As [Maximum_Extent] --Taken with the line of code above, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments...
+				(Case When Max([Number_Polarity]) = -1 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Case When Max([Number_Polarity]) = 0 Then Cast(0.9999999999999999999 As Decimal(38, 19)) Else (Case When Cast([Integer_Component] As Decimal(38, 19)) = 99991231000000.0000000 Then Cast([Integer_Component] As Decimal(38, 19)) Else (Cast([Integer_Component] As Decimal(38, 19)) + Cast(0.9999999999999999999 As Decimal(38, 19))) End) End) End) As [Maximum_Extent] --Taken with the line of code above, we hardcode correct the unique nature of the zero row double range here, in order to handle both negative and positive values between negative one (-1) and positive one (1)!!!... Otherwise there would simply be two positive partitions for zero, which would erroneously duplicate 'zero stem' arguments... ALSO, NOTICE THE ADDITIONAL AUGMENTATION, IN ORDER TO HANDLE THE UPPER DATETIME2 BOUNDARY VALUE OF 9999-12-31 00:00:00.0000000...
 			From @Pre_Transformed_Data_Nested
 			Group By [Integer_Component] --We bascially want to create a partition for each unique integer component value, irrespective of leading zeroes and decimal place precision digit values...
 
@@ -591,10 +569,10 @@ Else If @Partition_Transaction_Payload_Type = 'Insert'
 		Select
 			[Outer_Partition_Order] As [Outer_Partition_Order],
 			[Outer_Partition_Minimum_Extent] As [Outer_Partition_Minimum_Extent],
-			[Outer_Partition_Maximum_Extent] As[Outer_Partition_Maximum_Extent],
+			[Outer_Partition_Maximum_Extent] As [Outer_Partition_Maximum_Extent],
 			[Inner_Partition_Order] As [Inner_Partition_Order],
 			[Inner_Partition_Minimum_Extent] As [Inner_Partition_Minimum_Extent],
-			[Inner_Partition_Maximum_Extent] As[Inner_Partition_Maximum_Extent],
+			[Inner_Partition_Maximum_Extent] As [Inner_Partition_Maximum_Extent],
 			[Argument_Order] As [Argument_Order],
 			[Argument] As [Argument]
 		From @Interleaved_Partition_Sort_Merge_Insert
@@ -642,10 +620,14 @@ Invalid_Data_Input_Argument_Date_Strings_That_Have_Incorrect_Separator_Separatio
 Select @Exception_Message
 Return
 
-Invalid_Data_Input_Argument_Simply_Checking_For_Silly_Datepart_Values:
+Invalid_Data_Input_Argument_Date_Strings_That_Have_Incorrect_Number_Of_Fractional_Seconds_Digits:
 Select @Exception_Message
 Return
 
-Invalid_Data_Input_Argument_Date_Strings_That_Have_Incorrect_Number_Of_Fractional_Seconds_Digits:
+Invalid_Data_Input_Argument_Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values:
+Select @Exception_Message
+Return
+
+Invalid_Data_Input_Argument_Simply_Checking_For_Silly_Datepart_Values:
 Select @Exception_Message
 Return

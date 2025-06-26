@@ -1,0 +1,58 @@
+--SPECIAL_CASE_MS_Obsidian_Partition_Date_Sorter_Expansion_Normalised_Index_Recompiled_and_Bootstrapped_SPECIAL_CASE
+--THIS SOURCECODE IS ONLY TO ILLUSTRATE AN APPROACH WHICH CAN BE REPURPOSED FOR USE IN ORDER TO VISUALISE DATE VALUES WITHOUT RANGE GAPS --> BY EXPANSION NORMALISING DATEPARTS SEPARATELY... FOR ALL OTHER USES, USE THE STANDARD NON-EXPANSION-NORMALISED VERSION!!!
+
+
+--NOTA BENE 0001: I am aware that some people will be upset that the partition extents for dates are human-unusable... This is by design, as only machines should ever really be manipulating partition extents... If you need a human-usable version of partition extents, then you would simply implement a reverse function for expansion normalised index recompilation, and apply that to the appropriate final partition table columns... Get in touch if you'd like this, I work for a 'small fee'!... Infact, this is now being delivered, and will be released alongside the existing algorithm collateral files on my GitHub site...
+
+
+--(USAGE INSTRUCTIONS)...
+--These two table variables replace the @Data_Anchored_Parsed_Padded_Index_Recompiled table variable in the non-expansion-normalised, but still indeed index-recompiled version of this algoirithm...
+--You Will also need to re-plumb the varible references appropriately further down the query: In both the 'Ascending' and 'Descending' branches of the execution IF block... The Insert Into @Pre_Transformed_Data_Nested statement should take data 'From' the @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled table variable instead...
+
+
+--INTERNAL VARIABLES
+Declare @Data_Anchored_Parsed_Padded_Expansion_Normalised Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100), [Expansion_Normalised_Month] Varchar(100), [Expansion_Normalised_Day] Varchar(100), [Expansion_Normalised_Hour] Varchar(100), [Expansion_Normalised_Minute] Varchar(100), [Expansion_Normalised_Second] Varchar(100))
+Declare @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled Table ([Anchor_Order] Bigint, [Argument] Varchar(Max), [Year]  Varchar(100), [Month] Varchar(100), [Day] Varchar(100), [Hour] Varchar(100), [Minute] Varchar(100), [Second] Varchar(100), [Fractional_Second] Varchar(100), [Expansion_Normalised_Month] Varchar(100), [Expansion_Normalised_Day] Varchar(100), [Expansion_Normalised_Hour] Varchar(100), [Expansion_Normalised_Minute] Varchar(100), [Expansion_Normalised_Second] Varchar(100), [Recompiled_Argument] Varchar(Max))
+
+
+--Need to expand dateparts here in order to make full use of the density of the date index Decimal(38,19) range... Otherwise, certain dateparts would only cover partial sections of the overall datetime range (there are only 59 minutes in an hour rather than 99 {you will never find a datetime value with 60 in the minutes datepart... the maximum here is 59, because the 60th minute is tallied in the more abstract datepart, which is hours})... If you don't expand the appropriate dateparts, then algorithmic efficiency is reduced significantly... We round the expansion normalised decimal values, regardless of the apparent risk of datetime index clashing, because we know that these worrisome clashes will never occur, due to the fact that we are always expanding dateparts, and therefore pushing datetimes apart, rather than compressing them together (which could cause clashing issues)... We also re-pad after datepart expansion... This expansion technique only works, because we are simply interested in indexing for the partitioning and sorting, rather than directly manipulating the exact datetime values for real value usecases... Oh, and BTW, this expansion approach, is actually a form of normalisation...
+Insert Into @Data_Anchored_Parsed_Padded_Expansion_Normalised ([Anchor_Order], [Argument], [Year], [Month], [Day], [Hour], [Minute], [Second], [Fractional_Second], [Expansion_Normalised_Month], [Expansion_Normalised_Day], [Expansion_Normalised_Hour], [Expansion_Normalised_Minute], [Expansion_Normalised_Second])
+Select
+	A.[Anchor_Order] As [Anchor_Order],
+	A.[Argument] As [Argument],
+	A.[Year] As [Year],
+	A.[Month] As [Month],
+	A.[Day] As [Day],
+	A.[Hour] As [Hour], 
+	A.[Minute] As [Minute],
+	A.[Second] As [Second],
+	A.[Fractional_Second] As [Fractional_Second],
+	Right(('0' + Cast(Cast(Round(((Cast(A.[Month] As Decimal(38, 19)) / Cast(12 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Month],
+	Right(('0' + Cast(Cast(Round(((Cast(A.[Day] As Decimal(38, 19)) / Cast((Case When Cast(A.[Year] As Int) % 400 = 0 Then B.[Leap_Days] Else (Case When Cast(A.[Year] AS Int) % 100 = 0 Then B.[Normal_Days] Else (Case When Cast(A.[Year] As Int) % 4 = 0 Then B.[Leap_Days] Else B.[Normal_Days] End) End) End) As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Day],
+	Right(('0' + Cast(Cast(Round(((Cast(A.[Hour] As Decimal(38, 19)) / Cast(23 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Hour], 
+	Right(('0' + Cast(Cast(Round(((Cast(A.[Minute] As Decimal(38, 19)) / Cast(59 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))),0 ) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Minute],
+	Right(('0' + Cast(Cast(Round(((Cast(A.[Second] As Decimal(38, 19)) / Cast(59 As Decimal(38, 19))) * Cast(99 As Decimal(38, 19))), 0) As Bigint) As Varchar(100))), 2) As [Expansion_Normalised_Second]
+From @Data_Anchored_Parsed_Padded A
+Left Join @Days_Of_the_Month B On
+	(B.[Month] = A.[Month])
+
+
+--BTW, this index recompile of input date @Data arguments is very powerful, because it means that under-partitioned and severely unbalanced dateparts (which arise because only part of a datepart digit range is used in raw date values {for example the momnth datepart will only ever have values 01 through 12, whereas the partitioning capacity for a two digit number is actually 01 through 99}), can be more evenly and maximally partitioned!!!...
+Insert Into @Data_Anchored_Parsed_Padded_Expansion_Normalised_Index_Recompiled ([Anchor_Order], [Argument], [Year], [Month], [Day], [Hour], [Minute], [Second], [Fractional_Second], [Expansion_Normalised_Month], [Expansion_Normalised_Day], [Expansion_Normalised_Hour], [Expansion_Normalised_Minute], [Expansion_Normalised_Second], [Recompiled_Argument])
+Select
+	[Anchor_Order] As [Anchor_Order],
+	[Argument] As [Argument],
+	[Year] As [Year],
+	[Month] As [Month],
+	[Day] As [Day],
+	[Hour] As [Hour], 
+	[Minute] As [Minute],
+	[Second] As [Second],
+	[Fractional_Second] As [Fractional_Second],
+	[Expansion_Normalised_Month] As [Expansion_Normalised_Month],
+	[Expansion_Normalised_Day] As [Expansion_Normalised_Day],
+	[Expansion_Normalised_Hour] As [Expansion_Normalised_Hour], 
+	[Expansion_Normalised_Minute] As [Expansion_Normalised_Minute],
+	[Expansion_Normalised_Second] As [Expansion_Normalised_Second],
+	(Case When [Year] Is Not Null Then (Case When [Hour] Is Not Null Then (Case When [Fractional_Second] Is Not Null Then ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + [Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.' + [Fractional_Second]) Else ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + [Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.0000000') End) Else ([Year] + [Expansion_Normalised_Month] + [Expansion_Normalised_Day] + '000000.0000000') End) Else (Case When [Fractional_Second] Is Not Null Then ([Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.' + [Fractional_Second]) Else ([Expansion_Normalised_Hour] + [Expansion_Normalised_Minute] + [Expansion_Normalised_Second] + '.0000000') End) End) As [Recompiled_Argument]
+From @Data_Anchored_Parsed_Padded_Expansion_Normalised
