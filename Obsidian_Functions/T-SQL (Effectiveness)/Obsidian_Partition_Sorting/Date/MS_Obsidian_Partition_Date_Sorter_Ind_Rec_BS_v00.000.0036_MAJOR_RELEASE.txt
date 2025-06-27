@@ -15,6 +15,7 @@
 --NOTA BENE 0006: If you would like to enable a date range which is greater than the beginning of the 9999th year, simply adjust the [Year] datepart logic accordingly, as well as the ascending and descending nested partition maximum extent augmentations... This algorithm essentially can handle any date value up to a very large number, which is only restricted by the Decimal(38,19) data type...
 --NOTA BENE 0007: Also, please be aware, that time alone values (without a year/month/date portion), all get ordered to one side of full datetime values...
 --NOTA BENE 0008: Please find also, a companion function algorithm, which has been designed to convert index recompiled datetime values, into datetime2 SQL Server native values... This function should not be used on expansion normalised index recompiled datetime values, as these require extra logic to reverse the incumbent transformations which produced them!!!...
+--NOTA BENE 0009: This algorithm is designed to use the datetime range '0001-01-01 00:00:00.0000000' To '0001-01-01 23:59:59.9999999' to partition, sort, and recover time-only arguments before other date-onlys and full datetimes... AND ... To use the datetime precisional pattern 'xxxx-xx-xx xx:xx:xx.00000009' to partition, sort, and recover date-only arguments...
 
 --LOAD TESTING: I can't really test this properly on my SQL_Express setup, so can someone else please investigate thoroughly, and release some vividly illuminating statistics, which demonstrate the clear superirority of this algorithm, in most big and hyper data number sorting usecases... I actually expect this algorithm to be superior to the native SQL Server equivalent, once data volumes exceed around 10 million Arguments that need to be sorted (possibly even less than this will experience significant speed improvements)...
 
@@ -33,6 +34,9 @@ Set @Sort_Fidelity = 'Imperfect' --As opposed to the other option ('Perfect'), w
 Declare @Remove_Duplicates As Tinyint
 Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
 
+Declare @Time_Only_Value_Partition_Polarity As Varchar(16)
+Set @Time_Only_Value_Partition_Polarity = 'Pre_Partitioned' --As opposed to 'Post_Partitioned'...
+
 -----Intrinsic SQL Server Data Type Constants...
 --Be very careful with changing these delimiters... I found that for example some characters may need to be escaped, but especially because the dash character is used to indicate ranges, if you want to use a dash as a delimiter character in your date @Data arguments, it must go as the first 'Like' character in the compound search string... There may be other characters that require this kind of sensitive handling!...
 Declare @Date_Part_Delimiter_Character Varchar(1)
@@ -48,13 +52,11 @@ Set @Precisional_Time_Delimiter_Character = '.'
 Declare @Data Table ([Data] Varchar(Max))
 Insert Into @Data ([Data])
 Values --Please remember that there is an inbuilt datetime2 range that you must make sure your input arguments sit within... Other the algorithm behaviour may be unstable... Also, please make sure where possible that leading zeroes are added to all necessary dateparts (We actually automatically 'accommodate' this for you, but its simply nicer to have clean input data where easy and possible!!!)...
-('0001-01-01 0:00:00.0'),
 ('0332-1-20'),
 ('090-08-11 15:00:01.116749'),
 ('4-02-25 15:00:0.1142'),
 ('1-09-18 15:00:0.51123'),
 ('0001-01-2 15:0:01.572'),
-('9999-12-31 00:00:00.00'),
 ('2003-5-6 10:10:42.8493059'),
 ('1-09-18 15:00:00.54321'),
 ('14:15:16.1425367'),
@@ -68,6 +70,7 @@ Values --Please remember that there is an inbuilt datetime2 range that you must 
 ('2025-06-23 23:59:59.9999999')
 
 -----Intrinsic SQL Server System Constants
+/*
 Declare @Datetime2_Range_Start_Date As Date
 Set @Datetime2_Range_Start_Date = '0001-01-01'
 Declare @Datetime2_Range_Start_Index As Varchar(100)
@@ -78,6 +81,7 @@ Declare @Datetime2_Range_End_Index As Varchar(100)
 Set @Datetime2_Range_End_Index = Cast(Format(@Datetime2_Range_End_Date, 'yyyyMMddHHmmss.fffffff') As Varchar(100))
 Declare @Datetime2_Index_Range As Decimal(38, 19)
 Set @Datetime2_Index_Range = (Cast(@Datetime2_Range_End_Index As Decimal(38, 19)) - Cast(@Datetime2_Range_Start_Index As Decimal(38, 19)))
+*/
 
 Declare @Days_Of_the_Month Table ([Month] Varchar(100), [Normal_Days] Varchar(100), [Leap_Days] Varchar(100)) --Gregorian calendar
 Insert Into @Days_Of_the_Month
@@ -220,10 +224,10 @@ From @Data_Anchored
 
 
 --(@Data PART 0002: POST-DATEPART PARSING/EXTRACTION)... You can turn these into specific exception messages if you like, but I simply can't be bothered right now, so simply put: Your input dates @Data is corrupt in some way... Please check for the correct formatting, and re-execute the algorithm once appropriate changes have been made, if you desire!!!...
-Set @Exception_Value = (Select Min([Argument]) From @Data_Anchored_Parsed_Padded Where Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) < 10101000000.0000000 Or Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) > 99991231000000.0000000)
+Set @Exception_Value = (Select Min([Argument]) From @Data_Anchored_Parsed_Padded Where Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) < 10102000000.0000000 Or Cast(([Year] +[Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) As Decimal(38, 19)) > 99991229235959.9999999)
 If @Exception_Value Is Not Null
 	Begin
-		Set @Exception_Message = ('Exception: Invalid_Data_Input_Argument: Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values___For_Example_A_Date_Which_Is_Less_Than_0001-01-01 00:00:00.0000000_Or_Greater_Than_9999-12-31 00:00:00.0000000... A specific offending argument: ' + @Exception_Value)
+		Set @Exception_Message = ('Exception: Invalid_Data_Input_Argument: Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values___For_Example_A_Date_Which_Is_Less_Than_0001-01-02 00:00:00.0000000_Or_Greater_Than_9999-12-29 23:59:59.9999999... A specific offending argument: ' + @Exception_Value)
 		GoTo Invalid_Data_Input_Argument_Simply_Checking_For_Out_Of_Maximal_Range_Bounds_Compound_Datepart_Values
 	End
 Set @Exception_Value = (Select Min([Argument]) From @Data_Anchored_Parsed_Padded A Left Join @Days_Of_the_Month B On (B.[Month] = A.[Month]) Where Cast(A.[Year] As Int) < 1 Or Cast(A.[Year] As Int) > 9999 Or Cast(A.[Month] As Int) < 1  Or Cast(A.[Month] As Int) > 12 Or Cast(A.[Day] As Int) < 1 Or Cast(A.[Day] As Int) > (Case When Cast(A.[Year] As Int) % 400 = 0 Then B.[Leap_Days] Else (Case When Cast(A.[Year] AS Int) % 100 = 0 Then B.[Normal_Days] Else (Case When Cast(A.[Year] As Int) % 4 = 0 Then B.[Leap_Days] Else B.[Normal_Days] End) End) End) Or Cast(A.[Hour] As Int) < 0 Or Cast(A.[Hour] As Int) > 24 Or Cast(A.[Minute] As Int) < 0 Or Cast(A.[Minute] As Int) > 59 Or Cast(A.[Second] As Int) < 0 Or Cast(A.[Second] As Int) > 59 Or Cast(A.[Fractional_Second] As Int) < 0 Or Cast(A.[Fractional_Second] As Int) > 9999999) --You could rather easily change the algorithm logic so that all the casting becomes unnecessary here (which it is at the moment, due to the use of varchar-based numbers)... Please_Also_Know_That_HERE_WE_HANDLE_LEAP_YEARS_AUTOMATICALLY...
@@ -246,7 +250,7 @@ Select
 	[Minute] As [Minute],
 	[Second] As [Second],
 	[Fractional_Second] As [Fractional_Second],
-	(Case When [Year] Is Not Null Then (Case When [Hour] Is Not Null Then (Case When [Fractional_Second] Is Not Null Then ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.0000000') End) Else ([Year] + [Month] + [Day] + '000000.0000000') End) Else (Case When [Fractional_Second] Is Not Null Then ([Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ([Hour] + [Minute] + [Second] + '.0000000') End) End) As [Recompiled_Argument]
+	(Case When [Year] Is Not Null Then (Case When [Hour] Is Not Null Then (Case When [Fractional_Second] Is Not Null Then ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ([Year] + [Month] + [Day] + [Hour] + [Minute] + [Second] + '.0000000') End) Else ([Year] + [Month] + [Day] + '000000.0000000') End) Else (Case When @Time_Only_Value_Partition_Polarity = 'Pre_Partitioned' Then (Case When [Fractional_Second] Is Not Null Then ('00010101' + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ('00010101' + [Hour] + [Minute] + [Second] + '.0000000') End) Else (Case When @Time_Only_Value_Partition_Polarity = 'Post_Partitioned' Then (Case When [Fractional_Second] Is Not Null Then ('99991230' + [Hour] + [Minute] + [Second] + '.' + [Fractional_Second]) Else ('99991230' + [Hour] + [Minute] + [Second] + '.0000000') End) Else Null End) End) End) As [Recompiled_Argument]
 From @Data_Anchored_Parsed_Padded
 
 

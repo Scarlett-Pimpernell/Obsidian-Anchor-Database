@@ -33,7 +33,7 @@ Begin
 								GoTo Invalid_Data_Parameter_Value
 							End
 	If @Data_Casted Like ''%[^0-9.]%'' GoTo Invalid_Data_Parameter_Value
-
+	
 	--Data Prep Part 0002
 	--We do not need to reformat if @Decimal_Point_Index = 15
 	If @Decimal_Point_Index = 14
@@ -59,11 +59,40 @@ Begin
 	Set @Reverted_Data = Null
 	If Len(@Data_Casted) = 34
 		Begin
-			Set @Reverted_Data = Cast((Substring(@Data_Casted, 1, 4) + ''-'' + Substring(@Data_Casted, 5, 2) + ''-'' + Substring(@Data_Casted, 7, 2) + '' '' + Substring(@Data_Casted, 9, 2) + '':'' + Substring(@Data_Casted, 11, 2) + '':'' + Substring(@Data_Casted, 13, 2) + ''.'' + Substring(@Data_Casted, 16, 7)) As Varchar(Max))
+
+			Declare @Year As Varchar(Max)
+			Set @Year = Substring(@Data_Casted, 1, 4) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Month As Varchar(Max)
+			Set @Month = Substring(@Data_Casted, 5, 2) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Day As Varchar(Max)
+			Set @Day = Substring(@Data_Casted, 7, 2) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Hour As Varchar(Max)
+			Set @Hour = Substring(@Data_Casted, 9, 2) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Minute As Varchar(Max)
+			Set @Minute = Substring(@Data_Casted, 11, 2) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Second As Varchar(Max)
+			Set @Second = Substring(@Data_Casted, 13, 2) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+			Declare @Fractional_Second As Varchar(Max)
+			Set @Fractional_Second = Substring(@Data_Casted, 16, 7) --This value is re-used many times in the actual reversion method below, so makes sense to simply slice it out once for all, in terms of compute efficiency...
+
+			If (@Year + @Month + @Day) = ''00010101''
+				Begin
+					Set @Reverted_Data = Cast((@Hour + '':'' + @Minute + '':'' + @Second + ''.'' + @Fractional_Second) As Varchar(Max))
+				End
+			Else If Left(Right(@Data_Casted, 19), 8) = ''00000009''
+				Begin
+					Set @Reverted_Data = Cast((@Year + ''-'' + @Month + ''-'' + @Day) As Varchar(Max))
+				End
+			Else If (@Year + @Month + @Day) != ''00010101''
+				Begin
+					Set @Reverted_Data = Cast((@Year + ''-'' + @Month + ''-'' + @Day + '' '' + @Hour + '':'' + @Minute + '':'' + @Second + ''.'' + @Fractional_Second) As Varchar(Max))
+				End
+
 		End
 	Else If Len(@Data_Casted) = 26
 		Begin
-			Set @Reverted_Data = Cast((''0001-01-01'' + '' '' + Substring(@Data_Casted, 1, 2) + '':'' + Substring(@Data_Casted, 3, 2) + '':'' + Substring(@Data_Casted, 5, 2) + ''.'' + Substring(@Data_Casted, 8, 7)) As Varchar(Max)) --You may want to change the leading base date here, according to the needs of your usecase... AND, if you do, please remember its trailing space character!!!...
+			--Currently should never be reached... So is currently deprecated...
+			Set @Reverted_Data = Cast((Substring(@Data_Casted, 1, 2) + '':'' + Substring(@Data_Casted, 3, 2) + '':'' + Substring(@Data_Casted, 5, 2) + ''.'' + Substring(@Data_Casted, 8, 7)) As Varchar(Max)) --You may want to change the leading base date here, according to the needs of your usecase... AND, if you do, please remember its trailing space character!!!...
 		End
 
 	--The following codeblocks return useful data from the stored procedure
