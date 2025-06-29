@@ -1,0 +1,87 @@
+--MS_Obsidian_Partiton_Map_Reduce_Learning_Randomiser
+
+
+--Some 'Sorta' Comments
+--Superfast random access of rows of data --> Obsidian Partition Hash Map... Set partition count that must be checked every 'Transaction', and if partition count at odds with the existing storage location partition count, prompt proceed to rebuild, or return the actual storage partition count to be accepted by the transaction originator via a switch setting maybe... Not entirely sure what this algorithm is useful for atm (as I haven't tested it on a real world usecase), but maybe a Java Head-Honcho has some sort of idea... Can it be used as the fundamental partition in a recommender engine somehow???... Seems kinda crazy to me right now, but wanted to provide a full 'sweet' of algorithms, to cover any possible usecase for Map-Reduce Learning, via data partitioning science... I suppose that Obsidian Partition Hash Maps, are the ideal data storage structure for any usecase which requires the generation of random data or behaviour, which will be derived from 'seed' data...
+
+
+--'Unimportant' Comments
+--If You have assigned a global variable @Partition_Count value which is more than the count of arguments in the input @Data table variable, please be aware that multiple partitions may be empty/not contain any arguments... This is possibly expected before reasonable data volumes have been inserted into the system...
+--It is expected that partitions will be filled starting from partition 2 upwards, and then wrapping back around to partition 1, and then cycling as much as needed... This means that if you do have less arguments than partitions, the 1st partition will be filled last in the first assignation 'cycle' (we don't actually cycle within 'Transaction', as everything can ideally be done in parallel)...
+
+
+--Global Variables
+Declare @Partition_Count As Bigint
+Set @Partition_Count = 4
+
+Declare @Remove_Duplicates As Tinyint
+Set @Remove_Duplicates = 0 --If you want to remove duplicates, assign a value of one (1)... Otherwise, assign a value of zero (0)...
+
+--Declare @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal As Tinyint
+--Set @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 --Figure this one out yourself... You can choose assigned values of either one (1) or zero (0)...
+
+
+--Inputs
+Declare @Data Table ([Data] Varchar(Max))
+Insert Into @Data ([Data])
+Values
+('pharaoh'),
+('antiochus'),
+('nero'),
+('laughing_stock'),
+('skeng'),
+('stinky_bre'),
+('alex'),
+('pharaoh')
+
+
+--DATA VALIDATION CHECKS (For Out Of Scope Parameters)
+--(@Data)
+If (Select Count(1) From @Data) Is Null GoTo Invalid_Data_Input_Arguement
+If (Select Count(1) From @Data) < 2 GoTo Invalid_Data_Input_Arguement
+
+
+--ALGORITHM EXECUTION
+--Need to anchor data, in order to retain duplicates... If you don't want this, then set the @Remove_Duplicates global variable to one (1)...
+Declare @Data_Augmented Table ([Argument] Varchar(Max))
+If @Remove_Duplicates = 0
+	Begin
+		Insert Into @Data_Augmented ([Argument])
+		Select
+			[Data] As [Argument]
+		From @Data
+	End
+Else If @Remove_Duplicates = 1
+	Begin
+		Insert Into @Data_Augmented ([Argument])
+		Select
+			[Data] As [Argument]
+			--(Case When @Retain_Instance_Of_Maximum_Order_After_Duplicate_Removal = 0 Then Min([Data]) Else Max([Data]) End) As [Argument] --Consider using this instead, if you are dealing with numerics (But remember to activate the appropriate global variable)...
+		From @Data
+		Group By [Data] --You may want to change this grouping operation based on the data type of your arguments... I have implemented for strings of ASCII characters...
+	End
+
+
+--Scrambling
+Declare @Data_Scrambled Table ([Order] Bigint, [Argument] Varchar(Max))
+Insert Into @Data_Scrambled ([Order], [Argument])
+Select
+	(Row_Number() Over(Order By Crypt_Gen_Random(7) Asc)) As [Order],
+	A.[Argument] As [Argument]
+From @Data_Augmented A
+
+
+--Partitioned Results
+Select
+	(([Order] % @Partition_Count) + 1) As [Partition], --Using the modulus operator approach here, is magnitudes quicker than a commensurate index join approach!...
+	[Order] As [Order],
+	[Argument] As [Argument]
+From @Data_Scrambled
+
+--The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
+Return
+
+
+--Other Exception Cases
+Invalid_Data_Input_Arguement:
+Select 'Exception: The global variable value (@Data), is out of scope for one of the following reasons... It is either not containing more than one row, or is empty.'
