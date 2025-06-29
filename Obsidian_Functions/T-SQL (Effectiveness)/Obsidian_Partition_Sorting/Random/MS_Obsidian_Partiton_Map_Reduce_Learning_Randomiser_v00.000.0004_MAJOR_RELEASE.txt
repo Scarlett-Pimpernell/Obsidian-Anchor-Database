@@ -32,7 +32,9 @@ Values
 ('skeng'),
 ('stinky_bre'),
 ('alex'),
-('pharaoh')
+('pharaoh'),
+('my_favourite_usurping_dweeb')
+
 
 
 --DATA VALIDATION CHECKS (For Out Of Scope Parameters)
@@ -74,7 +76,7 @@ From @Data_Augmented A
 --Partitioned Results
 Select
 	(([Order] % @Partition_Count) + 1) As [Partition], --Using the modulus operator approach here, is magnitudes quicker than a commensurate index join approach!...
-	[Order] As [Order],
+	Ceiling((Cast([Order] As Decimal(38, 19)) / Cast(@Partition_Count As Decimal(38, 19)))) As [Order],
 	[Argument] As [Argument]
 From @Data_Scrambled
 
