@@ -172,7 +172,7 @@ Declare @Loop_Count_0001 As BigInt
 Declare @Partition_Row_Count As Bigint
 Declare @Partition_Minimum_Extent As Decimal(38, 19)
 Declare @Partition_Maximum_Extent As Decimal(38, 19)
-Declare @Pre_Transformed_Data_Nested As Table ([Argument] Varchar(Max), [Argument_Decimal] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component] Bigint)
+Declare @Pre_Transformed_Data_Nested As Table ([Argument] Varchar(Max), [Recompiled_Argument_Decimal] Decimal(38, 19), [Number_Polarity] Int, [Integer_Component] Bigint)
 Declare @Decimal_Component_Precisional_Digit_Partition_Map_Intermediate As Table ([Ascending_Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
 Declare @Augmented_Argument_Count As Bigint
 Declare @Decimal_Component_Precisional_Digit_Partition_Map_Final As Table ([Ascending_Partition] Bigint, [Descending_Partition] Bigint, [Minimum_Extent] Decimal(38, 19), [Maximum_Extent] Decimal(38, 19))
@@ -181,7 +181,7 @@ Declare @Partition_Row_Count_Nested As Bigint
 Declare @Partition_Minimum_Extent_Nested As Decimal(38, 19)
 Declare @Partition_Maximum_Extent_Nested As Decimal(38, 19)
 Declare @Interleaved_Partition_Sort_Merge_Sort As Table ([Argument_Order] Bigint, [Argument] Varchar(Max))
-Declare @Interleaved_Partition_Sort_Merge_Insert As Table ([Outer_Partition_Order] Bigint, [Outer_Partition_Minimum_Extent] Decimal(38, 19), [Outer_Partition_Maximum_Extent] Decimal(38, 19), [Inner_Partition_Order] Bigint, [Inner_Partition_Minimum_Extent] Decimal(38, 19), [Inner_Partition_Maximum_Extent] Decimal(38, 19), [Argument_Order] Bigint, [Argument] Varchar(Max))
+Declare @Interleaved_Partition_Sort_Merge_Insert As Table ([Outer_Partition_Order] Bigint, [Outer_Partition_Minimum_Extent] Decimal(38, 19), [Outer_Partition_Maximum_Extent] Decimal(38, 19), [Inner_Partition_Order] Bigint, [Inner_Partition_Minimum_Extent] Decimal(38, 19), [Inner_Partition_Maximum_Extent] Decimal(38, 19), [Argument_Order] Bigint, [Argument] Varchar(Max), [Recompiled_Argument_Decimal] Decimal(38, 19))
 Declare @Cumulative_Sort_Order_Limit As Bigint
 
 --ALGORITHM EXECUTION
@@ -316,10 +316,10 @@ Begin
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Ascending_Partition] = @Loop_Count_0001)
 			
 			--NESTED PRECISION DENSE SORTING!!!!!
-			Insert Into @Pre_Transformed_Data_Nested ([Argument], [Argument_Decimal], [Number_Polarity], [Integer_Component])
+			Insert Into @Pre_Transformed_Data_Nested ([Argument], [Recompiled_Argument_Decimal], [Number_Polarity], [Integer_Component])
 			Select
 				[Argument] As [Argument],
-				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Argument_Decimal],
+				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Recompiled_Argument_Decimal],
 				Sign(Cast([Recompiled_Argument] As Decimal(38, 19))) As [Number_Polarity],
 				Cast(Floor(Cast((Case When Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) > 0 Then Substring([Recompiled_Argument], 1, (Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) - 1)) Else [Recompiled_Argument] End) As Decimal(38, 19))) As Bigint) As [Integer_Component] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
 			From @Data_Anchored_Parsed_Padded_Index_Recompiled
@@ -361,12 +361,12 @@ Begin
 								Begin
 									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
-										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
 									From @Pre_Transformed_Data_Nested
 									Where
-									[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-									And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+									[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 								End
 							Else If  @Remove_Duplicates = 0
 								Begin
@@ -374,30 +374,30 @@ Begin
 										Begin
 											Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 											Select
-												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Asc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 												[Argument]
 											From @Pre_Transformed_Data_Nested
 											Where
-											[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-											And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+											[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+											And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 										End
 									Else If @Sort_Fidelity = 'Perfect'
 										Begin
 											Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 											Select
-												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Asc, [Argument] Asc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Asc, [Argument] Asc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 												[Argument]
 											From @Pre_Transformed_Data_Nested
 											Where
-											[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-											And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+											[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+											And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 										End
 								End
 							Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 						End
 					Else If  @Partition_Transaction_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
 						Begin
-							Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Outer_Partition_Order], [Outer_Partition_Minimum_Extent], [Outer_Partition_Maximum_Extent], [Inner_Partition_Order], [Inner_Partition_Minimum_Extent], [Inner_Partition_Maximum_Extent], [Argument_Order], [Argument])
+							Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Outer_Partition_Order], [Outer_Partition_Minimum_Extent], [Outer_Partition_Maximum_Extent], [Inner_Partition_Order], [Inner_Partition_Minimum_Extent], [Inner_Partition_Maximum_Extent], [Argument_Order], [Argument], [Recompiled_Argument_Decimal])
 							Select
 								@Loop_Count_0001 As [Inner_Partition_Order],
 								@Partition_Minimum_Extent As [Inner_Partition_Minimum_Extent],
@@ -406,11 +406,12 @@ Begin
 								@Partition_Minimum_Extent_Nested As [Inner_Partition_Minimum_Extent],
 								@Partition_Maximum_Extent_Nested As [Inner_Partition_Maximum_Extent],
 								Row_Number() Over(Order By (Select Null)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language... Here, because of the nature of the overall system, we don't want to waste compute ordering arguments within transactionlet payload partition for this insert usecase... This should be done alongwith the other arguments in the destination partition where each transactionlet payload is deployed...
-								[Argument]
+								[Argument] As [Argument],
+								[Recompiled_Argument_Decimal] As [Recompiled__Argument_Decimal]
 							From @Pre_Transformed_Data_Nested
 							Where
-							[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-							And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+							[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 						End
 
 				End
@@ -443,10 +444,10 @@ Begin
 			Set @Partition_Maximum_Extent = (Select [Maximum_Extent] As [Maximum_Extent] From @Integer_Component_Magnitudinal_Digit_Partition_Map Where [Descending_Partition] = @Loop_Count_0001)
 			
 			--NESTED PRECISION DENSE SORTING!!!!!
-			Insert Into @Pre_Transformed_Data_Nested ([Argument], [Argument_Decimal], [Number_Polarity], [Integer_Component])
+			Insert Into @Pre_Transformed_Data_Nested ([Argument], [Recompiled_Argument_Decimal], [Number_Polarity], [Integer_Component])
 			Select
 				[Argument] As [Argument],
-				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Argument_Decimal],
+				Cast([Recompiled_Argument] As Decimal(38, 19)) As [Recompiled_Argument_Decimal],
 				Sign(Cast([Recompiled_Argument] As Decimal(38, 19))) As [Number_Polarity],
 				Cast(Floor(Cast((Case When Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) > 0 Then Substring([Recompiled_Argument], 1, (Patindex(('%' + @Precisional_Time_Delimiter_Character + '%'), [Recompiled_Argument]) - 1)) Else [Recompiled_Argument] End) As Decimal(38, 19))) As Bigint) As [Integer_Component] --We delimit on the decimal point, in order to properly manage mixed number type values --> We don't want the existence of decimal digits interfering with length partitioning, or being ignored altogether...
 			From @Data_Anchored_Parsed_Padded_Index_Recompiled
@@ -494,12 +495,12 @@ Begin
 								Begin
 									Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 									Select
-										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+										(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 										[Argument]
 									From @Pre_Transformed_Data_Nested
 									Where
-									[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-									And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+									[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+									And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 								End
 							Else If  @Remove_Duplicates = 0
 								Begin
@@ -507,30 +508,30 @@ Begin
 										Begin
 											Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 											Select
-												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Desc)) As [Argument_Order], --We don't have to order by text value after number value here, in order to gain a 'perfect sort', because we don't mind ordering artefact manifestations, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 												[Argument]
 											From @Pre_Transformed_Data_Nested
 											Where
-											[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-											And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+											[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+											And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 										End
 									Else If @Sort_Fidelity = 'Perfect'
 										Begin
 											Insert Into @Interleaved_Partition_Sort_Merge_Sort ([Argument_Order], [Argument])
 											Select
-												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Argument_Decimal] Desc, [Argument] Desc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
+												(@Cumulative_Sort_Order_Limit + Row_Number() Over(Order By [Recompiled_Argument_Decimal] Desc, [Argument] Desc)) As [Argument_Order], --We have to also order by text value after number value, in order to gain a 'perfect sort', otherwise an ordering artefact manifests, when two numbers with different amounts of leading or trailing zeros, but the same fundamental value, clash... You may want to adjust this slightly for your usecase... Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language...
 												[Argument]
 											From @Pre_Transformed_Data_Nested
 											Where
-											[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-											And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+											[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+											And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 										End
 								End
 							Set @Cumulative_Sort_Order_Limit = (Select Count(1) From @Interleaved_Partition_Sort_Merge_Sort)
 						End
 					Else If  @Partition_Transaction_Payload_Type = 'Insert' --We just have one type of insert block below for global variable settings don't affect the output partition map...
 						Begin
-							Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Outer_Partition_Order], [Outer_Partition_Minimum_Extent], [Outer_Partition_Maximum_Extent], [Inner_Partition_Order], [Inner_Partition_Minimum_Extent], [Inner_Partition_Maximum_Extent], [Argument_Order], [Argument])
+							Insert Into @Interleaved_Partition_Sort_Merge_Insert ([Outer_Partition_Order], [Outer_Partition_Minimum_Extent], [Outer_Partition_Maximum_Extent], [Inner_Partition_Order], [Inner_Partition_Minimum_Extent], [Inner_Partition_Maximum_Extent], [Argument_Order], [Argument], [Recompiled_Argument_Decimal])
 							Select
 								@Loop_Count_0001 As [Inner_Partition_Order],
 								@Partition_Minimum_Extent As [Inner_Partition_Minimum_Extent],
@@ -539,11 +540,12 @@ Begin
 								@Partition_Minimum_Extent_Nested As [Inner_Partition_Minimum_Extent],
 								@Partition_Maximum_Extent_Nested As [Inner_Partition_Maximum_Extent],
 								Row_Number() Over(Order By (Select Null)) As [Argument_Order], --Also, please feel free to implement your own fundamental sorting algorithm which slots into this line of code or similar, when applying this algorithm to your own usecase/coding language... Here, because of the nature of the overall system, we don't want to waste compute ordering arguments within transactionlet payload partition for this insert usecase... This should be done alongwith the other arguments in the destination partition where each transactionlet payload is deployed...
-								[Argument]
+								[Argument] As [Argument],
+								[Recompiled_Argument_Decimal] As [Recompiled_Argument_Decimal]
 							From @Pre_Transformed_Data_Nested
 							Where
-							[Argument_Decimal] >= @Partition_Minimum_Extent_Nested
-							And [Argument_Decimal] <= @Partition_Maximum_Extent_Nested
+							[Recompiled_Argument_Decimal] >= @Partition_Minimum_Extent_Nested
+							And [Recompiled_Argument_Decimal] <= @Partition_Maximum_Extent_Nested
 						End
 
 				End
@@ -577,7 +579,8 @@ Else If @Partition_Transaction_Payload_Type = 'Insert'
 			[Inner_Partition_Minimum_Extent] As [Inner_Partition_Minimum_Extent],
 			[Inner_Partition_Maximum_Extent] As [Inner_Partition_Maximum_Extent],
 			[Argument_Order] As [Argument_Order],
-			[Argument] As [Argument]
+			[Argument] As [Argument],
+			[Recompiled_Argument_Decimal] As [Recompiled_Argument_Decimal]
 		From @Interleaved_Partition_Sort_Merge_Insert
 		--Order By [Order] --This 'Order By' clause is only necessary to display results in the right order in SQL Server... Most other programming contexts will not have this problem, because they don't have a paradigm where result sets are ordered at runtime, depending on query execution plans, which are inherently subject to change in SQL Server... Please remove this line of code when you speed test...
 	End
