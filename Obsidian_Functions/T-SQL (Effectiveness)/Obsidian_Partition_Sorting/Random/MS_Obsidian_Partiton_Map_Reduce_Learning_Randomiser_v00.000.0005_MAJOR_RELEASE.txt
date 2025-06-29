@@ -10,6 +10,11 @@
 --It is expected that partitions will be filled starting from partition 2 upwards, and then wrapping back around to partition 1, and then cycling as much as needed... This means that if you do have less arguments than partitions, the 1st partition will be filled last in the first assignation 'cycle' (we don't actually cycle within 'Transaction', as everything can ideally be done in parallel)...
 
 
+--Nota Benes
+--0001: Please be aware, that it is probably pointless to have multiple navigationally-nested columns of random Hash Mapping... Each additional time you randomly partition, it makes no additive difference to the degree of randomicity in the partitioned data...
+--0002: Beware of the maximum argument count {Decimal(38, 19) is used for the order column}, and so only 19 digits worth of count of arguments is advised with this algorithm, otherwise it may blow up with a catastrophic error... Bigint is also roughly maxed out at 19 digits worth of argument counts, I believe...
+
+
 --Global Variables
 Declare @Partition_Count As Bigint
 Set @Partition_Count = 4
