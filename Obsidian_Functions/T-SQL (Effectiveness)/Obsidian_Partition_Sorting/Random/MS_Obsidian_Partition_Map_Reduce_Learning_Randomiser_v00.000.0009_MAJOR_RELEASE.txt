@@ -82,17 +82,15 @@ From @Data_Augmented A
 --Partitioned Results
 Declare @Scrambled_Argument_Count As Bigint
 Set @Scrambled_Argument_Count = (Select Count(1) From @Data_Scrambled)
-Declare @Rand As Table ([Rand] Decimal(38, 19))
-Insert Into @Rand ([Rand])
-Values (Rand()) --Apparently the Rand() function returns a random float number between 0 (inclusive) and 1 (exclusive)... Not all random number generators are 'created equal'!... Please be aware of this, as it can blow up the algorithm...
+Declare @Rand As Decimal(38, 19)
+Set @Rand = Rand() --Apparently the Rand() function returns a random float number between 0 (inclusive) and 1 (exclusive)... Not all random number generators are 'created equal'!... Please be aware of this, as it can blow up the algorithm...
 
 Select
-	--((A.[Order] % @Partition_Count) + 1) As [Deprecated_Partition], --Use of this partition regime could lead to system instability, arising due to partition member frequency imbalance!!!... Consider ussing this only for extreme-compute-time-sensitive usecases that are transient, with only a few executions or insert transactions expected on an ultimate storage location, and only if the argument count is always equal to the globabl variable partition count assigned value...
-	(Case When (Ceiling((@Partition_Count * B.[Rand])) + ((Cast(A.[Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) > @Partition_Count Then ((Ceiling((@Partition_Count * B.[Rand])) + ((Cast(A.[Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) - @Partition_Count) Else (Ceiling((@Partition_Count * B.[Rand])) + ((Cast(A.[Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) End) As [Partition], --Using the modulus operator approach here, is magnitudes quicker than a commensurate index join approach!... This partitioning regime combats, but does not completely eliminate, the previously mentioned partition member frequency imbalance problem... Use this for almost all usecases!!!...
-	Ceiling((Cast(A.[Order] As Decimal(38, 19)) / Cast(@Partition_Count As Decimal(38, 19)))) As [Order],
-	A.[Argument] As [Argument]
-From @Data_Scrambled A
-Cross Join @Rand B
+	--(([Order] % @Partition_Count) + 1) As [Deprecated_Partition], --Use of this partition regime could lead to system instability, arising due to partition member frequency imbalance!!!... Consider ussing this only for extreme-compute-time-sensitive usecases that are transient, with only a few executions or insert transactions expected on an ultimate storage location, and only if the argument count is always equal to the globabl variable partition count assigned value...
+	(Case When (Ceiling((@Partition_Count * @Rand)) + ((Cast([Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) > @Partition_Count Then ((Ceiling((@Partition_Count * @Rand)) + ((Cast([Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) - @Partition_Count) Else (Ceiling((@Partition_Count * @Rand)) + ((Cast([Order] As Decimal(38, 19)) / @Scrambled_Argument_Count) * @Partition_Count)) End) As [Partition], --Using the modulus operator approach here, is magnitudes quicker than a commensurate index join approach!... This partitioning regime combats, but does not completely eliminate, the previously mentioned partition member frequency imbalance problem... Use this for almost all usecases!!!...
+	Ceiling((Cast([Order] As Decimal(38, 19)) / Cast(@Partition_Count As Decimal(38, 19)))) As [Order],
+	[Argument] As [Argument]
+From @Data_Scrambled
 
 --The following statment is kind of misleading, I know... But I couldn't quickly find another way to not execute the validation selects after this point, if the query is successfull...
 Return
