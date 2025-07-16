@@ -71,7 +71,10 @@ Declare @Temporal_Distortion_Flange As Tinyint
 Set @Temporal_Distortion_Flange = 33 --Standard protocol flange would be around 50%, with recommended range from 33% to 66%, and limits at 0% and 100%... This basically controls how much Hash Seed values get temporally distorted...
 
 Declare @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count As Bigint
-Set @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count = 0 --Please keep this variable value assignation STRICTLY to the lowest acceptable value (zero {0} being the lowest allowed i_e_ no additional randomicity dilation), within the knowledge that the higher this value, the greater the algorithmic complexity, but at the same time, the less compute speed efficient the algorithm execution will be, especially at values above say 100 (not a theoretical limit though)...
+Set @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count = 18 --Please keep this variable value assignation STRICTLY to the lowest acceptable value (zero {0} being the lowest allowed i_e_ no additional randomicity dilation), within the knowledge that the higher this value, the greater the algorithmic complexity, but at the same time, the less compute speed efficient the algorithm execution will be, especially at values above say 100 (not a theoretical limit though)... When you change this variable assigned value, please keep it in synch with the assigned value of the @Dilator_Index variable below!!!!!
+
+Declare @Dilator_Index As Bigint
+Set @Dilator_Index = 18 --This variable must be assigned a value which is less than or equal to the value assigned to the @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count variable above!!!!!
 
 --3. Random Numbers Variables
 Declare @Range_Bounded_Number_Generation_Boolean Tinyint
@@ -364,9 +367,10 @@ If @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count > 0
 
 		
 		--Dilator_Generation
-		Declare @Dilators_A Table ([Array_Index] Bigint, [Value_Index] Bigint, [Scrambled_Eggs_Benedict] Decimal(38, 37), [A_Tiny_Mush_Of_Vulcan_Flan] Decimal(38, 37), [A_Huge_Slice_Of_Andorian_Pie] Decimal(38, 37))
-		Insert Into @Dilators_A ([Array_Index], [Value_Index], [Scrambled_Eggs_Benedict], [A_Tiny_Mush_Of_Vulcan_Flan], [A_Huge_Slice_Of_Andorian_Pie])
+		Declare @Dilators_A Table ([Partition_Order] Bigint, [Array_Index] Bigint, [Value_Index] Bigint, [Scrambled_Eggs_Benedict] Decimal(38, 37), [A_Tiny_Mush_Of_Vulcan_Flan] Decimal(38, 37), [A_Huge_Slice_Of_Andorian_Pie] Decimal(38, 37))
+		Insert Into @Dilators_A ([Partition_Order], [Array_Index], [Value_Index], [Scrambled_Eggs_Benedict], [A_Tiny_Mush_Of_Vulcan_Flan], [A_Huge_Slice_Of_Andorian_Pie])
 		Select
+			Row_Number() Over (Partition BY B.[Index] Order By (Select Null) Asc) As [Partition_Order],
 			A.[Index] As [Array_Index],
 			B.[Index] As [Value_Index],
 			(Cast(4 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Terran - 1))) + 1)) As [Scrambled_Eggs_Benedict], -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Terrans appreciate scrambled eggs for brunch (It is used mainly as a hangover cure, along with a bloody mary, after the exploits of a night 'out on the town'... Plus, a 'famous prophet' of the never ending millenium, has declared that Canadians will probably be all the rage, in some significant manner, during the first space age race!!!)... It's been reversed, as a warning to the 21st century youth, that booze binges lead to beer belly battlegrounds, where your stomach fights for survival, and may not actually be able to hold down a meal...
@@ -374,7 +378,7 @@ If @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count > 0
 			(Cast(4 As Decimal(38, 37)) / ((8 * ((((A.[Index] - 1) * @Hash_Value_Length) + B.[Index]) + (@Hash_Seed_Andorian - 1))) + 1)) As [A_Huge_Slice_Of_Andorian_Pie] -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Andorians really appreciate pie (It is usually their main course in a meal!!!)...
 		From @Obsidian_Index_Scaffold_Hash_Dilator_Buffered A
 		Cross Join @Obsidian_Index_Scaffold_Hash_Value B
-
+		
 		Declare @Dilators_B Table ([Value_Index] Bigint, [Scrambled_Eggs_Benedict] Decimal(38, 37), [A_Tiny_Mush_Of_Vulcan_Flan] Decimal(38, 37), [A_Huge_Slice_Of_Andorian_Pie] Decimal(38, 37))
 		Insert Into @Dilators_B ([Value_Index], [Scrambled_Eggs_Benedict], [A_Tiny_Mush_Of_Vulcan_Flan], [A_Huge_Slice_Of_Andorian_Pie])
 		Select
@@ -383,6 +387,7 @@ If @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count > 0
 			([A_Tiny_Mush_Of_Vulcan_Flan] + (Cast(2 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Vulcan - 1))) + 4)) + (Cast(1 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Vulcan - 1))) + 5)) + (Cast(1 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Vulcan - 1))) + 6))) As [A_Tiny_Mush_Of_Vulcan_Flan], -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Vulcans don't really appreciate flan (It is used mainly as a penance during the rigours of Kolinahr!!!)...
 			([A_Huge_Slice_Of_Andorian_Pie] + (Cast(2 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Andorian - 1))) + 4)) + (Cast(1 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Andorian - 1))) + 5)) + (Cast(1 As Decimal(38, 37)) / ((8 * (((([Array_Index] - 1) * @Hash_Value_Length) + [Value_Index]) + (@Hash_Seed_Andorian - 1))) + 6))) As [A_Huge_Slice_Of_Andorian_Pie] -- We calculate a deconstructed derivation, inspired by the Bailey–Borwein–Plouffe (BBP) Formula, for approximating Pi... Andorians really appreciate pie (It is usually their main course in a meal!!!)...
 		From @Dilators_A
+		Where [Partition_Order] = @Dilator_Index
 
 		--We use three dilation repeaters, in order to ensure that we never lose engine viability, due to low-precision-induced conk-out...
 		--I suppose the question is, why has Starfleet decreed that for the forseeable future, due to unforseen circumstances, all military rations must be cooked using a warp engine... Seems like overkill maybe... dunno...
@@ -419,7 +424,7 @@ Else If @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count > 0
 			String_Agg(Cast(Sqrt(Square(Cast(Substring(Reverse(Cast((A.[A_Tiny_Mush_Of_Vulcan_Flan] + A.[A_Huge_Slice_Of_Andorian_Pie] + B.[A_Tiny_Mush_Of_Vulcan_Flan] + B.[A_Huge_Slice_Of_Andorian_Pie]) As Varchar(Max))), (Case When (A.[Value_Index] % @Hash_Shift) = 0 Then @Hash_Shift Else (A.[Value_Index] % @Hash_Shift) End), 1) As Tinyint))) As Varchar(Max)), '') Within Group (Order By A.[Scrambled_Eggs_Benedict] Asc, B.[Order] Asc)  As [Firmament_Feast] --We can now serve a tasty pseudo-random integer meal... Please be aware that there is currently no particular order in which the courses and their constituents are brought together (which is one of the main strengths of the algorithm... of course... excuse the pun...)... As such, there may be some usecases or circumstances where this is unacceptable (Starfleet Standard Issue Blitz Rations don't exactly make the mouth water, eh???)... Here, we also use an index modulo shift technique, in order to increase the randomicit features and behaviours of the algorithm (It activates the Hash Shift control)... The core 'flan' minus 'pie' method here, basically dilates the combinatorial search space by the power of 10, such that you now have a double nested exponent on the overall complexity of the algorithm!!!... Just as a side, but the spatial dialtion implemented here, by using the two pillar dimensions, could possibly be used as part of a model of the extreme dimensional characteristics of a black hole (In essence, there is theoretically no limit to the amount of spatial dilation that one could model)... This dilation technique has now been implemented, and is controlled by a global variable...
 		From @Pillars_Of_Starfleet_B A
 		Inner Join @Dilation_Servings_Intermediate B On
-			((B.[Order] % @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count) = 0 And B.[Value_Index] = A.[Value_Index])
+			(B.[Value_Index] = A.[Value_Index])
 		Group By A.[Array_Index]
 	End
 
