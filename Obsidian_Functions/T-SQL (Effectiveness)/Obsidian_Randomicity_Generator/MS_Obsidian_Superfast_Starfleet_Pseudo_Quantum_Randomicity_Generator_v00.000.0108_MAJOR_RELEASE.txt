@@ -71,10 +71,10 @@ Declare @Temporal_Distortion_Flange As Tinyint
 Set @Temporal_Distortion_Flange = 33 --Standard protocol flange would be around 50%, with recommended range from 33% to 66%, and limits at 0% and 100%... This basically controls how much Hash Seed values get temporally distorted...
 
 Declare @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count As Bigint
-Set @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count = 18 --Please keep this variable value assignation STRICTLY to the lowest acceptable value (zero {0} being the lowest allowed i_e_ no additional randomicity dilation), within the knowledge that the higher this value, the greater the algorithmic complexity, but at the same time, the less compute speed efficient the algorithm execution will be, especially at values above say 100 (not a theoretical limit though)... When you change this variable assigned value, please keep it in synch with the assigned value of the @Dilator_Index variable below!!!!!
+Set @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count = 0 --Please keep this variable value assignation STRICTLY to the lowest acceptable value (zero {0} being the lowest allowed i_e_ no additional randomicity dilation), within the knowledge that the higher this value, the greater the algorithmic complexity, but at the same time, the less compute speed efficient the algorithm execution will be, especially at values above say 100 (not a theoretical limit though)... When you change this variable assigned value, please keep it in synch with the assigned value of the @Dilator_Index variable below!!!!!
 
 Declare @Dilator_Index As Bigint
-Set @Dilator_Index = 18 --This variable must be assigned a value which is less than or equal to the value assigned to the @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count variable above!!!!!
+Set @Dilator_Index = 1 --This variable must be assigned a value which is less than or equal to the value assigned to the @Pseudo_Infinite_Dimensional_Complexity_Dilator_Count variable above!!!!!
 
 --3. Random Numbers Variables
 Declare @Range_Bounded_Number_Generation_Boolean Tinyint
