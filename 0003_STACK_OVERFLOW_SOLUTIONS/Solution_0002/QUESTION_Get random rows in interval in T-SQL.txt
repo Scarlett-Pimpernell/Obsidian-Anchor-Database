@@ -1,0 +1,1 @@
+This is another solution to the problem in the original question (Get random rows in interval in T-SQL) by Kirik... This solution however, is significantly more cryptographically robust, and arguably generates more random behaviour.

@@ -1,0 +1,7 @@
+Try the following... Very fast computation for your use case!!!
+
+(If you actually want the first Val of every PrimaryID to be applied to all SecondaryIDs within the same PrimaryID, then the second option below will work for you... {By the way... the way you have indicated your expected result above, does not make sense, because you have required 60 but not 150, which is an algorithmic contradiction!!! --> It should require both to propagate, or neither!!!})
+
+... and I have provided a select rather than an update, because it is vastly quicker in terms of compute speed (you would just need to truncate the table before reinserting the data {if not detrimental to the overall system; and you may also need to use a lock within a transaction to avoid situations where data is interacted with while truncated}... Alternatively, you could simply apply the select to an update statement I suppose, if you can't truncate for whatever reason)
+
+... and here is an example of applying the select to an update statement in order to achieve your aims (--OPTION THREE {below}). --> I have implemented an example of transactioning and locking for you in OPTION THREE also (which required me to refactor the @table variables into temp #Tables; but you could use standard SQL Server tables if you desired instead)
