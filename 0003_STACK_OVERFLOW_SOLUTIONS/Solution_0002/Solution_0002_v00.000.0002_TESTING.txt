@@ -1,0 +1,110 @@
+Declare @Table Table ([Value] Varchar(4000))
+Insert Into @Table ([Value])
+Values
+('A1'),
+('B2'),
+('C3'),
+('D4'),
+('E5'),
+('F6'),
+('G7'),
+('H8'),
+('I9'),
+('J10'),
+('K11'),
+('L12'),
+('M13'),
+('N14'),
+('O15'),
+('P16'),
+('Q17'),
+('R18'),
+('S19'),
+('T20'),
+('U21'),
+('V22'),
+('W23'),
+('X24'),
+('Y25'),
+('Z26')
+
+Declare @Table_Intermediate Table ([Order] Bigint, [Boolean] Decimal(38, 37), [Value] Varchar(4000))
+Declare @Value_Count As Bigint		
+Declare @Lower_Row_Select_Count As Bigint
+Declare @Upper_Row_Select_Count As Bigint
+Declare @Boolean_Threshold As Decimal(38, 19)
+--TEST
+Declare @Test Table ([Loop_Count_0001] Bigint, [Order] Bigint, [Value] Varchar(4000))
+--TEST
+
+Declare @Loop_Count_0001 As Bigint
+Set @Loop_Count_0001 = 0
+While @Loop_Count_0001 < 1000
+	Begin
+		
+		Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+		
+		Insert Into @Table_Intermediate ([Order], [Boolean], [Value])
+		Select
+			Row_Number() Over(Order By Crypt_Gen_Random(37) Asc) As [Order], --To enable the selecting of random row indexes...
+			Cast(('0.' + Replace(Cast(Cast(Crypt_Gen_Random(37) As Bigint) As Varchar(Max)), '-', '')) As Decimal(38, 37))  As [Boolean], --To enable the selecting of random row counts...
+			[Value] As [Value]
+		From @Table
+
+		Set @Value_Count = (Select Count(1) From @Table)
+
+		Set @Lower_Row_Select_Count = 10
+
+		Set @Upper_Row_Select_Count = 20
+
+		Set @Boolean_Threshold = ((Cast(@Upper_Row_Select_Count As Decimal(38, 19)) - Cast(@Lower_Row_Select_Count As Decimal(38, 19))) / Cast(@Value_Count As Decimal(38, 19)))
+
+		Insert Into @Test ([Loop_Count_0001], [Order], [Value])
+		Select
+			Top (@Upper_Row_Select_Count)
+			@Loop_Count_0001,
+			[Order],
+			[Value]
+		From @Table_Intermediate
+		Where
+			[Order] <= @Lower_Row_Select_Count
+			Or
+			[Order] > @Lower_Row_Select_Count
+			And [Boolean] < @Boolean_Threshold --Note... Not less than or equal to, because otherwise there would be 'class bias/unbalanced classes'... This is because our [Boolean] column is given values between zero (0) {inclusive} and one (1) {exclusive}...
+
+		/*
+		Select
+			Top (@Upper_Row_Select_Count)
+			--[Order] As [Order],
+			--[Boolean] As [Boolean],
+			[Value] As [Value]
+		From @Table_Intermediate
+		Where
+			[Order] <= @Lower_Row_Select_Count
+			Or
+			[Order] > @Lower_Row_Select_Count
+			And [Boolean] < @Boolean_Threshold --Note... Not less than or equal to, because otherwise there would be 'class bias/unbalanced classes'... This is because our [Boolean] column is given values between zero (0) {inclusive} and one (1) {exclusive}...
+		--Order By [Order] Asc
+		*/
+
+		Delete From @Table_Intermediate
+
+	End
+
+Declare @Counts Table ([Count] Bigint)
+Insert Into @Counts ([Count])
+Select
+	Count(1)
+From @Test
+Group By [Loop_Count_0001]
+
+Select @Boolean_Threshold
+
+Select * From @Counts
+
+Select
+	[Count],
+	Count(1)
+From @Counts
+Group By [Count]
+Order By [Count]

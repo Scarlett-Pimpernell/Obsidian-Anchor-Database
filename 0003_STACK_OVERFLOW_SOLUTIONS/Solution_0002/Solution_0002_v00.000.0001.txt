@@ -1,0 +1,48 @@
+Declare @Table Table ([Value] Varchar(4000))
+Insert Into @Table ([Value])
+Values
+('A1'),
+('B2'),
+('C3'),
+('D4'),
+('E5'),
+('F6'),
+('G7'),
+('H8'),
+('I9'),
+('J10'),
+('K11'),
+('L12'),
+('M13'),
+('N14'),
+('O15'),
+('P16'),
+('Q17'),
+('R18'),
+('S19'),
+('T20'),
+('U21'),
+('V22'),
+('W23'),
+('X24'),
+('Y25'),
+('Z26')
+
+Declare @Table_Intermediate Table ([Order] Bigint, [Boolean] Bigint, [Value] Varchar(4000))
+Insert Into @Table_Intermediate ([Order], [Boolean], [Value])
+Select
+	Row_Number() Over(Order By Crypt_Gen_Random(37) Asc) As [Order], --To enable the selecting of random row indexes...
+	Round(('0.' + Replace(Cast(Cast(Crypt_Gen_Random(37) As Bigint) As Varchar(Max)), '-', '')), 0)  As [Boolean], --To enable the selecting of random row counts...
+	[Value] As [Value]
+From @Table
+
+Select * From @Table_Intermediate
+
+Select
+	Top (20)
+	--[Order] As [Order],
+	--[Boolean] As [Boolean],
+	[Value] As [Value]
+From @Table_Intermediate
+Where [Boolean] = 1
+Order By [Order] Asc

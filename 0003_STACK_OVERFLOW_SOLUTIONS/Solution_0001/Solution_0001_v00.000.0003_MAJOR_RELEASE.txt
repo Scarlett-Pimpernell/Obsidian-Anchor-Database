@@ -1,0 +1,35 @@
+declare @table table (PrimaryID int, SecondaryID int, Val decimal(10,2))
+insert into @table values
+(1,1,100),
+(1,2,150),
+(1,3,null),
+(2,1,50),
+(2,2,null),
+(2,3,null),
+(2,4,60),
+(2,5,null),
+(2,6,null)
+
+declare @Table_Intermediate table ([PrimaryID] int, [SecondaryID] int, [Previous_Non_Null_ID] int)
+Insert Into @Table_Intermediate ([PrimaryID], [SecondaryID], [Previous_Non_Null_ID])
+Select
+	A.[PrimaryID] As [PrimaryID],
+	A.[SecondaryID] As [SecondaryID],
+	Max(B.[SecondaryID]) As [Previous_Non_Null_ID]
+From @table A
+Inner Join @table B On
+	(B.[Val] Is Not Null And B.[PrimaryID] = A.[PrimaryID] And B.[SecondaryID] <= A.[SecondaryID])
+Group By A.[PrimaryID], A.[SecondaryID]
+
+Update A
+Set Val = C.[Val]
+From @table A
+Inner Join @Table_Intermediate B On
+	(B.[PrimaryID] = A.[PrimaryID] And B.[SecondaryID] = A.[SecondaryID])
+Inner Join @table C On
+	(B.[PrimaryID] = C.[PrimaryID] And C.[SecondaryID] = B.[Previous_Non_Null_ID])
+Where
+	A.SecondaryID > 1 
+	And A.Val Is Null
+
+Select * From @table
