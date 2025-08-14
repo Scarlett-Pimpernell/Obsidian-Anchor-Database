@@ -43,10 +43,13 @@ From @Table
 
 Declare @Random_Row_Select_Index As Bigint
 Set @Random_Row_Select_Index = Floor((Cast(((@Upper_Row_Select_Count - @Lower_Row_Select_Count) + 1) As Decimal(38, 19)) * (Cast(Right(Cast(Cast(Crypt_Gen_Random(2) As Bigint) As Varchar(Max)), 2) As Decimal(38, 19)) / Cast(100 As Decimal(38, 19)))))
+
+Declare @Maximum_Order As Bigint
+Set @Maximum_Order = (@Lower_Row_Select_Count + @Random_Row_Select_Index)
 		
 Select
 	--[Order] As [Order],
 	[Value] As [Value]
 From @Table_Intermediate
-Where [Order] <= (@Lower_Row_Select_Count + @Random_Row_Select_Index)
+Where [Order] <= @Maximum_Order
 --Order By [Order] Asc
