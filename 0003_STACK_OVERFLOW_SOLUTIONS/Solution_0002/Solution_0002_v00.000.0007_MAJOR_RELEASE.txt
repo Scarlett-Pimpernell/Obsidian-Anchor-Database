@@ -28,21 +28,20 @@ Values
 ('Y25'),
 ('Z26')
 
-Declare @Table_Intermediate Table ([Order] Bigint, [Value] Varchar(Max))
 Declare @Lower_Row_Select_Count As Bigint
-Declare @Upper_Row_Select_Count As Bigint
-Declare @Random_Row_Select_Index As Bigint
+Set @Lower_Row_Select_Count = 10
 
+Declare @Upper_Row_Select_Count As Bigint
+Set @Upper_Row_Select_Count = 20
+
+Declare @Table_Intermediate Table ([Order] Bigint, [Value] Varchar(Max))
 Insert Into @Table_Intermediate ([Order], [Value])
 Select
 	Row_Number() Over(Order By Crypt_Gen_Random(19) Asc) As [Order], --To enable the selecting of random row indexes... Could make this crypto size parameter to suit your usecase, but I have provided an overly large byte size to handle most any use cases, without being prohibitively slow...
 	[Value] As [Value]
 From @Table
 
-Set @Lower_Row_Select_Count = 10
-
-Set @Upper_Row_Select_Count = 20
-
+Declare @Random_Row_Select_Index As Bigint
 Set @Random_Row_Select_Index = Floor((Cast(((@Upper_Row_Select_Count - @Lower_Row_Select_Count) + 1) As Decimal(38, 19)) * (Cast(Right(Cast(Cast(Crypt_Gen_Random(2) As Bigint) As Varchar(Max)), 2) As Decimal(38, 19)) / Cast(100 As Decimal(38, 19)))))
 		
 Select
