@@ -37,3 +37,7 @@ Ciao for now,
 (Long Temporal Gap)
 
 Urm, I've been doing some more new year's thinking here... You may find that the existing SQL B-Tree index, is useful when used only directly on the Obsidian partitions, rather than also on the underlying data (it would clearly be stupid to use b-tree indexes on the underlying data if it has already been Obsidian partitioned!... bUt yeah, don't quote me necessarily, because I haven't tested it yet, but I do have strong reason to believe, that applying existing SQL B-Tree Index functionality to the partition levels alone, could significantly speed up a lot of computations... INFACT, UPON EVEN FURTHER THOUGHT, IT MAY BE EVEN MORE PERFORMANT THAN THAN THE AFOREMENTIONED (B-TREES ON OBSIDIAN PARTITION MAP PARTITIONS), TO INSTEAD, FILTER OR SEARCH PARTITION LEVELS, BY USING OBSIDIAN PARTITION MAPS OF OBSIDIAN PARTITION MAP PARTITIONS (MAYBE WITH SLIGHTLY DIFFERENT GLOBAL VARIABLES, DEPENDING ON THE TYPE OF OBSIDIAN PARTITION MAP THAT IS BEING NAVIGATED)... I THINK THIS OPPORTUNITY REQUIRES AN IN DEPTH STUDY OR TWO!!!
+
+… THE DREAM???: Recursive Obsidian Partition Maps, of each level of the Obsidian Partition Map navigation tree, for each table of data that has been partitioned.
+
+… Now that would be true livin'!
