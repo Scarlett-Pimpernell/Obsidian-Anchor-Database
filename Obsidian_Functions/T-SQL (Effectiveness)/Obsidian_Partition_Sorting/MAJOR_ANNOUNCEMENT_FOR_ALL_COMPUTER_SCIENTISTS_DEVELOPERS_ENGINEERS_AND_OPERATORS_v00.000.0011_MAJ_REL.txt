@@ -57,3 +57,9 @@ Searched and Navigated Obsidian Partition Maps:
 --> POSSIBLE 'WEAKNESSES' - 1. There is likely a wider range of equality check counts, which will ultimately depend on your base data distributional value structure, and this wider range is equally distributed around the B+ Tree mean equality check count average for the same base dataset, such that you could for some data edit method (SIUDs), experience far less equality checks are ncessary (and so the weakness manifests as a resolute strength infact), and this could be even only one equality check a lot of the time, but conversely, you could experience far more equality checks are necessary (indeed I admit a bit of a weakness), and this could be as much as 50% more equality checks than the B+ Tree index average, a lot of the time... both outcomes depending on the structure of your base dataset value distribution............ AT THIS POINT, I CAN'T BE BOTHERED TO CONTINUE WITH THIS EXERCISE, ALTHOUGH I'M SURE I HAVEN'T EVEN MENTIONED 50% OF THE STRENGTHS AND WEAKNESSES ACROSS THE TWO APPROACHES MENTIONED (B+ TREE INDEXES AND OBSIDIAN PARTITION MAPS)... Could be an interesting exam question at university for some students?
 
 … So the takeaway, is, know your hardware, software, and data, combined optimal usecase!
+
+…
+Large chunk of time elapses
+...
+
+Random Comment... Kinda... If you simply want to return the top or bottom n rows of a sorted Obsidian Partition map, then you probably don't need to fully sort all rows within each partition. Just simply exit the loop once your desired number of top or bottom n rows has been returned... Other cases where not needing to fully sort all rows within every partition, and therefore being able to exit the partition sorting loop early, include, but are not limited to: segmented scan, binary search, and findif...
