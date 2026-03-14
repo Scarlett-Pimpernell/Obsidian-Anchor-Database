@@ -1,0 +1,1 @@
+Any live maximum security products/services/experiences should eventually include functionality to handle message/request/interaction delays and failures, and also, should probably implement clever dummy message/request/interaction features... Amongst many other things of course!
