@@ -3,7 +3,7 @@
 --T-SQL
 --SQL Server 2022
 --Initial Operating Capability
---Version 01.000.000
+--Version 01.000.0001
 
 
 --OVERVIEW:
@@ -158,7 +158,7 @@ If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 		Set @Range_Bound_Frequency_Boolean = 0
 		Delete From @Obsidian_Range_Bounds
 		Insert Into @Obsidian_Range_Bounds ([Lower_Bound], [Upper_Bound], [Frequency])
-		Values (0, @Extended_ASCII_Code_Or_User_Defined_Characterset_Index_Maximum, @Default_Frequency_Value)
+		Values (1, @Extended_ASCII_Code_Or_User_Defined_Characterset_Index_Maximum, @Default_Frequency_Value) --Here the lower bound has been moved from zero to one, in order to eliminate all-zero-digit triplets in Encoding Hash 0001...
 	End
 
 
@@ -792,7 +792,7 @@ If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 		From @FINA_HILDEGARD_Encoding_Hash_Primes A
 		Inner Join @FINA_HILDEGARD_Encrypting_Hash_Primes B
 			On (B.[Pair_Order] = A.[Pair_Order])
-		Order By A.[Pair_Order] Asc --Unnecessary clause, because we have an pair order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
+		--Order By A.[Pair_Order] Asc --Unnecessary clause, because we have an pair order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
 	End
 Else If @Range_Bounded_Number_Generation_Boolean = 1
 	Begin
@@ -800,7 +800,7 @@ Else If @Range_Bounded_Number_Generation_Boolean = 1
 			[Order] As [Order],
 			[Randomicit_Value] As [Randomicit_Value]
 		From @Randomicit_Values
-		Order By [Order] Asc --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
+		--Order By [Order] Asc --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
 	End
 Else --If you simply want RAW hash strings that have an unbiased-uniform-balanced class distribution across the hash digits
 	Begin
@@ -808,5 +808,5 @@ Else --If you simply want RAW hash strings that have an unbiased-uniform-balance
 			[Order] As [Order],
 			[Firmament_Feast] As [Firmament_Feast]
 		From @Hash_Servings_Final
-		Order By [Order] Asc --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
+		--Order By [Order] Asc --Unnecessary clause, because we have an order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
 	End
