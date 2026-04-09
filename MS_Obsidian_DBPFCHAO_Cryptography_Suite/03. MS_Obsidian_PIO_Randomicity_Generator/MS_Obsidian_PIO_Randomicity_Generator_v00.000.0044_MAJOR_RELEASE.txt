@@ -3,7 +3,7 @@
 --T-SQL
 --SQL Server 2022
 --Initial Operating Capability
---Version 01.000.0001
+--Version 01.001.0000
 
 
 --OVERVIEW:
@@ -114,7 +114,7 @@ Declare @Range_Bounded_Number_Generation_Boolean Tinyint
 --Automatic override of the @Hash_Value_Length global variable from above...
 If @Range_Bounded_Number_Generation_Boolean = 1
 	Begin
-		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a scale from zero to around nine pentillion (0 to 9,223,372,036,854,775,807) {limited only really by the Bigint data type max value...
+		Set @Hash_Value_Length = 8 --You can only currently generate random numbers on a raw hash scale from zero to around nine pentillion (0 to 9,223,372,036,854,775,807) {limited only really by the Bigint data type max value, in combination with the maximum precision in decimal place digits of the Decimal data type (which would actually allow 37 digit long raw hashes for effective scrambling, but we can not access this full sensitivity while bigint is only 19 digits long)... FURTHER EXPLANATION: This is a very advanced variable assignation, so please don't change it, unless you know exactly what you're doing... Range bounded hash length can currently adjust from 1 digit to up to 37 digits {but as discussed is itself limited by Bigint data type max value sizes}, so that all integers within the decimal data type precision range can be leveraged for scrambling... Basically we've settled on a sensitivity 8 scrambling degrees of digits, but if this is too small, for example in hyper data usecases, feel feee to increase this sensitivity appropriately, up to 18 digits sensitivity... You basically want an overall sensitivity, which is at least equal to the greatest number of range bounded numbers you are ever going to compute each time you generate PIO Randomicity output (guidance only, but the default sensitivity {or underlying raw hash length} of 8, allows the PIO Randomicity Generator algorithm to optimally scramble up to 100 Million range bounded numbers {there will likely be many collisions once data volumes exceed 1% of this limit [in this case just 1 Million range bounded numbers]})...
 	End
 
 --Please note, that boundary values here below must be between around negative nine pentillion (-9,223,372,036,854,775,807) and around positive nine pentillion (9,223,372,036,854,775,807) inclusive... Also, even if range bounds are duplicate or overlapping, this will be carefully handled later on, so don't worry too much about this aspect!!!... Like I have said here, this algorithm can also handle negative integer range bounds, but just make sure that you have the bound values in the right order (The [Lower_Bound] column {most negative of the pair of bound values --> furthest from zero in the negative scale} and then the [Upper_Bound] column {least negative of the pair of bound values --> furthest from zero in the positive scale})
@@ -151,7 +151,6 @@ Declare @Extended_ASCII_Code_Or_User_Defined_Characterset_Index_Maximum As Bigin
 --Automatic override of the @Hash_Value_Length global variable from above...
 If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 	Begin
-		Set @Hash_Value_Length = @FINA_HILDEGARD_Hash_Prime_Index_Count_That_Is_Equal_To_Character_Coverage_In_the_FINA_Encryption_Workbook --You can only currently generate random numbers on a scale from zero to around nine pentillion (0 to 9,223,372,036,854,775,807) {limited only really by the Bigint data type max value...
 		Set @Hash_Array_Length = ((@FINA_HILDEGARD_Hash_Prime_Index_Count_That_Is_Equal_To_Character_Coverage_In_the_FINA_Encryption_Workbook * 2) * @FINA_HILDEGARD_Hash_Prime_Pair_Count) --*2, because we always want pairs of hashes...
 		Set @Temporal_Distortion_Boolean = 0
 		Set @Range_Bounded_Number_Generation_Boolean = 1
