@@ -151,7 +151,7 @@ Declare @Extended_ASCII_Code_Or_User_Defined_Characterset_Index_Maximum As Bigin
 --Automatic override of the @Hash_Value_Length global variable from above...
 If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 	Begin
-		Set @Hash_Array_Length = ((@FINA_HILDEGARD_Hash_Prime_Index_Count_That_Is_Equal_To_Character_Coverage_In_the_FINA_Encryption_Workbook * 2) * @FINA_HILDEGARD_Hash_Prime_Pair_Count) --*2, because we always want pairs of hashes...
+		Set @Hash_Array_Length = (@FINA_HILDEGARD_Hash_Prime_Index_Count_That_Is_Equal_To_Character_Coverage_In_the_FINA_Encryption_Workbook * (@FINA_HILDEGARD_Hash_Prime_Pair_Count * 2)) --*2, because we always want pairs of hashes...
 		Set @Temporal_Distortion_Boolean = 0
 		Set @Range_Bounded_Number_Generation_Boolean = 1
 		Set @Range_Bound_Frequency_Boolean = 0
@@ -747,14 +747,14 @@ If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 		--Encoding
 		Insert Into @FINA_HILDEGARD_Scaffold_For_Hashes_Alpha ([Pair_Order], [Slice_Order], [Hash_Character])
 		Select
-			(([Order] % @FINA_HILDEGARD_Hash_Prime_Pair_Count) + 1) As [Pair_Order], --Somewhat different logic here, because we need to make sure, that the hash predicates are split equally across the desired count of FINA/HILDEGARD hash pair primes, indicated by the assigned variable value for @FINA_HILDEGARD_Hash_Prime_Pair_Count, which is set by the user, above in the global variables near the top of this algorithm script...
+			(([Order] % (@FINA_HILDEGARD_Hash_Prime_Pair_Count * 2)) + 1) As [Pair_Order], --Somewhat different logic here, because we need to make sure, that the hash predicates are split equally across the desired count of FINA/HILDEGARD hash pair primes, indicated by the assigned variable value for @FINA_HILDEGARD_Hash_Prime_Pair_Count, which is set by the user, above in the global variables near the top of this algorithm script...
 			[Order] As [Slice_Order],
 			[Randomicit_Value] As [Hash_Character]
 		From @Randomicit_Values_Alpha
 
 		Insert Into @FINA_HILDEGARD_Scaffold_For_Hashes_Beta ([Pair_Order], [Slice_Order], [Hash_Character])
 		Select
-			(([Order] % @FINA_HILDEGARD_Hash_Prime_Pair_Count) + 1) As [Pair_Order], --Somewhat different logic here, because we need to make sure, that the hash predicates are split equally across the desired count of FINA/HILDEGARD hash pair primes, indicated by the assigned variable value for @FINA_HILDEGARD_Hash_Prime_Pair_Count, which is set by the user, above in the global variables near the top of this algorithm script...
+			(([Order] % (@FINA_HILDEGARD_Hash_Prime_Pair_Count * 2)) + 1) As [Pair_Order], --Somewhat different logic here, because we need to make sure, that the hash predicates are split equally across the desired count of FINA/HILDEGARD hash pair primes, indicated by the assigned variable value for @FINA_HILDEGARD_Hash_Prime_Pair_Count, which is set by the user, above in the global variables near the top of this algorithm script...
 			[Order] As [Slice_Order],
 			[Randomicit_Value] As [Hash_Character]
 		From @Randomicit_Values_Beta
@@ -785,12 +785,12 @@ If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 If @FINA_HILDEGARD_Encoding_Encryption_Hash_Primes_Boolean = 1
 	Begin
 		Select
-			A.[Pair_Order] As [Order],
+			(A.[Pair_Order] / 2) As [Order],
 			A.[Encoding_Hash] As [Encoding_Hash],
 			B.[Encrypting_Hash] As [Encrypting_Hash]
 		From @FINA_HILDEGARD_Encoding_Hash_Primes A
 		Inner Join @FINA_HILDEGARD_Encrypting_Hash_Primes B
-			On (B.[Pair_Order] = A.[Pair_Order])
+			On ((B.[Pair_Order] + 1) = A.[Pair_Order])
 		--Order By A.[Pair_Order] Asc --Unnecessary clause, because we have an pair order column... Just using it to display the results properly in SQL Server management studio... Please remove this line of code when you speed test...
 	End
 Else If @Range_Bounded_Number_Generation_Boolean = 1
