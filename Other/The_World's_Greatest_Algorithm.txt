@@ -1,0 +1,21 @@
+Declare @Dwellers_Of_Heaven Table ([Order] Bigint, [Being] Varchar(Max), [Person] Varchar(Max))
+
+Insert Into @Dwellers_Of_Heaven ([Order], [Being], [Person])
+Values
+(1, 'Being_0001', 'Person_0001'),
+(2, 'Being_0001', 'Person_0002'),
+(3, 'Being_0001', 'Person_0003'),
+(4, 'Immaculate_Virgin_Mother_Assumed', 'Our_Lady'),
+(5, 'Multiple_Beings_0001', 'Members_Of_the_Communion_Of_Saints'),
+(6, 'Multiple_Beings_0002', 'Members_Of_the_Host_Of_Angels')
+
+Select
+	(Case When [Being] = 'Being_0001' Then 'Holy_Trinity' Else [Being] End) As [Being],
+	(Case When [Person] = 'Person_0001' Then 'Yahweh' Else (Case When [Person] = 'Person_0002' Then 'Jesus' Else (Case When [Person] = 'Person_0003' Then 'The_Holy_Ghost' Else [Person] End) End) End) As [Person]
+From @Dwellers_Of_Heaven
+Order By [Order] Asc
+
+Select 'Mikloo... Who must you Worship with Latria?'
+Select 'Mikloo... Who must you Revere with Hyperdulia?'
+Select 'Mikloo... Who must you Honour with Dulia?'
+Select 'Mikloo... Who must you Esteem with Eulabeia?'
