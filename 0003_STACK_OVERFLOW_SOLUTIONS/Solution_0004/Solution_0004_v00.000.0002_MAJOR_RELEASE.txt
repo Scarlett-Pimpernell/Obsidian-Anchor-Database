@@ -1,0 +1,103 @@
+/*
+PIVOT not working as expected - one pivoted value per row
+
+
+I am reusing PIVOT code that has worked before, and for some reason it isn't working in this case. Here is (1) a mockup of my data, (2) what I want, (3) my query, and (4) what I actually get.
+
+
+1 - Mockup of data
+
+ID	Row	Attribute	Textcontent
+600	1	Name	Tom
+600	1	Age	32
+600	1	Type	Secondary
+600	2	Name	Joanne
+600	2	Age	36
+600	2	Type	Primary
+601	1	Name	Bob
+601	1	Age	16
+601	1	Type	Primary
+601	2	Name	Alex
+601	2	Age	99
+601	2	Type	Secondary
+
+
+2 - What I want
+
+ID	Row	Name	Age	Type
+600	1	Tom	32	Secondary
+600	2	Joanne	36	Primary
+601	1	Bob	16	Primary
+601	2	Alex	99	Secondary
+*/
+
+Declare @Data Table ([ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
+Insert Into @Data ([ID], [Row], [Attribute], [Text_Content])
+Values
+(600, 1, 'Name', 'Tom'),
+(600, 1, 'Age', '32'),
+(600, 1, 'Type', 'Secondary'),
+(600, 2, 'Name', 'Joanne'),
+(600, 2, 'Age', '36'),
+(600, 2, 'Type', 'Primary'),
+(601, 1, 'Name', 'Bob'),
+(601, 1, 'Age', '16'),
+(601, 1, 'Type', 'Primary'),
+(601, 2, 'Name', 'Alex'),
+(601, 2, 'Age', '99'),
+(601, 2, 'Type', 'Secondary')
+
+Declare @Data_Name_Column_Ordered Table ([Order] Bigint, [ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
+Insert Into @Data_Name_Column_Ordered ([Order], [ID], [Row], [Attribute], [Text_Content])
+Select
+	Row_Number() Over(Order By [ID] Asc, [Row] Asc) As [Order],
+	[ID],
+	[Row],
+	[Attribute],
+	[Text_Content]
+From @Data
+Where [Attribute] = 'Name'
+
+Declare @Data_Age_Column_Ordered Table ([Order] Bigint, [ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
+Insert Into @Data_Age_Column_Ordered ([Order], [ID], [Row], [Attribute], [Text_Content])
+Select
+	Row_Number() Over(Order By [ID] Asc, [Row] Asc) As [Order],
+	[ID],
+	[Row],
+	[Attribute],
+	[Text_Content]
+From @Data
+Where [Attribute] = 'Age'
+
+Declare @Data_Type_Column_Ordered Table ([Order] Bigint, [ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
+Insert Into @Data_Type_Column_Ordered ([Order], [ID], [Row], [Attribute], [Text_Content])
+Select
+	Row_Number() Over(Order By [ID] Asc, [Row] Asc) As [Order],
+	[ID],
+	[Row],
+	[Attribute],
+	[Text_Content]
+From @Data
+Where [Attribute] = 'Type'
+
+Declare @Data_Groupings Table ([ID] Bigint, [Row] Bigint)
+Insert Into @Data_Groupings ([ID], [Row])
+Select
+	[ID] As [ID],
+	[Row] As [Row]
+From @Data
+Group By [ID], [Row]
+
+Select
+	A.[ID] As [ID],
+	A.[Row] As [Row],
+	B.[Text_Content] As [Name],
+	C.[Text_Content] As [Age],
+	D.[Text_Content] As [Type]
+From @Data_Groupings A
+Inner Join @Data_Name_Column_Ordered B
+	On (B.[ID] = A.[ID] And B.[Row] = A.[Row])
+Inner Join @Data_Age_Column_Ordered C
+	On (C.[ID] = A.[ID] And C.[Row] = A.[Row])
+Inner Join @Data_Type_Column_Ordered D
+	On (D.[ID] = A.[ID] And D.[Row] = A.[Row])
