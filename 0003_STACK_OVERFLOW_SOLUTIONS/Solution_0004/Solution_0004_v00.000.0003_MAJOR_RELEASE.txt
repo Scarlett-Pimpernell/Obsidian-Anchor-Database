@@ -31,6 +31,8 @@ ID	Row	Name	Age	Type
 601	2	Alex	99	Secondary
 */
 
+
+--If you want to pivot...
 Declare @Data Table ([ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
 Insert Into @Data ([ID], [Row], [Attribute], [Text_Content])
 Values
@@ -46,6 +48,7 @@ Values
 (601, 2, 'Name', 'Alex'),
 (601, 2, 'Age', '99'),
 (601, 2, 'Type', 'Secondary')
+
 
 Declare @Data_Name_Column_Ordered Table ([Order] Bigint, [ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
 Insert Into @Data_Name_Column_Ordered ([Order], [ID], [Row], [Attribute], [Text_Content])
@@ -88,6 +91,8 @@ Select
 From @Data
 Group By [ID], [Row]
 
+
+--Pivot Results
 Select
 	A.[ID] As [ID],
 	A.[Row] As [Row],
@@ -101,3 +106,61 @@ Inner Join @Data_Age_Column_Ordered C
 	On (C.[ID] = A.[ID] And C.[Row] = A.[Row])
 Inner Join @Data_Type_Column_Ordered D
 	On (D.[ID] = A.[ID] And D.[Row] = A.[Row])
+Order By A.[ID] Asc, A.[Row] Asc
+
+
+--And if you want to re-pivot...
+Declare @Data_Pivoted Table ([ID] Bigint, [Row] Bigint, [Name] Varchar(Max), [Age] Varchar(Max), [Type] Varchar(Max))
+Insert Into @Data_Pivoted ([ID], [Row], [Name], [Age], [Type])
+Select
+	A.[ID] As [ID],
+	A.[Row] As [Row],
+	B.[Text_Content] As [Name],
+	C.[Text_Content] As [Age],
+	D.[Text_Content] As [Type]
+From @Data_Groupings A
+Inner Join @Data_Name_Column_Ordered B
+	On (B.[ID] = A.[ID] And B.[Row] = A.[Row])
+Inner Join @Data_Age_Column_Ordered C
+	On (C.[ID] = A.[ID] And C.[Row] = A.[Row])
+Inner Join @Data_Type_Column_Ordered D
+	On (D.[ID] = A.[ID] And D.[Row] = A.[Row])
+
+
+Declare @Dimension_Length As Bigint
+Set @Dimension_Length = 3
+
+Declare @Dynamic_SQL_Data_Intermediate_Variable_Dimension As Nvarchar(Max)
+Set @Dynamic_SQL_Data_Intermediate_Variable_Dimension =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Dimension_Length), '@Index_Count', @Dimension_Length) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Dimension Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Dimension ([Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable_Dimension)
+
+
+Declare @Data_Re_Pivoted Table ([Order] Bigint, [ID] Bigint, [Row] Bigint, [Attribute] Varchar(Max), [Text_Content] Varchar(Max))
+Insert Into @Data_Re_Pivoted ([Order], [ID], [Row], [Attribute], [Text_Content])
+Select
+	Row_Number() Over(Order By A.[ID] Asc, A.[Row] Asc, B.[Index] Asc) As [Order],
+	A.[ID] As [ID],
+	A.[Row] As [Row],
+	(Case When B.[Index] = 1 Then 'Name' Else (Case When B.[Index] = 2 Then 'Age' Else 'Type' End) End) As [Attribute],
+	(Case When B.[Index] = 1 Then A.[Name] Else (Case When B.[Index] = 2 Then A.[Age] Else A.[Type] End) End) As [Text_Content]
+From @Data_Pivoted A
+Cross Join @Obsidian_Index_Scaffold_Dimension B
+
+
+--Re-Pivot Results
+Select
+	[ID] As [ID],
+	[Row] As [Row],
+	[Attribute] As [Attribute],
+	[Text_Content] As [Text_Content]
+From @Data_Re_Pivoted
+Order By [Order] Asc
