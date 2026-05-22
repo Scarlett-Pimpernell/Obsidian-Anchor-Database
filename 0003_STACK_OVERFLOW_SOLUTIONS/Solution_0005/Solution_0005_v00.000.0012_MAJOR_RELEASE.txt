@@ -1,3 +1,4 @@
+/*
 --I'd just like to remind people that SQL Server sorting behaviour is affected by various levels of collation...
 --Please be aware, that this algorithm has implemented a basic Blatt-Table technique, which can be used anywhere in high-level abstracted human source code, in order to avoid painfully slow loops (It basically optimally parallelises any loop behaviour {obviously with tweaks depending on the usecase})... But be aware, that it is an absolute 'Compute Hog'!!!
 
@@ -100,6 +101,7 @@ Select
 	A.[Subject] As [Subject]
 From @Intermediate_Results_Asymmetric_Interleaving A
 Order By A.[EmailID] Asc, A.[EmailReplyID] Asc
+*/
 
 
 --But we still need to find email chains, using any message member of the chain...
@@ -117,7 +119,10 @@ Values
 (2, 5, 'First email sent from chain two'),
 (2, 6, 'First reply sent from my app from chain two'),
 (2, 7, 'Second reply sent from my app from chain two'),
-(3, 8, 'First email sent from chain three')
+(1, 8, 'Test_0001'),
+(3, 9, 'First email sent from chain three'),
+(3, 10, 'First email sent from chain three'),
+(1, 11, 'Test_0002')
 --I have added a [Conversation_ID] column, so that it is possible to distinguish between different conversations in the same table... If we didn't do this, you would need a different table for each chain of emails on the server...
 
 --tblReply_Asymmetric_Interleaving_Chain_Discovery
@@ -129,79 +134,57 @@ Values
 (3, 3, 'Third external reply'),
 (6, 4, 'First external reply from chain two'),
 (7, 5, 'Second external reply from chain two'),
-(8, 6, 'First external reply from chain three')
+(9, 6, 'First external reply from chain three')
 
 --I have decided to keep a 'Single Source Of Truth' for the Conversation_IDs on the Email table, and not also on the Email Reply table, in order to avoid possible issues where one table has Conversation_IDs updated, but the other doesn't, and so we would experience a data pollution error, where the table data when taken together, conflicts...
 
 --The results you need...
+--USER-ASSIGNED-GLOBAL-VARIABLES
+--USER-ASSIGNED-GLOBAL-VARIABLES
+--USER-ASSIGNED-GLOBAL-VARIABLES
+Declare @Email_Table_Seed As Bigint
+Set @Email_Table_Seed = 1 --A value of one (1) refers to [EmailID] table, whereas a value of two (2) refers to [EmailReplyID] table...
+Declare @Email_ID_Seed As Bigint
+Set @Email_ID_Seed = 3
+--USER-ASSIGNED-GLOBAL-VARIABLES
+--USER-ASSIGNED-GLOBAL-VARIABLES
+--USER-ASSIGNED-GLOBAL-VARIABLES
+
+Declare @Conversation_ID_Seed As Bigint
+If @Email_Table_Seed = 1
+	Begin
+		Set @Conversation_ID_Seed = (Select [Conversation_ID] From @tblEmail_Asymmetric_Interleaving_Chain_Discovery Where [Email_ID] = @Email_ID_Seed)
+	End
+Else If @Email_Table_Seed = 2
+	Begin
+		Set @Conversation_ID_Seed = (Select B.[Conversation_ID] From @tblReply_Asymmetric_Interleaving_Chain_Discovery A Inner Join @tblEmail_Asymmetric_Interleaving_Chain_Discovery B On (A.[Email_Reply_ID] = @Email_ID_Seed And B.[Email_ID] = A.[Email_ID]))
+	End
+
+Declare @Min_In_Conversation_Email_Table_Email_ID As Bigint
+Set @Min_In_Conversation_Email_Table_Email_ID = (Select Min([Email_ID]) From @tblEmail_Asymmetric_Interleaving_Chain_Discovery Where [Conversation_ID] = @Conversation_ID_Seed)
+
 Declare @Intermediate_Results_Asymmetric_Interleaving_Chain_Discovery Table ([Conversation_ID] Bigint, [Email_ID] Bigint, [Email_Reply_ID] Bigint, [Subject] Varchar(Max))
 Insert Into @Intermediate_Results_Asymmetric_Interleaving_Chain_Discovery ([Conversation_ID], [Email_ID], [Email_Reply_ID], [Subject])
 Select
-	[Conversation_ID] As [Conversation_ID],
-	[Email_ID] As [Emai_lID],
+	A.[Conversation_ID] As [Conversation_ID],
+	A.[Email_ID] As [Emai_lID],
 	Null As [Email_Reply_ID],
-	[Subject] As [Subject]
-From @tblEmail_Asymmetric_Interleaving_Chain_Discovery
-Where [Email_ID] <> 1
+	A.[Subject] As [Subject]
+From @tblEmail_Asymmetric_Interleaving_Chain_Discovery A
 Union All
 Select
-	Null As [Conversation_ID],
-	[Email_ID] As [Email_ID],
-	[Email_Reply_ID] As [Email_Reply_ID],
-	[Subject] As [Subject]
-From @tblReply_Asymmetric_Interleaving_Chain_Discovery
-
-Declare @Conversation_ID_Seed As Bigint
-Set @Conversation_ID_Seed = 1
-
-Declare @Email_Table_Seed As Bigint
-Set @Email_Table_Seed = 2 --A value of one (1) refers to [EmailID] table, whereas a value of two (2) refers to [EmailReplyID] table...
-
-Declare @Email_ID_Seed As Bigint
-Set @Email_ID_Seed = 3
-
-Declare @Email_Chain_Seed Table ([Conversation_ID_Seed] Bigint, [Email_Table_Seed] Bigint, [Email_ID_Seed] Bigint)
-Insert Into @Email_Chain_Seed ([Conversation_ID_Seed], [Email_Table_Seed], [Email_ID_Seed])
-Values
-(@Conversation_ID_Seed, @Email_Table_Seed, @Email_ID_Seed)
-
---This is a powerful 'Blatt_Table', which allows us to avoid a slow loop...
-Declare @Email_Chain_Blatt_Table Table ([Conversation_ID_Seed] Bigint, [Email_Table_Seed] Bigint, [Email_ID_Seed] Bigint, [Conversation_ID_B] Bigint, [Email_ID_B] Bigint, [Email_Reply_ID_B] Bigint, [Subject_B] Varchar(Max), [Conversation_ID_C] Bigint, [Email_ID_C] Bigint, [Email_Reply_ID_C] Bigint, [Subject_C] Varchar(Max))
-Insert Into @Email_Chain_Blatt_Table ([Conversation_ID_Seed], [Email_Table_Seed], [Email_ID_Seed], [Conversation_ID_B], [Email_ID_B], [Email_Reply_ID_B], [Subject_B], [Conversation_ID_C], [Email_ID_C], [Email_Reply_ID_C], [Subject_C])
-Select
-	[Conversation_ID_Seed] As [Conversation_ID_Seed],
-	[Email_Table_Seed] As [Email_Table_Seed],
-	[Email_ID_Seed] As [Email_ID_Seed],
-	B.[Conversation_ID] As [Conversation_ID_B],
-	B.[Email_ID] As [Email_ID_B],
-	B.[Email_Reply_ID] As [Email_Reply_ID_B],
-	B.[Subject] As [Subject_B],
-	C.[Conversation_ID] As [Conversation_ID_C],
-	C.[Email_ID] As [Email_ID_C],
-	C.[Email_Reply_ID] As [Email_Reply_ID_C],
-	C.[Subject] As [Subject_C]
-From @Email_Chain_Seed A
-Cross Join @Intermediate_Results_Asymmetric_Interleaving_Chain_Discovery B
-Cross Join @Intermediate_Results_Asymmetric_Interleaving_Chain_Discovery C
-Where C.[Email_Reply_ID] Is Null And C.[Conversation_ID] = A.[Conversation_ID_Seed] And B.[Conversation_ID] = A.[Conversation_ID_Seed] And C.[Email_ID] = (B.[Email_ID] - 1) Or C.[Email_Reply_ID] Is Null And C.[Conversation_ID] = A.[Conversation_ID_Seed] And B.[Conversation_ID] = A.[Conversation_ID_Seed] And C.[Email_ID] = (B.[Email_ID] + 1) Or C.[Email_Reply_ID] Is Not Null And B.[Conversation_ID] = A.[Conversation_ID_Seed] And C.[Email_ID] = (B.[Email_ID] - 1) Or C.[Email_Reply_ID] Is Not Null And B.[Conversation_ID] = A.[Conversation_ID_Seed] And C.[Email_ID] = (B.[Email_ID] + 1)                 
-
-Declare @Max_Blatt_Table_Email_ID As Bigint
-Set @Max_Blatt_Table_Email_ID = (Select Max([Email_ID_B]) From @Email_Chain_Blatt_Table)
-
-Declare @Email_Chain_Blatt_Table_Cleansed Table ([Email_ID] Bigint, [Email_Reply_ID] Bigint, [Subject] Varchar(Max))
-Insert Into @Email_Chain_Blatt_Table_Cleansed ([Email_ID], [Email_Reply_ID], [Subject])
-Select
-	[Email_ID_C] As [Email_ID],
-	[Email_Reply_ID_C] As [Email_Reply_ID],
-	Min([Subject_C]) As [Subject]
-From @Email_Chain_Blatt_Table
-Where [Email_ID_C] <= @Max_Blatt_Table_Email_ID
-Group By [Email_ID_C], [Email_Reply_ID_C]
---I chose to apply a Min() aggregation function to the subject column, rather than simply grouping by another dimension (obviously the subject column), because it makes it possible to avoid multiple group combination checks per input row, and to simply check for the always-the-case single value in each double grouping combination (without therefore a need to sort, which would likely be slower than simply apply another grouping dimension instead of the Min() aggregation function)...
+	C.[Conversation_ID] As [Conversation_ID],
+	B.[Email_ID] As [Email_ID],
+	B.[Email_Reply_ID] As [Email_Reply_ID],
+	B.[Subject] As [Subject]
+From @tblReply_Asymmetric_Interleaving_Chain_Discovery B
+Inner Join @tblEmail_Asymmetric_Interleaving_Chain_Discovery C
+	On (C.[Conversation_ID] = @Conversation_ID_Seed And C.[Email_ID] = B.[Email_ID])
 
 Select
 	(Case When A.[Email_Reply_ID] Is Not Null Then Null Else A.[Email_ID] End) As [Email_ID],
 	A.[Email_Reply_ID] As [Email_Reply_ID],
 	A.[Subject] As [Subject]
-From @Email_Chain_Blatt_Table_Cleansed A
+From @Intermediate_Results_Asymmetric_Interleaving_Chain_Discovery A
+Where A.[Conversation_ID] = @Conversation_ID_Seed And A.[Email_ID] <> @Min_In_Conversation_Email_Table_Email_ID Or A.[Email_Reply_ID] Is Not Null
 Order By A.[Email_ID] Asc, A.[Email_Reply_ID] Asc
