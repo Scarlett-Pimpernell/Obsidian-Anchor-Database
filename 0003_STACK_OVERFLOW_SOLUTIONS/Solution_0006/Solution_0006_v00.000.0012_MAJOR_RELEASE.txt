@@ -49,9 +49,9 @@ From @Data_Input_Standard
 Order By [Order] Asc
 
 
---VERSION 0002 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITH island reset functionality......
-Declare @Data_Input_With_Order_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
-Insert Into @Data_Input_With_Order_Zero_Parity ([Order], [ID], [Date], [Present])
+--VERSION 0002 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
+Declare @Data_Input_With_Order_Zero_Parity_No_Island_Func Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
+Insert Into @Data_Input_With_Order_Zero_Parity_No_Island_Func ([Order], [ID], [Date], [Present])
 Values
 (1, 1, '2024-03-12', 1),
 (2, 2, '2024-03-13', 1),
@@ -90,39 +90,41 @@ Values
 --Needed to add an order column in order to maintain you specific row ordering, otherwise subsequent required island-based partitioning will never be computable...
 --Also added a case where there are multiple zero (0) values in the [Present] column, within the same partition...
 
-Insert Into @Data_Input_With_Order_Zero_Parity ([Order], [ID], [Date], [Present])
-Values (0, 1, Null, 1)
-
---Your problem explanation is not entirely clear, so here are some output statements, if you need zero (0) values in the [Present] column to always return return one (1) values within partition, as well as one (1) values in the [Present] column to always return incrementing values within partition... (Island_Functionality)
-Declare @Data_Input_With_Order_and_Partition_Island_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Partition_Island_Variable] Bigint)
-Insert Into @Data_Input_With_Order_and_Partition_Island_Zero_Parity ([Order], [ID], [Date], [Present], [Partition_Island_Variable])
+Declare @Data_Input_Split_Partitioning_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Row_Number_Present] Bigint)
+Insert Into @Data_Input_Split_Partitioning_Zero_Parity ([Order], [ID], [Date], [Present], [Row_Number_Present])
+--Data_Input_Split_Alpha_For_Increment_One_Parity
 Select
-	A.[Order] As [Order],
-	A.[ID] As [ID],
-	A.[Date] As [Date],
-	A.[Present] As [Present],
-	(Case When A.[Present] = 1 Then (Max(C.[Order]) + 1) Else A.[Order] End) As [Partition_Island_Variable]
-From @Data_Input_With_Order_Zero_Parity A
-Left Join @Data_Input_With_Order_Zero_Parity B
-	On (B.[Present] = 1 And B.[ID] = A.[ID] And B.[Order] < A.[Order])
-Left Join @Data_Input_With_Order_Zero_Parity C
-	On (C.[Present] = 0 And C.[ID] = A.[ID] And C.[Order] < A.[Order])
-Where A.[Order] <> 0
-Group By A.[Order], A.[ID], A.[Date], A.[Present]
+	[Order] As [Order],
+	[ID] As [ID],
+	[Date] As [Date],
+	[Present] As [Present],
+	(Row_Number() Over (Partition By [ID], [Present] Order By [Order] Asc)) As [Row_Number_Present]
+From @Data_Input_With_Order_Zero_Parity_No_Island_Func
+Where [Present] = 1 --This assigned value is critical to the functionality in this version of the algorithm...
+Union All
+Select
+	[Order] As [Order],
+	[ID] As [ID],
+	[Date] As [Date],
+	[Present] As [Present],
+	1 As [Partition_Island_Variable]
+From @Data_Input_With_Order_Zero_Parity_No_Island_Func
+Where [Present] = 0 --This assigned value is critical to the functionality in this version of the algorithm...
+--Data_Input_Split_Beta_No_Increment_One_Parity
 
 Select
 	[Order] As [Order],
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As[Present],
-	(Row_Number() Over (Partition By [ID], [Present], [Partition_Island_Variable] Order By [Order] Asc)) As [Row_Number_Present]
-From @Data_Input_With_Order_and_Partition_Island_Zero_Parity
+	[Row_Number_Present] As [Row_Number_Present]
+From @Data_Input_Split_Partitioning_Zero_Parity
 Order By [Order] Asc
 
 
---VERSION 0003 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITH island reset functionality......
-Declare @Data_Input_With_Order_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
-Insert Into @Data_Input_With_Order_One_Parity ([Order], [ID], [Date], [Present])
+--VERSION 0003 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
+Declare @Data_Input_With_Order_One_Parity_No_Island_Func Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
+Insert Into @Data_Input_With_Order_One_Parity_No_Island_Func ([Order], [ID], [Date], [Present])
 Values
 (1, 1, '2024-03-12', 1),
 (2, 2, '2024-03-13', 1),
@@ -161,33 +163,35 @@ Values
 --Needed to add an order column in order to maintain you specific row ordering, otherwise subsequent required island-based partitioning will never be computable...
 --Also added a case where there are multiple zero (0) values in the [Present] column, within the same partition...
 
-Insert Into @Data_Input_With_Order_One_Parity ([Order], [ID], [Date], [Present])
-Values (0, 1, Null, 1)
-
---Your problem explanation is not entirely clear, so here are some output statements, if you need zero (0) values in the [Present] column to always return incrementing values within partition, as well as one (1) values in the [Present] column to always return return one (1) values within partition... (Island_Functionality)
-Declare @Data_Input_With_Order_and_Partition_Island_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Partition_Island_Variable] Bigint)
-Insert Into @Data_Input_With_Order_and_Partition_Island_One_Parity ([Order], [ID], [Date], [Present], [Partition_Island_Variable])
+Declare @Data_Input_Split_Partitioning_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Row_Number_Present] Bigint)
+Insert Into @Data_Input_Split_Partitioning_One_Parity ([Order], [ID], [Date], [Present], [Row_Number_Present])
+--Data_Input_Split_Alpha_For_Increment_One_Parity
 Select
-	A.[Order] As [Order],
-	A.[ID] As [ID],
-	A.[Date] As [Date],
-	A.[Present] As [Present],
-	(Case When A.[Present] = 1 Then A.[Order] Else (Max(B.[Order]) + 1) End) As [Partition_Island_Variable]
-From @Data_Input_With_Order_One_Parity A
-Left Join @Data_Input_With_Order_One_Parity B
-	On (B.[Present] = 1 And B.[ID] = A.[ID] And B.[Order] < A.[Order])
-Left Join @Data_Input_With_Order_One_Parity C
-	On (C.[Present] = 0 And C.[ID] = A.[ID] And C.[Order] < A.[Order])
-Where A.[Order] <> 0
-Group By A.[Order], A.[ID], A.[Date], A.[Present]
+	[Order] As [Order],
+	[ID] As [ID],
+	[Date] As [Date],
+	[Present] As [Present],
+	(Row_Number() Over (Partition By [ID], [Present] Order By [Order] Asc)) As [Row_Number_Present]
+From @Data_Input_With_Order_One_Parity_No_Island_Func
+Where [Present] = 0 --This assigned value is critical to the functionality in this version of the algorithm...
+Union All
+Select
+	[Order] As [Order],
+	[ID] As [ID],
+	[Date] As [Date],
+	[Present] As [Present],
+	1 As [Partition_Island_Variable]
+From @Data_Input_With_Order_One_Parity_No_Island_Func
+Where [Present] = 1 --This assigned value is critical to the functionality in this version of the algorithm...
+--Data_Input_Split_Beta_No_Increment_One_Parity
 
 Select
 	[Order] As [Order],
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As[Present],
-	(Row_Number() Over (Partition By [ID], [Present], [Partition_Island_Variable] Order By [Order] Asc)) As [Row_Number_Present]
-From @Data_Input_With_Order_and_Partition_Island_One_Parity
+	[Row_Number_Present] As [Row_Number_Present]
+From @Data_Input_Split_Partitioning_One_Parity
 Order By [Order] Asc
 
 
@@ -262,9 +266,9 @@ From @Data_Input_With_Order_and_Partition_Island_Zero_Increments
 Order By [Order] Asc
 
 
---VERSION 0005 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
-Declare @Data_Input_With_Order_Zero_Parity_No_Island_Func Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
-Insert Into @Data_Input_With_Order_Zero_Parity_No_Island_Func ([Order], [ID], [Date], [Present])
+--VERSION 0005 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITH island reset functionality......
+Declare @Data_Input_With_Order_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
+Insert Into @Data_Input_With_Order_Zero_Parity ([Order], [ID], [Date], [Present])
 Values
 (1, 1, '2024-03-12', 1),
 (2, 2, '2024-03-13', 1),
@@ -303,41 +307,39 @@ Values
 --Needed to add an order column in order to maintain you specific row ordering, otherwise subsequent required island-based partitioning will never be computable...
 --Also added a case where there are multiple zero (0) values in the [Present] column, within the same partition...
 
-Declare @Data_Input_Split_Partitioning_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Row_Number_Present] Bigint)
-Insert Into @Data_Input_Split_Partitioning_Zero_Parity ([Order], [ID], [Date], [Present], [Row_Number_Present])
---Data_Input_Split_Alpha_For_Increment_One_Parity
+Insert Into @Data_Input_With_Order_Zero_Parity ([Order], [ID], [Date], [Present])
+Values (0, 1, Null, 1)
+
+--Your problem explanation is not entirely clear, so here are some output statements, if you need zero (0) values in the [Present] column to always return return one (1) values within partition, as well as one (1) values in the [Present] column to always return incrementing values within partition... (Island_Functionality)
+Declare @Data_Input_With_Order_and_Partition_Island_Zero_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Partition_Island_Variable] Bigint)
+Insert Into @Data_Input_With_Order_and_Partition_Island_Zero_Parity ([Order], [ID], [Date], [Present], [Partition_Island_Variable])
 Select
-	[Order] As [Order],
-	[ID] As [ID],
-	[Date] As [Date],
-	[Present] As [Present],
-	(Row_Number() Over (Partition By [ID], [Present] Order By [Order] Asc)) As [Row_Number_Present]
-From @Data_Input_With_Order_Zero_Parity_No_Island_Func
-Where [Present] = 1 --This assigned value is critical to the functionality in this version of the algorithm...
-Union All
-Select
-	[Order] As [Order],
-	[ID] As [ID],
-	[Date] As [Date],
-	[Present] As [Present],
-	1 As [Partition_Island_Variable]
-From @Data_Input_With_Order_Zero_Parity_No_Island_Func
-Where [Present] = 0 --This assigned value is critical to the functionality in this version of the algorithm...
---Data_Input_Split_Beta_No_Increment_One_Parity
+	A.[Order] As [Order],
+	A.[ID] As [ID],
+	A.[Date] As [Date],
+	A.[Present] As [Present],
+	(Case When A.[Present] = 1 Then (Max(C.[Order]) + 1) Else A.[Order] End) As [Partition_Island_Variable]
+From @Data_Input_With_Order_Zero_Parity A
+Left Join @Data_Input_With_Order_Zero_Parity B
+	On (B.[Present] = 1 And B.[ID] = A.[ID] And B.[Order] < A.[Order])
+Left Join @Data_Input_With_Order_Zero_Parity C
+	On (C.[Present] = 0 And C.[ID] = A.[ID] And C.[Order] < A.[Order])
+Where A.[Order] <> 0
+Group By A.[Order], A.[ID], A.[Date], A.[Present]
 
 Select
 	[Order] As [Order],
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As[Present],
-	[Row_Number_Present] As [Row_Number_Present]
-From @Data_Input_Split_Partitioning_Zero_Parity
+	(Row_Number() Over (Partition By [ID], [Present], [Partition_Island_Variable] Order By [Order] Asc)) As [Row_Number_Present]
+From @Data_Input_With_Order_and_Partition_Island_Zero_Parity
 Order By [Order] Asc
 
 
---VERSION 0006 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
-Declare @Data_Input_With_Order_One_Parity_No_Island_Func Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
-Insert Into @Data_Input_With_Order_One_Parity_No_Island_Func ([Order], [ID], [Date], [Present])
+--VERSION 0006 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITH island reset functionality......
+Declare @Data_Input_With_Order_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
+Insert Into @Data_Input_With_Order_One_Parity ([Order], [ID], [Date], [Present])
 Values
 (1, 1, '2024-03-12', 1),
 (2, 2, '2024-03-13', 1),
@@ -376,33 +378,31 @@ Values
 --Needed to add an order column in order to maintain you specific row ordering, otherwise subsequent required island-based partitioning will never be computable...
 --Also added a case where there are multiple zero (0) values in the [Present] column, within the same partition...
 
-Declare @Data_Input_Split_Partitioning_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Row_Number_Present] Bigint)
-Insert Into @Data_Input_Split_Partitioning_One_Parity ([Order], [ID], [Date], [Present], [Row_Number_Present])
---Data_Input_Split_Alpha_For_Increment_One_Parity
+Insert Into @Data_Input_With_Order_One_Parity ([Order], [ID], [Date], [Present])
+Values (0, 1, Null, 1)
+
+--Your problem explanation is not entirely clear, so here are some output statements, if you need zero (0) values in the [Present] column to always return incrementing values within partition, as well as one (1) values in the [Present] column to always return return one (1) values within partition... (Island_Functionality)
+Declare @Data_Input_With_Order_and_Partition_Island_One_Parity Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Partition_Island_Variable] Bigint)
+Insert Into @Data_Input_With_Order_and_Partition_Island_One_Parity ([Order], [ID], [Date], [Present], [Partition_Island_Variable])
 Select
-	[Order] As [Order],
-	[ID] As [ID],
-	[Date] As [Date],
-	[Present] As [Present],
-	(Row_Number() Over (Partition By [ID], [Present] Order By [Order] Asc)) As [Row_Number_Present]
-From @Data_Input_With_Order_One_Parity_No_Island_Func
-Where [Present] = 0 --This assigned value is critical to the functionality in this version of the algorithm...
-Union All
-Select
-	[Order] As [Order],
-	[ID] As [ID],
-	[Date] As [Date],
-	[Present] As [Present],
-	1 As [Partition_Island_Variable]
-From @Data_Input_With_Order_One_Parity_No_Island_Func
-Where [Present] = 1 --This assigned value is critical to the functionality in this version of the algorithm...
---Data_Input_Split_Beta_No_Increment_One_Parity
+	A.[Order] As [Order],
+	A.[ID] As [ID],
+	A.[Date] As [Date],
+	A.[Present] As [Present],
+	(Case When A.[Present] = 1 Then A.[Order] Else (Max(B.[Order]) + 1) End) As [Partition_Island_Variable]
+From @Data_Input_With_Order_One_Parity A
+Left Join @Data_Input_With_Order_One_Parity B
+	On (B.[Present] = 1 And B.[ID] = A.[ID] And B.[Order] < A.[Order])
+Left Join @Data_Input_With_Order_One_Parity C
+	On (C.[Present] = 0 And C.[ID] = A.[ID] And C.[Order] < A.[Order])
+Where A.[Order] <> 0
+Group By A.[Order], A.[ID], A.[Date], A.[Present]
 
 Select
 	[Order] As [Order],
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As[Present],
-	[Row_Number_Present] As [Row_Number_Present]
-From @Data_Input_Split_Partitioning_One_Parity
+	(Row_Number() Over (Partition By [ID], [Present], [Partition_Island_Variable] Order By [Order] Asc)) As [Row_Number_Present]
+From @Data_Input_With_Order_and_Partition_Island_One_Parity
 Order By [Order] Asc
