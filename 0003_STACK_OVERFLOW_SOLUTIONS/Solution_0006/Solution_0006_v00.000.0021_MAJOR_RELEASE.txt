@@ -50,7 +50,7 @@ Select
 	[Present] As [Present],
 	(Row_Number() Over (Partition By [ID], [Present] Order By [Order] Asc)) As [Partition]
 From @Data_Input_Standard
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0002 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
@@ -123,7 +123,7 @@ Select
 	[Present] As [Present],
 	[Partition] As [Partition]
 From @Data_Input_Split_Partitioning_Zero_Parity
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0003 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITHOUT island reset functionality......
@@ -196,7 +196,7 @@ Select
 	[Present] As [Present],
 	[Partition] As [Partition]
 From @Data_Input_Split_Partitioning_One_Parity
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0004 Of The transformation that you need... Incrementing both [Present] zero (0) and one (1) partitions... All WITH island reset functionality...
@@ -267,7 +267,7 @@ Select
 	[Present] As [Present],
 	(Row_Number() Over (Partition By [ID], [Boolean_Island_Partitioner] Order By [Order] Asc)) As [Partition]
 From @Data_Input_With_Order_and_Partition_Island_Zero_Increments
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0005 Of The transformation that you need... Not incrementing [Present] zero (0) partitions, but indeed incrementing [Present] one (1) partitions... All WITH island reset functionality......
@@ -334,9 +334,9 @@ Select
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As [Present],
-	(Row_Number() Over (Partition By [ID], [Present], [Boolean_Island_Partitioner] Order By [Order] Asc)) As [Partition]
+	(Row_Number() Over (Partition By [ID], [Boolean_Island_Partitioner] Order By [Order] Asc)) As [Partition]
 From @Data_Input_With_Order_and_Partition_Island_Zero_Parity
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0006 Of The transformation that you need... Incrementing [Present] zero (0) partitions, but indeed not incrementing [Present] one (1) partitions... All WITH island reset functionality......
@@ -403,9 +403,9 @@ Select
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As [Present],
-	(Row_Number() Over (Partition By [ID], [Present], [Boolean_Island_Partitioner] Order By [Order] Asc)) As [Partition]
+	(Row_Number() Over (Partition By [ID], [Boolean_Island_Partitioner] Order By [Order] Asc)) As [Partition]
 From @Data_Input_With_Order_and_Partition_Island_One_Parity
-Order By [Order] Asc
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
 
 --VERSION 0007... If you want to obtain partitioning for more than two classes within the value range of a column... So for example let's say you have 8 possible [Present] column integer values (1, 2, 3, 4, 5, 6, 7, 8) in the column (which is basically multivariate in nature), instead of just either 0 or 1 values... Then you would simply create another column which stores every change of adjacent value within the [Present] column, into this new column in the form of alternating ones (1s) and zeros (0s)... This new column would then be used to mimic boolean island partitioning behaviour, but in a MULTIVARIATE CONTEXT as follows...
@@ -435,17 +435,17 @@ Values
 Insert Into @Data_Input_Multivariate_Partition_Column_Classes ([Order], [ID], [Date], [Present])
 Values (0, Null, Null, Null)
 
-Declare @Data_Input_Multivariate_Partition_Column_Classes_Alternator_Added Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Multivariate_Island_Partitioner] Bigint)
-Insert Into @Data_Input_Multivariate_Partition_Column_Classes_Alternator_Added ([Order], [ID], [Date], [Present], [Multivariate_Island_Partitioner])
+Declare @Data_Input_Multivariate_Partition_Column_Classes_Island_Aware Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint, [Multivariate_Island_Partitioner] Bigint)
+Insert Into @Data_Input_Multivariate_Partition_Column_Classes_Island_Aware ([Order], [ID], [Date], [Present], [Multivariate_Island_Partitioner])
 Select
 	Min(A.[Order]) As [Order],
 	Min(A.[ID]) As [ID],
 	Min(A.[Date]) As [Date],
 	Min(A.[Present]) As [Present],
-	Greatest(1, (Max(C.[Order]) + 1)) As [Multivariate_Island_Partitioner]
+	Greatest(1, (Max(B.[Order]) + 1)) As [Multivariate_Island_Partitioner]
 From @Data_Input_Multivariate_Partition_Column_Classes A
-Left Join @Data_Input_Multivariate_Partition_Column_Classes C
-	On (C.[Order] <= A.[Order] And C.[Present] <> A.[Present])
+Left Join @Data_Input_Multivariate_Partition_Column_Classes B
+	On (B.[Order] < A.[Order] And B.[Present] <> A.[Present])
 Where A.[Order] <> 0
 Group By A.[Order]
 
@@ -454,8 +454,69 @@ Select
 	[ID] As [ID],
 	[Date] As [Date],
 	[Present] As [Present],
-	(Row_Number() Over (Partition By [ID], [Present], [Multivariate_Island_Partitioner] Order By [Order] Asc)) As [Partition]
-From  @Data_Input_Multivariate_Partition_Column_Classes_Alternator_Added
-Order By [Order] Asc
+	(Row_Number() Over (Partition By [ID], [Multivariate_Island_Partitioner] Order By [Order] Asc)) As [Partition]
+From  @Data_Input_Multivariate_Partition_Column_Classes_Island_Aware
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
 
---If you need certain multivariate value classes to have parity (always have the same value in the [Partition] column, then this can done with a simple Update clause afterwards... You could plumb it in for speed gains, but I'm just not prepared to do this for you here, for free, as I think it is very unique usecase that requires lots of transfer of moolah!!!
+
+--VERSION 0008... If you need certain multivariate value classes to have parity (always have the same particular value in the [Partition] column)...
+Declare @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities Table ([Order] Bigint, [ID] Bigint, [Date] Date, [Present] Bigint)
+Insert Into @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities ([Order], [ID], [Date], [Present])
+Values
+(1, 1, '2024-03-12', 1),
+(2, 2, '2024-03-13', 1),
+(3, 2, '2024-03-14', 1),
+(4, 3, '2024-03-15', 1),
+(5, 3, '2024-03-16', 0),
+(6, 3, '2024-03-17', 3),
+(7, 4, '2024-03-18', 3),
+(8, 4, '2024-03-19', 3),
+(9, 4, '2024-03-20', 6),
+(10, 4, '2024-03-21', 6),
+(11, 4, '2024-03-22', 6),
+(12, 4, '2024-03-23', 3),
+(13, 4, '2024-03-24', 3),
+(14, 4, '2024-03-25', 3),
+(15, 4, '2024-03-26', 3),
+(16, 1, '2024-03-27', 1)
+--Needed to add an order column in order to maintain you specific row ordering, otherwise subsequent required island-based partitioning will never be computable...
+--Also added a case where there are multiple zero (0) values in the [Present] column, within the same partition...
+
+Declare @Customisable_Parities Table ([Present] Bigint, [Parity] Bigint)
+Insert Into @Customisable_Parities ([Present], [Parity])
+Values
+(0, 8),
+(6, 17)
+--Add other parity mappings here (more, less, or different)... Be very careful about how you form these, because they can lead to quite complex output behaviour, if not understood properly... Especially if they mix in with similar values to the generated partition class values...
+
+Insert Into @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities ([Order], [ID], [Date], [Present])
+Values (0, Null, Null, Null)
+
+Declare @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities_Island_Aware Table ([Order] Bigint, [Multivariate_Island_Partitioner] Bigint)
+Insert Into @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities_Island_Aware ([Order], [Multivariate_Island_Partitioner])
+Select
+	Min(A.[Order]) As [Order],
+	Greatest(1, (Max(B.[Order]) + 1)) As [Multivariate_Island_Partitioner]
+From @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities A
+Left Join @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities B
+	On (B.[Order] < A.[Order] And B.[Present] <> A.[Present])
+Left Join @Customisable_Parities C
+	On (C.[Present] = A.[Present])
+Where
+	C.[Present] Is Null
+	And A.[Order] <> 0
+Group By A.[Order]
+
+Select
+	A.[Order] As [Order],
+	A.[ID] As [ID],
+	A.[Date] As [Date],
+	A.[Present] As [Present],
+	(Case When C.[Present] Is Not Null Then C.[Parity] Else (Row_Number() Over (Partition By A.[ID], B.[Multivariate_Island_Partitioner] Order By A.[Order] Asc)) End) As [Partition]
+From  @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities A
+Left Join @Data_Input_Multivariate_Partition_Column_Classes_Customisable_Parities_Island_Aware B
+	On (B.[Order] = A.[Order])
+Left Join @Customisable_Parities C
+	On (C.[Present] = A.[Present])
+Where A.[Order] <> 0
+--Order By [Order] Asc --This codeline is likely only necessary for testing purposes...
