@@ -1,0 +1,107 @@
+Declare @Propals Table ([ID] Bigint, [REF] Varchar(Max))
+Insert Into @Propals ([ID], [REF])
+Values
+(1, 'propal_1'),
+(2, 'propal_2'),
+(3, 'propal_3')
+
+Declare @Orders Table ([ID] Bigint, [REF] Varchar(Max))
+Insert Into @Orders ([ID], [REF])
+Values
+(1, 'order_1'),
+(2, 'order_2'),
+(3, 'order_3')
+
+Declare @Invoices Table ([ID] Bigint, [REF] Varchar(Max))
+Insert Into @Invoices ([ID], [REF])
+Values
+(1, 'invoice_1'),
+(2, 'invoice_2'),
+(3, 'invoice_3')
+
+Declare @Element_Element Table ([Source_Type] Varchar(Max), [FK_Source] Bigint, [Target_Type] Varchar(Max), [FK_Target] Bigint)
+Insert Into @Element_Element ([Source_Type], [FK_Source], [Target_Type], [FK_Target])
+Values
+('propal', 1, 'order', 1),
+('order', 1, 'invoice', 1),
+('propal', 2, 'order', 3),
+('order', 3, 'invoice', 3)
+
+--You said that you apparently would like the following output result... (BUT HALFWAY THROUGH MY DEVELOPMENT RUN, I'VE REALISED THAT YOUR OUTPUT TABLE DOESN'T ACTUALLY MAKE LOGICAL SENSE, SO I'VE DONE SOMETHING A BIT DIFFERENT... I'VE SIMPLY GENERATED AN OUTPUT TABLE, WITH ALL COMBINATIONS OF TRIPLETS, DOUBLETS, AND SINGLETS...)
+/*
+propal	order	invoice
+propal_1	order_1	invoice_1
+propal_2	order_3	NULL
+propal_3	NULL	NULL
+NULL	order_2	NULL
+NULL	order_3	invoice_3
+NULL	NULL	invoice_2
+*/
+
+
+--... and so the solution is as follows...
+
+Declare @Element_Element_Element_Output Table ([Propal] Varchar(Max), [Order] Varchar(Max), [Invoice] Varchar(Max))
+Insert Into @Element_Element_Element_Output ([Propal], [Order], [Invoice])
+Select
+	C.[REF] As [Propal],
+	D.[REF] As [Order],
+	E.[REF] As [Invoice]
+From @Element_Element A
+Inner Join @Element_Element B
+	On (A.[Source_Type] = 'propal' And A.[Target_Type] = 'order' And B.[Source_Type] = 'order' And B.[Target_Type] = 'invoice' And B.[FK_Source] = A.[FK_Target])
+Inner Join @Propals C
+	On (C.[ID] = A.[FK_Source])
+Inner Join @Orders D
+	On (D.[ID] = A.[FK_Target])
+Inner Join @Invoices E
+	On (E.[ID] = B.[FK_Target])
+
+Declare @Element_Element_Output Table ([Propal] Varchar(Max), [Order] Varchar(Max), [Invoice] Varchar(Max))
+Insert Into @Element_Element_Output ([Propal], [Order], [Invoice])
+Select
+	B.[REF] As [Propal],
+	(Case When C.[REF] Is Not Null Then C.[REF] Else D.[REF] End) As [Order],
+	E.[REF] As [Invoice]
+From @Element_Element A
+Left Join @Propals B
+	On (A.[Source_Type] = 'propal' And A.[Target_Type] = 'order' And B.[ID] = A.[FK_Source])
+Left Join @Orders C
+	On (A.[Source_Type] = 'propal' And A.[Target_Type] = 'order' And C.[ID] = A.[FK_Target])
+Left Join @Orders D
+	On (A.[Source_Type] = 'order' And A.[Target_Type] = 'invoice' And D.[ID] = A.[FK_Source])
+Left Join @Invoices E
+	On (A.[Source_Type] = 'order' And A.[Target_Type] = 'invoice' And E.[ID] = A.[FK_Target])
+
+
+--... and the final output
+
+Select
+	[Propal] As [Propal],
+	[Order] As [Order],
+	[Invoice] As [Invoice]
+From @Element_Element_Element_Output
+Union All
+Select
+	[Propal] As [Propal],
+	[Order] As [Order],
+	[Invoice] As [Invoice]
+From @Element_Element_Output
+Union All
+Select
+	[REF] As [Propal],
+	Null As [Order],
+	Null As [Invoice]
+From @Propals
+Union All
+Select
+	Null As [Propal],
+	[REF] As [Order],
+	Null As [Invoice]
+From @Orders
+Union All
+Select
+	Null As [Propal],
+	Null As [Order],
+	[REF] As [Invoice]
+From @Invoices
