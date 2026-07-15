@@ -1,0 +1,43 @@
+Declare @Large_Data_Input_Table Table ([Country] Varchar(Max), [First_Field] Varchar(Max), [Second_Field] Varchar(Max), [Output] Varchar(Max))
+Insert Into @Large_Data_Input_Table ([Country], [First_Field], [Second_Field], [Output])
+Values
+('FR', NULL, 75324, 'Paris'),
+('FR', 'FR101', NULL, 'Paris'),
+('FR', 'FRZZZ', NULL, 'Extra Region NUTS3'),
+('FR', NULL, 94, 'Paris'),
+('DE', NULL, 94, 'Passau Kreisfreie Stadt'),
+('DE', NULL, 936, NULL)
+
+Declare @Large_Match_Table Table ([Country] Varchar(Max), [Geocode] Varchar(Max), [Type] Varchar(Max), [Geo_1] Varchar(Max), [Geo_2] Varchar(Max), [Geo_3] Varchar(Max))
+Insert Into @Large_Match_Table ([Country], [Geocode], [Type], [Geo_1], [Geo_2], [Geo_3])
+Values
+('DE', 'DE94A', 'NUTS21', 'Niedersachsen', 'Weser-Ems', 'Friesland'),
+('DE', '264', 'POST', 'Niedersachsen', 'Weser-Ems', 'Friesland'),
+('DE', '360', 'POST', 'Hessen', 'Kassel', 'Fulda'),
+('DE', 'DE732', 'NUTS21', 'Hessen', 'Kassel', 'Fulda'),
+--I've added my own data here, for testing purposes...
+('FR', '75324', 'POST', 'Geo_1_Test_0001', 'Geo_2_Test_0002', 'Geo_3_Test_0003'),
+('FR', 'FR101', 'NUTS21', 'Geo_1_Test_0004', 'Geo_2_Test_0005', 'Geo_3_Test_0006'),
+('FR', 'FRZZZ', 'NUTS21', 'Geo_1_Test_0007', 'Geo_2_Test_0008', 'Geo_3_Test_0009'),
+('FR', '94', 'POST', 'Geo_1_Test_0010', 'Geo_2_Test_0011', 'Geo_3_Test_0012'),
+('DE', '94', 'POST', 'Geo_1_Test_0013', 'Geo_2_Test_0014', 'Geo_3_Test_0015'),
+('DE', '936', 'POST', 'Geo_1_Test_0016', 'Geo_2_Test_0017', 'Geo_3_Test_0018')
+
+--The data transformation you require, is to fill in the NULL data gaps in the @Large_Data_Input_Table, by joining to the @Large_Match_Table...
+
+Select
+	A.[Country] As [Country],
+	A.[First_Field] As [First_Field],
+	A.[Second_Field] As [Second_Field],
+	(Case When B.[Country] Is Not Null Then B.[Geo_1] Else (Case When C.[Country] Is Not Null Then C.[Geo_1] Else (Case When D.[Country] Is Not Null Then D.[Geo_1] Else E.[Geo_1] End) End) End) As [Geo_1],
+	(Case When B.[Country] Is Not Null Then B.[Geo_2] Else (Case When C.[Country] Is Not Null Then C.[Geo_2] Else (Case When D.[Country] Is Not Null Then D.[Geo_2] Else E.[Geo_2] End) End) End) As [Geo_2],
+	(Case When B.[Country] Is Not Null Then B.[Geo_3] Else (Case When C.[Country] Is Not Null Then C.[Geo_3] Else (Case When D.[Country] Is Not Null Then D.[Geo_3] Else E.[Geo_3] End) End) End) As [Geo_3]
+From @Large_Data_Input_Table A
+Left Join @Large_Match_Table B
+	On (B.[Country] = A.[Country] And A.[First_Field] = (Cast(A.[Country] As Varchar(Max)) + 'ZZZ') And B.[Geocode] = A.[First_Field])
+Left Join @Large_Match_Table C
+	On (C.[Country] = A.[Country] And C.[Geocode] = A.[First_Field] Or C.[Country] = A.[Country] And C.[Geocode] = A.[Second_Field])
+Left Join @Large_Match_Table D
+	On (D.[Country] = A.[Country] And D.[Geocode] = Left(A.[Second_Field], 3))
+Left Join @Large_Match_Table E
+	On (B.[Country] = A.[Country] And B.[Geocode] = Left(A.[Second_Field], 2))

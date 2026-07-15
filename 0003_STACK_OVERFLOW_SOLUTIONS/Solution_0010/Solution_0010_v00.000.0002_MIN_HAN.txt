@@ -1,0 +1,47 @@
+--I want to get the record to show who has been in on each day. Its for a time and attendance where i need to see any record for a user per day.
+
+--Original Table
+Declare @Original_Table Table ([USERID] Bigint, [Time] Datetime)
+Insert Into @Original_Table ([USERID], [Time])
+Values
+(2, '2024-05-01 07:35:44.560'),
+(3, '2024-05-01 07:44:21:221'),
+(1, '2024-05-01 09:25:41.434'),
+(3, '2024-05-01 10:05:27.310'),
+(1, '2024-05-01 12:30:24.523'),
+(2, '2024-05-01 15:55:11.230'),
+(2, '2024-05-02 07:23:31.213'),
+(1, '2024-05-02 09:20:35.710'),
+(3, '2024-05-02 13:35:41.710'),
+(2, '2024-05-02 16:05:23.534'),
+(1, '2024-05-02 19:01:49.140'),
+(3, '2024-05-02 19:18:35.113'),
+(1, '2024-05-03 09:22:45.722')
+
+--Wanted Table
+/*
+USERID Time
+2 2024-05-01
+3 2024-05-01
+1 2024-05-01
+2 2024-05-02
+1 2024-05-02
+3 2024-05-02
+1 2024-05-03
+*/
+
+--Thanks SQL2016 (WELL I'M IN SQL SERVER 2025... BUT NEVERMIND, AS I'M ONLY USING VERY BASIC CORE FUCNTIONALITY TO SOLVE THE PROBLEM...)
+
+--I have tried using MIN(Time) and group by Userid but this just shows the first record for each user in total and not by each day.
+
+--I would like to convert datetime to just date but mainly i need to display the records that show the userid and date but only once per day.
+
+
+--... and the solution...
+
+Select
+	[USERID] As [USERID],
+	Min(Cast([Time] As Date)) As [Time]
+From @Original_Table
+Group By [USERID], Cast([Time] As Date)
+--Please also be aware, that the row order of this Select result-set may be different, depending on each instance of computation, depending on many factors, because ordering is handled by the core SQL engine automatically, unless a specific Order By clause is also used after the Group By clause...
