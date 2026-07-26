@@ -1,0 +1,475 @@
+--Summary Comment: This T-SQL script contains algorithms that can be used to design a very efficient storage space, and network transmission, string data format, for table/matrix/grid data structures... The Obsidian Compound Object String data format, is ultimately, a very size efficient storage option. The downside is that it would typically lead to more compute demand when later used (due to the need to unwrap the string into a grid), and as a direct consequence, is less suited to latency sensitive usecases.
+
+--Nota Benes:
+--Before feeding data into the following algorithms, you must make sure that it does not contain row or column/cell delimiter string patterns, within the actual data values of interest (that is, within useable data values that are not intended for metadata structural purposes)...
+--If you need customisable column headers, simply turn the algorithms into stored procedures, and feed in whatever is necessary, as well as a table containing the column header label order indexes in the first column, and in the second column the actual text labels of the column headers..
+--If you need to have dynamic numbers of columns, you can take the existing T-SQL sourcecode, and manually amend as per requirements, or you can get real fancy and use dynamic T-SQL execution to implement a mechanism to specify a variable number of columns... If you don't know how to do this, please feel free to get in touch, and I will implement it for you, for almost-free!!!
+--You're probably also going to want to add validation to make sure that every row has the same number of cells (@...Cell_Delimiter_String_Patterns)...
+--Also, I have not been able to load test at large data volumes, because my laptop is simply incapable of handling them... I'm also currently using a restricted free version of SQL Server as well... You may have better luck on a 'Big Beast Rig'... As as result of all this, please do not necessarily expect the Parallel String-To-Grid algorithm to be necessarily quicker than the Serial String-To-Grid, under any data volume size contexts... Just saying...
+--Please only use these algorithms, if you have tight control over the cell data 'payloads' and actual metadata structure 'launch vehicles', because they are all susceptible to low-threshold data corruption, if handled carelessly. If you don't have either direct or trustworthy oversight of data provenance, then I recommend you avoid these approaches altogether!
+--If your database has appropriate functions and features, you could even add another delimiter string pattern tag (other than <COL> and <ROW>... For example [TAB]), in order to group data from multiple tables into the same string, and back again to the multiple tables within the same or another database (Now I think of it, this could be very useful for things like backing up partial parts of a given database, in a simple and efficient format).
+--Finally, I would say that the ideal uses for these compound data format algorithms, are: 1. Long term storage; 2. Infrequently accessed storage; 3. Transfer of data between apps or systems; and 4. Transfer of data across private local networks, all the way up to public global networks.
+--(Just as a lesser note, I have replaced all instances of the Stackoverflow question <Header> string pattern with <HEADER>, all instances of the Stackoverflow question <TAB> string pattern with <COL>, and all instances of the Stackoverflow question <RET> string pattern with <ROW>...)
+
+
+--STACK OVERFLOW QUESTION
+
+--Your Input...
+--<HEADER>Lineposition<COL>AdditionalPosition<COL>PositionView<COL>MaterialNumber<COL>Description<COL>Quantity<COL>ExtUnitCost<COL>ExtUnitPrice<COL>TransferPrice<COL>ExtNetPrice<COL>ExtNetPriceFC<COL>Discount<COL>LocalMargin<COL>NetMargin<COL>UnitPrice<COL>PositionType<ROW>1<COL>False<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>1<COL>True<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>2<COL>False<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL>30<COL>24<COL>44<COL>10926<COL>Normal<ROW>2<COL>True<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL><COL>24<COL>45<COL>10926<COL>Normal<ROW>3<COL>False<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL>35<COL>18<COL>40<COL>325<COL>Normal<ROW>3<COL>True<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL><COL>18<COL>47<COL>325<COL>Normal<ROW>4<COL>False<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL>35<COL>0<COL>19<COL>668<COL>Normal<ROW>4<COL>True<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL><COL>0<COL>47<COL>668<COL>Normal<ROW>5<COL>False<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL>35<COL>40<COL>40<COL>746<COL>Normal<ROW>5<COL>True<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL><COL>40<COL>61<COL>746<COL>Normal<ROW>
+--Your string seems to have duplicates for each <ROW> row (each Lineposition index is repeated exactly once for some reason...), which can indicate underlying data issues!!!... Not sure if this is by design... But if you don't want duplicate rows, then simply use a Distinct or a Group By clause on the final output table towards the end of this T-SQL query...
+
+--Your desired output...
+/*
+Lineposition    AdditionalPosition  PositionView    MaterialNumber  Description Quantity    ExtUnitCost CostReduction   ReducedCost ExtUnitPrice    TransferPrice   ExtNetPrice ExtNetPriceFC   Discount    LocalMargin NetMargin   UnitPrice   PositionType
+1   False   001     Industrial System 24V 80A Parallel System   1   7304    0   7304    18285   9720    12665   12665   0   23  42  12665   Normal
+1   True    001     Industrial System 24V 80A Parallel System   1   7304    0   7304    18285   9720    12665   12665   0   23  42  12665   Normal
+1   False   001.1       Protect RCS 24 V / 2 x100 A 1   6118    0   6118    15609   8333    10926   10926   30  24  44  10926   Normal
+*/
+
+
+--ALL THE ASSOCIATED SOLUTIONS AND EXTRAS
+
+
+--Serial String-To-Grid (SMALL DATA OPTIMISED)
+--SUPPOSEDLY OLD SCHOOL AND SLOW, SERIAL LOOP SOLUTION, FOR BENCHMARKING PURPOSES NOT, I REPEAT, NOT ONLY (IT WILL BE USEFUL FOR SMALL DATA USECASES {SAY LESS THAN 100,000 ROWS and LESS THAN 10 COLUMNS}, WHERE NESTED LOOPS OUTPERFORM PARALLEL COMPUTE JOINS)... THE FAST PARALLEL SOLUTIONS COME LATER ON IN THIS T-SQL SOURCECODE SCRIPT (ALTHOUGH I HAVE DONE NO LOAD TESTING, SO NO GUARANTEES, AND IT WILL ALSO DEPEND MASSIVELY ON THE COMPUTE SPECIFICATIONS OF THE HARDWARE YOU EXECUTE THE ALGORITHM ON!!!!!!!!)...
+--Benchmark Prep
+Declare @Benchmark_Grid Table ([Row_Order] Bigint, [Lineposition] Varchar(Max), [AdditionalPosition] Varchar(Max), [PositionView] Varchar(Max), [MaterialNumber] Varchar(Max), [Description] Varchar(Max), [Quantity] Varchar(Max), [ExtUnitCost] Varchar(Max), [ExtUnitPrice] Varchar(Max), [TransferPrice] Varchar(Max), [ExtNetPrice] Varchar(Max), [ExtNetPriceFC] Varchar(Max), [Discount] Varchar(Max), [LocalMargin] Varchar(Max), [NetMargin] Varchar(Max), [UnitPrice] Varchar(Max), [PositionType] Varchar(Max)) --Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations.
+
+Declare @Benchmark_Input_String As Varchar(Max)
+Set @Benchmark_Input_String = '<HEADER>Lineposition<COL>AdditionalPosition<COL>PositionView<COL>MaterialNumber<COL>Description<COL>Quantity<COL>ExtUnitCost<COL>ExtUnitPrice<COL>TransferPrice<COL>ExtNetPrice<COL>ExtNetPriceFC<COL>Discount<COL>LocalMargin<COL>NetMargin<COL>UnitPrice<COL>PositionType<ROW>1<COL>False<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>1<COL>True<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>2<COL>False<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL>30<COL>24<COL>44<COL>10926<COL>Normal<ROW>2<COL>True<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL><COL>24<COL>45<COL>10926<COL>Normal<ROW>3<COL>False<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL>35<COL>18<COL>40<COL>325<COL>Normal<ROW>3<COL>True<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL><COL>18<COL>47<COL>325<COL>Normal<ROW>4<COL>False<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL>35<COL>0<COL>19<COL>668<COL>Normal<ROW>4<COL>True<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL><COL>0<COL>47<COL>668<COL>Normal<ROW>5<COL>False<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL>35<COL>40<COL>40<COL>746<COL>Normal<ROW>5<COL>True<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL><COL>40<COL>61<COL>746<COL>Normal<ROW>'
+
+Declare @Benchmark_Input_String_Length As Bigint
+Set @Benchmark_Input_String_Length = Len(@Benchmark_Input_String)
+
+Declare @Benchmark_Row_Delimiter_String_Pattern As Varchar(Max)
+Set @Benchmark_Row_Delimiter_String_Pattern = '<ROW>'
+
+Declare @Benchmark_Cell_Delimiter_String_Pattern As Varchar(Max)
+Set @Benchmark_Cell_Delimiter_String_Pattern = '<COL>'
+
+Declare @Benchmark_Row_Delimiter_String_Pattern_Length As Bigint
+Set @Benchmark_Row_Delimiter_String_Pattern_Length = Len(@Benchmark_Row_Delimiter_String_Pattern)
+
+Declare @Benchmark_Cell_Delimiter_String_Pattern_Length As Bigint
+Set @Benchmark_Cell_Delimiter_String_Pattern_Length = Len(@Benchmark_Cell_Delimiter_String_Pattern)
+
+Declare @Benchmark_Column_Count As Bigint
+Set @Benchmark_Column_Count = 16
+
+Declare @Benchmark_Row_Count As Bigint
+Set @Benchmark_Row_Count = (((@Benchmark_Input_String_Length - (Len(Replace(@Benchmark_Input_String, @Benchmark_Row_Delimiter_String_Pattern, '')) - 1)) / @Benchmark_Row_Delimiter_String_Pattern_Length) - 1)
+
+Declare @Benchmark_Input_String_Slider As Varchar(Max)
+Set @Benchmark_Input_String_Slider = (Substring(@Benchmark_Input_String, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String) + @Benchmark_Row_Delimiter_String_Pattern_Length), ((Len(@Benchmark_Input_String) - (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String) + @Benchmark_Row_Delimiter_String_Pattern_Length)) + 1)) + @Benchmark_Cell_Delimiter_String_Pattern) -- We add the @Benchmark_Cell_Delimiter_String_Pattern' suffix, in order to handle slicing out the last cell properly...
+
+Declare @Loop_Count_0001 As Bigint
+Declare @Loop_Count_0002 As Bigint
+
+--Benchmark Transformation
+Set @Loop_Count_0001 = 0
+While @Loop_Count_0001 < @Benchmark_Row_Count
+	Begin
+		
+		Set @Loop_Count_0001 = (@Loop_Count_0001 + 1)
+		
+		Insert Into @Benchmark_Grid ([Row_Order], [Lineposition], [AdditionalPosition], [PositionView], [MaterialNumber], [Description], [Quantity], [ExtUnitCost], [ExtUnitPrice], [TransferPrice], [ExtNetPrice], [ExtNetPriceFC], [Discount], [LocalMargin], [NetMargin], [UnitPrice], [PositionType])
+		Values (@Loop_Count_0001, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null, Null)
+		
+		Set @Loop_Count_0002 = 0
+		While @Loop_Count_0002 < @Benchmark_Column_Count
+			
+			Begin
+				
+				Set @Loop_Count_0002 = (@Loop_Count_0002 + 1)
+				
+				If Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) < Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider)
+					
+					Begin
+
+						If @Loop_Count_0002 = 1
+							Begin
+								Update @Benchmark_Grid
+								Set [Lineposition] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 2
+							Begin
+								Update @Benchmark_Grid
+								Set [AdditionalPosition] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 3
+							Begin
+								Update @Benchmark_Grid
+								Set [PositionView] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 4
+							Begin
+								Update @Benchmark_Grid
+								Set [MaterialNumber] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 5
+							Begin
+								Update @Benchmark_Grid
+								Set [Description] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 6
+							Begin
+								Update @Benchmark_Grid
+								Set [Quantity] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 7
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtUnitCost] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 8
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtUnitPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 9
+							Begin
+								Update @Benchmark_Grid
+								Set [TransferPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 10
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtNetPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 11
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtNetPriceFC] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 12
+							Begin
+								Update @Benchmark_Grid
+								Set [Discount] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 13
+							Begin
+								Update @Benchmark_Grid
+								Set [LocalMargin] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 14
+							Begin
+								Update @Benchmark_Grid
+								Set [NetMargin] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 15
+							Begin
+								Update @Benchmark_Grid
+								Set [UnitPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 16
+							Begin
+								Update @Benchmark_Grid
+								Set [PositionType] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+
+					End
+
+				Else If Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) < Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider)
+					
+					Begin
+
+						If @Loop_Count_0002 = 1
+							Begin
+								Update @Benchmark_Grid
+								Set [Lineposition] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 2
+							Begin
+								Update @Benchmark_Grid
+								Set [AdditionalPosition] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 3
+							Begin
+								Update @Benchmark_Grid
+								Set [PositionView] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 4
+							Begin
+								Update @Benchmark_Grid
+								Set [MaterialNumber] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 5
+							Begin
+								Update @Benchmark_Grid
+								Set [Description] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 6
+							Begin
+								Update @Benchmark_Grid
+								Set [Quantity] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 7
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtUnitCost] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 8
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtUnitPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 9
+							Begin
+								Update @Benchmark_Grid
+								Set [TransferPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 10
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtNetPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 11
+							Begin
+								Update @Benchmark_Grid
+								Set [ExtNetPriceFC] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 12
+							Begin
+								Update @Benchmark_Grid
+								Set [Discount] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 13
+							Begin
+								Update @Benchmark_Grid
+								Set [LocalMargin] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 14
+							Begin
+								Update @Benchmark_Grid
+								Set [NetMargin] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 15
+							Begin
+								Update @Benchmark_Grid
+								Set [UnitPrice] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+						Else If @Loop_Count_0002 = 16
+							Begin
+								Update @Benchmark_Grid
+								Set [PositionType] = Substring(@Benchmark_Input_String_Slider, 1, (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) - 1))
+								Where [Row_Order] = @Loop_Count_0001
+							End
+
+					End
+
+				If Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) < Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider)
+					Begin
+						Set @Benchmark_Input_String_Slider = Right(@Benchmark_Input_String_Slider, (Len(@Benchmark_Input_String_Slider) - (Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) + (@Benchmark_Cell_Delimiter_String_Pattern_Length - 1))))
+					End
+				Else If Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) < Patindex(('%' + @Benchmark_Cell_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider)
+					Begin
+						Set @Benchmark_Input_String_Slider = Right(@Benchmark_Input_String_Slider, (Len(@Benchmark_Input_String_Slider) - (Patindex(('%' + @Benchmark_Row_Delimiter_String_Pattern + '%'), @Benchmark_Input_String_Slider) + (@Benchmark_Row_Delimiter_String_Pattern_Length - 1))))
+					End
+	
+			End
+	End
+
+--Serial String-To-Grid Benchmark Output
+Select
+	*
+From @Benchmark_Grid
+--Order By [Row_Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+
+
+--Parallel String-To-Grid (BIG DATA OPTIMISED?????????)
+Declare @Input_String As Varchar(Max)
+Set @Input_String = '<HEADER>Lineposition<COL>AdditionalPosition<COL>PositionView<COL>MaterialNumber<COL>Description<COL>Quantity<COL>ExtUnitCost<COL>ExtUnitPrice<COL>TransferPrice<COL>ExtNetPrice<COL>ExtNetPriceFC<COL>Discount<COL>LocalMargin<COL>NetMargin<COL>UnitPrice<COL>PositionType<ROW>1<COL>False<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>1<COL>True<COL>001<COL><COL>Industrial System 24V 80A Parallel System<COL>1<COL>7304<COL>18285<COL>9720<COL>12665<COL>12665<COL>0<COL>23<COL>42<COL>12665<COL>Normal<ROW>2<COL>False<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL>30<COL>24<COL>44<COL>10926<COL>Normal<ROW>2<COL>True<COL>001.1<COL><COL>Protect RCS 24 V / 2 x100 A<COL>1<COL>6118<COL>15609<COL>8333<COL>10926<COL>10926<COL><COL>24<COL>45<COL>10926<COL>Normal<ROW>3<COL>False<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL>35<COL>18<COL>40<COL>325<COL>Normal<ROW>3<COL>True<COL>001.2<COL><COL>Documentation<COL>1<COL>196<COL>500<COL>267<COL>325<COL>325<COL><COL>18<COL>47<COL>325<COL>Normal<ROW>4<COL>False<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL>35<COL>0<COL>19<COL>668<COL>Normal<ROW>4<COL>True<COL>001.3<COL><COL>Packing<COL>1<COL>540<COL>1028<COL>670<COL>668<COL>668<COL><COL>0<COL>47<COL>668<COL>Normal<ROW>5<COL>False<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL>35<COL>40<COL>40<COL>746<COL>Normal<ROW>5<COL>True<COL>001.4<COL><COL>Factory Acceptance Testing<COL>1<COL>450<COL>1148<COL>450<COL>746<COL>746<COL><COL>40<COL>61<COL>746<COL>Normal<ROW>'
+
+Declare @Input_String_Length As Bigint
+Set @Input_String_Length = Len(@Input_String)
+
+Declare @Row_Delimiter_String_Pattern As Varchar(Max)
+Set @Row_Delimiter_String_Pattern = '<ROW>'
+--This assumes that the string pattern: <ROW> :will never be in any of the column header values, or any of the row values... If this is not a certainty, then please amend the delimiter string pattern here, otherwise you will likely find it very hard, no matter approach you use, to reliably parse out the data into the correct column-to-row loci in the output table, because there would be no way to distinguish between structural metadata and content data, within the input string...
+
+Declare @Cell_Delimiter_String_Pattern As Varchar(Max)
+Set @Cell_Delimiter_String_Pattern = '<COL>'
+--This assumes that the string pattern: <COL> :will never be in any of the column header values, or any of the row values... If this is not a certainty, then please amend the delimiter string pattern here, otherwise you will likely find it very hard, no matter approach you use, to reliably parse out the data into the correct column-to-row loci in the output table, because there would be no way to distinguish between structural metadata and content data, within the input string...
+
+Declare @Row_Delimiter_String_Pattern_Length As Bigint
+Set @Row_Delimiter_String_Pattern_Length = Len(@Row_Delimiter_String_Pattern)
+
+Declare @Cell_Delimiter_String_Pattern_Length As Bigint
+Set @Cell_Delimiter_String_Pattern_Length = Len(@Cell_Delimiter_String_Pattern)
+
+Declare @Row_Count As Bigint
+Set @Row_Count = (((@Input_String_Length - (Len(Replace(@Input_String, @Row_Delimiter_String_Pattern, '')) - 1)) / @Row_Delimiter_String_Pattern_Length) - 1)
+
+Declare @Input_String_Cell_Payload As Varchar(Max)
+Set @Input_String_Cell_Payload = Substring(@Input_String, Patindex(('%' + @Row_Delimiter_String_Pattern + '%'), @Input_String), ((Len(@Input_String) - Patindex(('%' + @Row_Delimiter_String_Pattern + '%'), @Input_String)) + 1))
+
+Declare @Input_String_Cell_Payload_Length As Bigint
+Set @Input_String_Cell_Payload_Length = Len(@Input_String_Cell_Payload)
+
+
+--The Critical Transformations
+--Input_String_Scaffold
+Declare @Dynamic_SQL_Data_Intermediate_Variable_Input_String As Nvarchar(Max)
+Set @Dynamic_SQL_Data_Intermediate_Variable_Input_String =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Input_String_Cell_Payload_Length), '@Index_Count', @Input_String_Cell_Payload_Length) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Input_String Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Input_String ([Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable_Input_String)
+
+--Row Indexer
+Declare @Row_Indexes Table ([Order] Bigint, [Row_Delimiter_String_Pattern_Index] Bigint)
+Insert Into @Row_Indexes ([Order], [Row_Delimiter_String_Pattern_Index])
+Select
+	Row_Number() Over (Order By [Index] Asc) As [Order],
+	[Index] As [Row_Delimiter_String_Pattern_Index]
+From @Obsidian_Index_Scaffold_Input_String
+Where Substring(@Input_String_Cell_Payload, [Index], @Row_Delimiter_String_Pattern_Length) = @Row_Delimiter_String_Pattern
+
+Declare @Max_Row_Delimiter_String_Pattern_Index As Bigint
+Set @Max_Row_Delimiter_String_Pattern_Index = (Select Max([Row_Delimiter_String_Pattern_Index]) From @Row_Indexes)
+
+--Cell Indexer
+Declare @Cell_Indexes Table ([Order] Bigint, [Cell_Delimiter_String_Pattern_Index] Bigint)
+Insert Into @Cell_Indexes ([Order], [Cell_Delimiter_String_Pattern_Index])
+Select
+	Row_Number() Over (Order By [Index] Asc) As [Order],
+	[Index] As [Cell_Delimiter_String_Pattern_Index]
+From @Obsidian_Index_Scaffold_Input_String
+Where Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern_Length) = @Cell_Delimiter_String_Pattern
+
+--Row-Cell-Column Start Index Intersector
+Declare @Intersector_Table Table ([Row_Order] Bigint, [Lineposition] Varchar(Max), [AdditionalPosition] Varchar(Max), [PositionView] Varchar(Max), [MaterialNumber] Varchar(Max), [Description] Varchar(Max), [Quantity] Varchar(Max), [ExtUnitCost] Varchar(Max), [ExtUnitPrice] Varchar(Max), [TransferPrice] Varchar(Max), [ExtNetPrice] Varchar(Max), [ExtNetPriceFC] Varchar(Max), [Discount] Varchar(Max), [LocalMargin] Varchar(Max), [NetMargin] Varchar(Max), [UnitPrice] Varchar(Max), [PositionType] Varchar(Max)) --Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations.
+Insert Into @Intersector_Table ([Row_Order], [Lineposition], [AdditionalPosition], [PositionView], [MaterialNumber], [Description], [Quantity], [ExtUnitCost], [ExtUnitPrice], [TransferPrice], [ExtNetPrice], [ExtNetPriceFC], [Discount], [LocalMargin], [NetMargin], [UnitPrice], [PositionType])
+Select
+	A.[Order] As [Row_Order],
+	Substring(@Input_String_Cell_Payload, (A.[Row_Delimiter_String_Pattern_Index] + @Row_Delimiter_String_Pattern_Length), (((C.[Cell_Delimiter_String_Pattern_Index] - 1) - (A.[Row_Delimiter_String_Pattern_Index] + @Row_Delimiter_String_Pattern_Length)) + 1)) As [Lineposition],
+	Substring(@Input_String_Cell_Payload, (C.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((D.[Cell_Delimiter_String_Pattern_Index] - 1) - (C.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [AdditionalPosition],
+	Substring(@Input_String_Cell_Payload, (D.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((E.[Cell_Delimiter_String_Pattern_Index] - 1) - (D.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [PositionView],
+	Substring(@Input_String_Cell_Payload, (E.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((F.[Cell_Delimiter_String_Pattern_Index] - 1) - (E.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [MaterialNumber],
+	Substring(@Input_String_Cell_Payload, (F.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((G.[Cell_Delimiter_String_Pattern_Index] - 1) - (F.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Description],
+	Substring(@Input_String_Cell_Payload, (G.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((H.[Cell_Delimiter_String_Pattern_Index] - 1) - (G.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Quantity],
+	Substring(@Input_String_Cell_Payload, (H.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((I.[Cell_Delimiter_String_Pattern_Index] - 1) - (H.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtUnitCost],
+	Substring(@Input_String_Cell_Payload, (I.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((J.[Cell_Delimiter_String_Pattern_Index] - 1) - (I.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtUnitPrice],
+	Substring(@Input_String_Cell_Payload, (J.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((K.[Cell_Delimiter_String_Pattern_Index] - 1) - (J.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [TransferPrice],
+	Substring(@Input_String_Cell_Payload, (K.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((L.[Cell_Delimiter_String_Pattern_Index] - 1) - (K.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtNetPrice],
+	Substring(@Input_String_Cell_Payload, (L.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((M.[Cell_Delimiter_String_Pattern_Index] - 1) - (L.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtNetPriceFC],
+	Substring(@Input_String_Cell_Payload, (M.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((N.[Cell_Delimiter_String_Pattern_Index] - 1) - (M.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Discount],
+	Substring(@Input_String_Cell_Payload, (N.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((O.[Cell_Delimiter_String_Pattern_Index] - 1) - (N.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [LocalMargin],
+	Substring(@Input_String_Cell_Payload, (O.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((P.[Cell_Delimiter_String_Pattern_Index] - 1) - (O.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [NetMargin],
+	Substring(@Input_String_Cell_Payload, (P.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((Q.[Cell_Delimiter_String_Pattern_Index] - 1) - (P.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [UnitPrice],
+	Substring(@Input_String_Cell_Payload, (Q.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), ((((Case When A.[Order] = @Row_Count Then @Max_Row_Delimiter_String_Pattern_Index Else B.[Row_Delimiter_String_Pattern_Index] End) - 1) - (Q.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [PositionType]
+	--All of the start delimiter indexes have been augmented by +5, in order to deal with the cell delimiter string pattern tags, which in the example, always consist of five characters...
+	--All of the end delimiter indexes have been augmented by -1, in order to deal with the cell delimiter string pattern tags...
+From @Row_Indexes A
+Inner Join @Row_Indexes B
+	On (B.[Order] = (A.[Order] + 1))
+--C.[] alias is our grid cell-intersect anchor...
+Inner Join @Cell_Indexes C
+	On (C.[Cell_Delimiter_String_Pattern_Index] > A.[Row_Delimiter_String_Pattern_Index] And C.[Cell_Delimiter_String_Pattern_Index] < B.[Row_Delimiter_String_Pattern_Index])
+Left Join @Cell_Indexes Whittle
+	On (Whittle.[Cell_Delimiter_String_Pattern_Index] < C.[Cell_Delimiter_String_Pattern_Index] And Whittle.[Cell_Delimiter_String_Pattern_Index] > A.[Row_Delimiter_String_Pattern_Index] And Whittle.[Cell_Delimiter_String_Pattern_Index] < B.[Row_Delimiter_String_Pattern_Index])
+--Then we simply use a column-shift join technique to span all the cell-column intersects, for both start cell delimiter indexes, and end cell delimiter indexes (double referencing almost all indexes {apart from obviously the last cell delimiter in each row, which should only be referenced once, as it is the end of a row, and has no data after it, associated with the same row})...
+Inner Join @Cell_Indexes D
+	On (Whittle.[Order] Is Null And D.[Order] = (C.[Order] + 1))
+Inner Join @Cell_Indexes E
+	On (Whittle.[Order] Is Null And E.[Order] = (C.[Order] + 2))
+Inner Join @Cell_Indexes F
+	On (Whittle.[Order] Is Null And F.[Order] = (C.[Order] + 3))
+Inner Join @Cell_Indexes G
+	On (Whittle.[Order] Is Null And G.[Order] = (C.[Order] + 4))
+Inner Join @Cell_Indexes H
+	On (Whittle.[Order] Is Null And H.[Order] = (C.[Order] + 5))
+Inner Join @Cell_Indexes I
+	On (Whittle.[Order] Is Null And I.[Order] = (C.[Order] + 6))
+Inner Join @Cell_Indexes J
+	On (Whittle.[Order] Is Null And J.[Order] = (C.[Order] + 7))
+Inner Join @Cell_Indexes K
+	On (Whittle.[Order] Is Null And K.[Order] = (C.[Order] + 8))
+Inner Join @Cell_Indexes L
+	On (Whittle.[Order] Is Null And L.[Order] = (C.[Order] + 9))
+Inner Join @Cell_Indexes M
+	On (Whittle.[Order] Is Null And M.[Order] = (C.[Order] + 10))
+Inner Join @Cell_Indexes N
+	On (Whittle.[Order] Is Null And N.[Order] = (C.[Order] + 11))
+Inner Join @Cell_Indexes O
+	On (Whittle.[Order] Is Null And O.[Order] = (C.[Order] + 12))
+Inner Join @Cell_Indexes P
+	On (Whittle.[Order] Is Null And P.[Order] = (C.[Order] + 13))
+Inner Join @Cell_Indexes Q
+	On (Whittle.[Order] Is Null And Q.[Order] = (C.[Order] + 14))
+
+--Parallel 'String-To-Grid' Output
+Select
+	*
+From @Intersector_Table
+--Order By [Row_Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+
+
+--...
+--...
+--...
+
+
+--'Grid-To-String' Transformation
+--A typical example input...
+Declare @Optimised_Input_Table Table ([Order] Bigint, [Lineposition] Varchar(Max), [AdditionalPosition] Varchar(Max), [PositionView] Varchar(Max), [MaterialNumber] Varchar(Max), [Description] Varchar(Max), [Quantity] Varchar(Max), [ExtUnitCost] Varchar(Max), [ExtUnitPrice] Varchar(Max), [TransferPrice] Varchar(Max), [ExtNetPrice] Varchar(Max), [ExtNetPriceFC] Varchar(Max), [Discount] Varchar(Max), [LocalMargin] Varchar(Max), [NetMargin] Varchar(Max), [UnitPrice] Varchar(Max), [PositionType] Varchar(Max)) --Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations.
+Insert Into @Optimised_Input_Table ([Order], [Lineposition], [AdditionalPosition], [PositionView], [MaterialNumber], [Description], [Quantity], [ExtUnitCost], [ExtUnitPrice], [TransferPrice], [ExtNetPrice], [ExtNetPriceFC], [Discount], [LocalMargin], [NetMargin], [UnitPrice], [PositionType])
+Values
+(1, 1, 'False', '001', '', 'Industrial System 24V 80A Parallel System', 1, 7304,18285, 9720, 12665, 12665, 0, 23, 42, 12665, 'Normal'),
+(2, 1, 'True', '001', '', 'Industrial System 24V 80A Parallel System', 1, 7304,18285, 9720, 12665, 12665, 0, 23, 42, 12665, 'Normal'),
+(3, 2, 'False', '001.1', '', 'Protect RCS 24 V / 2 x100 A', 1, 6118, 15609, 8333, 10926, 10926, 30, 24, 44, 10926, 'Normal')
+--I have added an order column (which you also will need to do, as the algorithm is designed to only work with a designated row order column), because there is no way to reliably ensure wrapped value cell ordering in SQL Server otherwise, as the underlying engine makes its own decisions about computation order, based on a number of veriables, that are always subject to change, especially across different versions of SQL Server...
+--Please remember not to use Null values in this table, as this will mullify all the data associated with that row, once the String_Agg() function is applied later on!!!
+
+
+Declare @Optimised_Grid_To_String_Row_Delimiter_String_Pattern As Varchar(Max)
+Set @Optimised_Grid_To_String_Row_Delimiter_String_Pattern = '<ROW>'
+
+Declare @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern As Varchar(Max)
+Set @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern = '<COL>'
+
+Declare @Optimised_Header As Varchar(Max)
+Set @Optimised_Header = ('<HEADER>' + 'Lineposition' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'AdditionalPosition' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'PositionView' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'MaterialNumber' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'Description' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'Quantity' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'ExtUnitCost' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'ExtUnitPrice' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'TransferPrice' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'ExtNetPrice' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'ExtNetPriceFC' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'Discount' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'LocalMargin' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'NetMargin' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'UnitPrice' + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + 'PositionType' + @Optimised_Grid_To_String_Row_Delimiter_String_Pattern)
+
+--'Grid-To-String' Output
+Declare @Optimised_Output_String As Varchar(Max)
+Set @Optimised_Output_String = (@Optimised_Header + (Select String_Agg(([Lineposition] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [AdditionalPosition] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [PositionView] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [MaterialNumber] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Description] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Quantity] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtUnitCost] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtUnitPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [TransferPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtNetPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtNetPriceFC] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Discount] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [LocalMargin] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [NetMargin] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [UnitPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [PositionType] + @Optimised_Grid_To_String_Row_Delimiter_String_Pattern), '') Within Group (Order By [Order] Asc) As [Output_String] From @Optimised_Input_Table))
+
+Select @Optimised_Output_String
