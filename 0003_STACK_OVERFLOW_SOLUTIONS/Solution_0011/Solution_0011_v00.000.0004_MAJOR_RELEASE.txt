@@ -1,0 +1,81 @@
+--GUIDANCE... This algorithm implements an example technical approach, which should be usable, with augmentations/customisations, in order to allow any hierarchical rollup aggregation... I don't think that this is currently possible in core T-SQL... Might be though, as I haven't actually checked the online documentation properly...
+
+
+--...
+--...
+--...
+
+
+--STACKOVERFLOW PROBLEM : A Hierarchy Levels Rollup Aggregation Requirement
+Declare @Auto_Referenced_Table Table ([Location] Varchar(Max), [Higher_Level_Location] Varchar(Max))
+Insert Into @Auto_Referenced_Table ([Location], [Higher_Level_Location])
+Values
+('A', Null),
+('A1', 'A'),
+('AA1', 'A1'),
+('AAA1', 'AA1'),
+('AAAA1', 'AAA1'),
+('B', Null)
+
+Declare @Stock_Table Table ([Location] Varchar(Max), [Stock_Amount] Bigint)
+Insert Into @Stock_Table ([Location], [Stock_Amount])
+Values
+('AAA1', 40000),
+('B', 10),
+('A1', 4)
+
+
+--...
+--...
+--...
+
+
+--SOLUTION 0001 : A Pretty Simple Handcrank
+Select
+	A.[Location] As [Location],
+	(Case When Sum(F.[Stock_Amount]) Is Null Then 0 Else Sum(F.[Stock_Amount]) End) As [Stock_Amount]
+From @Auto_Referenced_Table A
+Left Join @Auto_Referenced_Table B
+	On (B.[Higher_Level_Location] = A.[Location])
+Left Join @Auto_Referenced_Table C
+	On (C.[Higher_Level_Location] = B.[Location])
+Left Join @Auto_Referenced_Table D
+	On (D.[Higher_Level_Location] = C.[Location])
+Left Join @Auto_Referenced_Table E
+	On (E.[Higher_Level_Location] = D.[Location])
+Left Join @Stock_Table F
+	On (F.[Location] = A.[Location] Or F.[Location] = B.[Location] Or F.[Location] = C.[Location] Or F.[Location] = D.[Location] Or F.[Location] = E.[Location])
+Group By A.[Location]
+
+
+--...
+--...
+--...
+
+
+--SOLUTION 0002 : A More Complex Dynamic Hierarchy, Automatic Level Count Flexor
+Declare @Intermediate_Crossjoin_Table Table ([Higher_Level_Location] Varchar(Max), [Location] Varchar(Max), [Stock_Amount] Bigint)
+Insert Into @Intermediate_Crossjoin_Table ([Higher_Level_Location], [Location], [Stock_Amount])
+Select
+	Min(E.[Location]) As [Higher_Level_Location],
+	A.[Location] As [Location],
+	Sum(D.[Stock_Amount]) As [Stock_Amount]
+From @Auto_Referenced_Table A
+Cross Join @Auto_Referenced_Table B
+Cross Join @Auto_Referenced_Table C
+Left Join @Stock_Table D
+	On (C.[Higher_Level_Location] = B.[Location] And B.[Higher_Level_Location] = A.[Location] And D.[Location] = A.[Location] Or C.[Higher_Level_Location] = B.[Location] And B.[Higher_Level_Location] = A.[Location] And D.[Location] = B.[Location] Or C.[Higher_Level_Location] = B.[Location] And B.[Higher_Level_Location] = A.[Location] And D.[Location] = C.[Location])
+Left Join @Auto_Referenced_Table E
+	On (E.[Higher_Level_Location] = A.[Location])
+Group By A.[Location]
+
+Select
+	A.[Location] As [Location],
+	(Case When C.[Stock_Amount] Is Not Null Then (Case When A.[Stock_Amount] Is Null Then C.[Stock_Amount] Else A.[Stock_Amount] End) Else (Case When C.[Stock_Amount] Is Null Then (Case When B.[Stock_Amount] Is Not Null Then B.[Stock_Amount] Else (Case When C.[Higher_Level_Location] Is Null Then D.[Stock_Amount] Else 0 End) End) Else 'This Should Never Be Reached... I Think Due To the Inherent Polarity Of the Auto-Reference Table... Have Not Tested This Hypothesis Though!!!' End) End) As [Stock_Amount]
+From @Intermediate_Crossjoin_Table A
+Left Join @Intermediate_Crossjoin_Table B
+	On (B.[Location] = A.[Higher_Level_Location])
+Left Join @Intermediate_Crossjoin_Table C
+	On (C.[Higher_Level_Location] = A.[Location])
+Left Join @Stock_Table D
+	On (A.[Higher_Level_Location] Is Null And C.[Higher_Level_Location] Is Null And D.[Location] = A.[Location])
