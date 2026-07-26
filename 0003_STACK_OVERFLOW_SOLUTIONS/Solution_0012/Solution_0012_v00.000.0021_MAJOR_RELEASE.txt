@@ -54,7 +54,7 @@ Declare @Benchmark_Cell_Delimiter_String_Pattern_Length As Bigint
 Set @Benchmark_Cell_Delimiter_String_Pattern_Length = Len(@Benchmark_Cell_Delimiter_String_Pattern)
 
 Declare @Benchmark_Column_Count As Bigint
-Set @Benchmark_Column_Count = 16
+Set @Benchmark_Column_Count = (Sqrt((((@Benchmark_Input_String_Length - (Len(Replace(@Benchmark_Input_String, @Benchmark_Cell_Delimiter_String_Pattern, '')) - 1)) / @Benchmark_Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
 
 Declare @Benchmark_Row_Count As Bigint
 Set @Benchmark_Row_Count = (((@Benchmark_Input_String_Length - (Len(Replace(@Benchmark_Input_String, @Benchmark_Row_Delimiter_String_Pattern, '')) - 1)) / @Benchmark_Row_Delimiter_String_Pattern_Length) - 1)
