@@ -328,6 +328,9 @@ Set @Row_Delimiter_String_Pattern_Length = Len(@Row_Delimiter_String_Pattern)
 Declare @Cell_Delimiter_String_Pattern_Length As Bigint
 Set @Cell_Delimiter_String_Pattern_Length = Len(@Cell_Delimiter_String_Pattern)
 
+Declare @Column_Count As Bigint
+Set @Column_Count = (Sqrt((((@Benchmark_Input_String_Length - (Len(Replace(@Benchmark_Input_String, @Benchmark_Cell_Delimiter_String_Pattern, '')) - 1)) / @Benchmark_Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
+
 Declare @Row_Count As Bigint
 Set @Row_Count = (((@Input_String_Length - (Len(Replace(@Input_String, @Row_Delimiter_String_Pattern, '')) - 1)) / @Row_Delimiter_String_Pattern_Length) - 1)
 
@@ -353,93 +356,77 @@ Declare @Obsidian_Index_Scaffold_Input_String Table ([Index] Int)
 Insert Into @Obsidian_Index_Scaffold_Input_String ([Index])
 Execute (@Dynamic_SQL_Data_Intermediate_Variable_Input_String)
 
---Row Indexer
-Declare @Row_Indexes Table ([Order] Bigint, [Row_Delimiter_String_Pattern_Index] Bigint)
-Insert Into @Row_Indexes ([Order], [Row_Delimiter_String_Pattern_Index])
+--Partition_Scaffold
+Declare @Dynamic_SQL_Data_Intermediate_Variable_Row_Count As Nvarchar(Max)
+Set @Dynamic_SQL_Data_Intermediate_Variable_Row_Count =
+(
+'Declare @Number_Seeds Table ([Number_Seed] NvarChar(1))
+Insert Into @Number_Seeds ([Number_Seed])
+Values (''0''), (''1''), (''2''), (''3''), (''4''), (''5''), (''6''), (''7''), (''8''), (''9'') ' +
+Replace(dbo.Obsidian_Element_Index_Generator_Code_Parallel_Super_Fast(@Row_Count), '@Index_Count', @Row_Count) --This algorithm can be found on my GitHub account in the same repository that you found this script in.
+)
+
+Declare @Obsidian_Index_Scaffold_Row_Count Table ([Index] Int)
+Insert Into @Obsidian_Index_Scaffold_Row_Count ([Index])
+Execute (@Dynamic_SQL_Data_Intermediate_Variable_Row_Count)
+
+Declare @Delimiter_Indexes Table ([Order] Bigint, [Delimiter_Type] Bigint, [Delimiter_String_Pattern_Index] Bigint)
+Insert Into @Delimiter_Indexes ([Order], [Delimiter_Type], [Delimiter_String_Pattern_Index])
 Select
 	Row_Number() Over (Order By [Index] Asc) As [Order],
-	[Index] As [Row_Delimiter_String_Pattern_Index]
+	(Case When Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern_Length) = @Cell_Delimiter_String_Pattern Then 1 Else 0 End) As [Delimiter_Type],
+	[Index] As [Delimiter_String_Pattern_Index]
 From @Obsidian_Index_Scaffold_Input_String
-Where Substring(@Input_String_Cell_Payload, [Index], @Row_Delimiter_String_Pattern_Length) = @Row_Delimiter_String_Pattern
+Where
+Substring(@Input_String_Cell_Payload, [Index], @Row_Delimiter_String_Pattern_Length) = @Row_Delimiter_String_Pattern
+Or Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern_Length) = @Cell_Delimiter_String_Pattern
 
-Declare @Max_Row_Delimiter_String_Pattern_Index As Bigint
-Set @Max_Row_Delimiter_String_Pattern_Index = (Select Max([Row_Delimiter_String_Pattern_Index]) From @Row_Indexes)
-
---Cell Indexer
-Declare @Cell_Indexes Table ([Order] Bigint, [Cell_Delimiter_String_Pattern_Index] Bigint)
-Insert Into @Cell_Indexes ([Order], [Cell_Delimiter_String_Pattern_Index])
+Declare @Delimiter_Indexes_Partitioned Table ([Partition] Bigint, [Order] Bigint, [Delimiter_Type] Bigint, [Slice_Start_Index] Bigint,[Slice_End_Index] Bigint)
+Insert Into @Delimiter_Indexes_Partitioned ([Partition], [Order], [Delimiter_Type], [Slice_Start_Index],[Slice_End_Index])
 Select
-	Row_Number() Over (Order By [Index] Asc) As [Order],
-	[Index] As [Cell_Delimiter_String_Pattern_Index]
-From @Obsidian_Index_Scaffold_Input_String
-Where Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern_Length) = @Cell_Delimiter_String_Pattern
-
---Row-Cell-Column Start Index Intersector
-Declare @Intersector_Table Table ([Row_Order] Bigint, [Lineposition] Varchar(Max), [AdditionalPosition] Varchar(Max), [PositionView] Varchar(Max), [MaterialNumber] Varchar(Max), [Description] Varchar(Max), [Quantity] Varchar(Max), [ExtUnitCost] Varchar(Max), [ExtUnitPrice] Varchar(Max), [TransferPrice] Varchar(Max), [ExtNetPrice] Varchar(Max), [ExtNetPriceFC] Varchar(Max), [Discount] Varchar(Max), [LocalMargin] Varchar(Max), [NetMargin] Varchar(Max), [UnitPrice] Varchar(Max), [PositionType] Varchar(Max)) --Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations.
-Insert Into @Intersector_Table ([Row_Order], [Lineposition], [AdditionalPosition], [PositionView], [MaterialNumber], [Description], [Quantity], [ExtUnitCost], [ExtUnitPrice], [TransferPrice], [ExtNetPrice], [ExtNetPriceFC], [Discount], [LocalMargin], [NetMargin], [UnitPrice], [PositionType])
-Select
-	A.[Order] As [Row_Order],
-	Substring(@Input_String_Cell_Payload, (A.[Row_Delimiter_String_Pattern_Index] + @Row_Delimiter_String_Pattern_Length), (((C.[Cell_Delimiter_String_Pattern_Index] - 1) - (A.[Row_Delimiter_String_Pattern_Index] + @Row_Delimiter_String_Pattern_Length)) + 1)) As [Lineposition],
-	Substring(@Input_String_Cell_Payload, (C.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((D.[Cell_Delimiter_String_Pattern_Index] - 1) - (C.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [AdditionalPosition],
-	Substring(@Input_String_Cell_Payload, (D.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((E.[Cell_Delimiter_String_Pattern_Index] - 1) - (D.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [PositionView],
-	Substring(@Input_String_Cell_Payload, (E.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((F.[Cell_Delimiter_String_Pattern_Index] - 1) - (E.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [MaterialNumber],
-	Substring(@Input_String_Cell_Payload, (F.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((G.[Cell_Delimiter_String_Pattern_Index] - 1) - (F.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Description],
-	Substring(@Input_String_Cell_Payload, (G.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((H.[Cell_Delimiter_String_Pattern_Index] - 1) - (G.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Quantity],
-	Substring(@Input_String_Cell_Payload, (H.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((I.[Cell_Delimiter_String_Pattern_Index] - 1) - (H.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtUnitCost],
-	Substring(@Input_String_Cell_Payload, (I.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((J.[Cell_Delimiter_String_Pattern_Index] - 1) - (I.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtUnitPrice],
-	Substring(@Input_String_Cell_Payload, (J.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((K.[Cell_Delimiter_String_Pattern_Index] - 1) - (J.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [TransferPrice],
-	Substring(@Input_String_Cell_Payload, (K.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((L.[Cell_Delimiter_String_Pattern_Index] - 1) - (K.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtNetPrice],
-	Substring(@Input_String_Cell_Payload, (L.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((M.[Cell_Delimiter_String_Pattern_Index] - 1) - (L.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [ExtNetPriceFC],
-	Substring(@Input_String_Cell_Payload, (M.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((N.[Cell_Delimiter_String_Pattern_Index] - 1) - (M.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [Discount],
-	Substring(@Input_String_Cell_Payload, (N.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((O.[Cell_Delimiter_String_Pattern_Index] - 1) - (N.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [LocalMargin],
-	Substring(@Input_String_Cell_Payload, (O.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((P.[Cell_Delimiter_String_Pattern_Index] - 1) - (O.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [NetMargin],
-	Substring(@Input_String_Cell_Payload, (P.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), (((Q.[Cell_Delimiter_String_Pattern_Index] - 1) - (P.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [UnitPrice],
-	Substring(@Input_String_Cell_Payload, (Q.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length), ((((Case When A.[Order] = @Row_Count Then @Max_Row_Delimiter_String_Pattern_Index Else B.[Row_Delimiter_String_Pattern_Index] End) - 1) - (Q.[Cell_Delimiter_String_Pattern_Index] + @Cell_Delimiter_String_Pattern_Length)) + 1)) As [PositionType]
-	--All of the start delimiter indexes have been augmented by +5, in order to deal with the cell delimiter string pattern tags, which in the example, always consist of five characters...
-	--All of the end delimiter indexes have been augmented by -1, in order to deal with the cell delimiter string pattern tags...
-From @Row_Indexes A
-Inner Join @Row_Indexes B
+	C.[Index] As [Partition],
+	A.[Order] As [Order],
+	A.[Delimiter_Type] As [Delimiter_Type],
+	(A.[Delimiter_String_Pattern_Index] + (Case When A.[Delimiter_Type] = 0 Then @Row_Delimiter_String_Pattern_Length Else @Cell_Delimiter_String_Pattern_Length End)) As [Slice_Start_Index],
+	B.[Delimiter_String_Pattern_Index] As [Slice_End_Index]
+From @Delimiter_Indexes A
+Inner Join @Delimiter_Indexes B
 	On (B.[Order] = (A.[Order] + 1))
---C.[] alias is our grid cell-intersect anchor...
-Inner Join @Cell_Indexes C
-	On (C.[Cell_Delimiter_String_Pattern_Index] > A.[Row_Delimiter_String_Pattern_Index] And C.[Cell_Delimiter_String_Pattern_Index] < B.[Row_Delimiter_String_Pattern_Index])
-Left Join @Cell_Indexes Whittle
-	On (Whittle.[Cell_Delimiter_String_Pattern_Index] < C.[Cell_Delimiter_String_Pattern_Index] And Whittle.[Cell_Delimiter_String_Pattern_Index] > A.[Row_Delimiter_String_Pattern_Index] And Whittle.[Cell_Delimiter_String_Pattern_Index] < B.[Row_Delimiter_String_Pattern_Index])
---Then we simply use a column-shift join technique to span all the cell-column intersects, for both start cell delimiter indexes, and end cell delimiter indexes (double referencing almost all indexes {apart from obviously the last cell delimiter in each row, which should only be referenced once, as it is the end of a row, and has no data after it, associated with the same row})...
-Inner Join @Cell_Indexes D
-	On (Whittle.[Order] Is Null And D.[Order] = (C.[Order] + 1))
-Inner Join @Cell_Indexes E
-	On (Whittle.[Order] Is Null And E.[Order] = (C.[Order] + 2))
-Inner Join @Cell_Indexes F
-	On (Whittle.[Order] Is Null And F.[Order] = (C.[Order] + 3))
-Inner Join @Cell_Indexes G
-	On (Whittle.[Order] Is Null And G.[Order] = (C.[Order] + 4))
-Inner Join @Cell_Indexes H
-	On (Whittle.[Order] Is Null And H.[Order] = (C.[Order] + 5))
-Inner Join @Cell_Indexes I
-	On (Whittle.[Order] Is Null And I.[Order] = (C.[Order] + 6))
-Inner Join @Cell_Indexes J
-	On (Whittle.[Order] Is Null And J.[Order] = (C.[Order] + 7))
-Inner Join @Cell_Indexes K
-	On (Whittle.[Order] Is Null And K.[Order] = (C.[Order] + 8))
-Inner Join @Cell_Indexes L
-	On (Whittle.[Order] Is Null And L.[Order] = (C.[Order] + 9))
-Inner Join @Cell_Indexes M
-	On (Whittle.[Order] Is Null And M.[Order] = (C.[Order] + 10))
-Inner Join @Cell_Indexes N
-	On (Whittle.[Order] Is Null And N.[Order] = (C.[Order] + 11))
-Inner Join @Cell_Indexes O
-	On (Whittle.[Order] Is Null And O.[Order] = (C.[Order] + 12))
-Inner Join @Cell_Indexes P
-	On (Whittle.[Order] Is Null And P.[Order] = (C.[Order] + 13))
-Inner Join @Cell_Indexes Q
-	On (Whittle.[Order] Is Null And Q.[Order] = (C.[Order] + 14))
+Inner Join @Obsidian_Index_Scaffold_Row_Count C
+	On (A.[Order] >= (((C.[Index] * @Column_Count) - @Column_Count) + 1) And A.[Order] <= (((C.[Index] * @Column_Count) - @Column_Count) + @Column_Count))
+
+Declare @Cell_Slice_Table Table ([Partition] Bigint, [Partitioned_Order] Bigint, [Order] Bigint, [Delimiter_Type] Bigint, [Cell_Data_Slice] Varchar(Max))
+Insert Into @Cell_Slice_Table ([Partition], [Partitioned_Order], [Order], [Delimiter_Type], [Cell_Data_Slice])
+Select
+	[Partition] As [Partition],
+	((([Order] - 1) % @Column_Count) + 1) As [Partitioned_Order],
+	[Order] As [Order],
+	[Delimiter_Type] As [Delimiter_Type],
+	Substring(@Input_String_Cell_Payload, [Slice_Start_Index], ([Slice_End_Index] - [Slice_Start_Index])) As [Cell_Data_Slice]
+From @Delimiter_Indexes_Partitioned
 
 --Parallel 'String-To-Grid' Output
 Select
-	*
-From @Intersector_Table
---Order By [Row_Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+	Max((Case When [Partitioned_Order] = 1 Then [Cell_Data_Slice] Else Null End)) As [Lineposition],
+	Max((Case When [Partitioned_Order] = 2 Then [Cell_Data_Slice] Else Null End)) As [AdditionalPosition],
+	Max((Case When [Partitioned_Order] = 3 Then [Cell_Data_Slice] Else Null End)) As [PositionView],
+	Max((Case When [Partitioned_Order] = 4 Then [Cell_Data_Slice] Else Null End)) As [MaterialNumber],
+	Max((Case When [Partitioned_Order] = 5 Then [Cell_Data_Slice] Else Null End)) As [Description],
+	Max((Case When [Partitioned_Order] = 6 Then [Cell_Data_Slice] Else Null End)) As [Quantity],
+	Max((Case When [Partitioned_Order] = 7 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitCost],
+	Max((Case When [Partitioned_Order] = 8 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitPrice],
+	Max((Case When [Partitioned_Order] = 9 Then [Cell_Data_Slice] Else Null End)) As [TransferPrice],
+	Max((Case When [Partitioned_Order] = 10 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPrice],
+	Max((Case When [Partitioned_Order] = 11 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPriceFC],
+	Max((Case When [Partitioned_Order] = 12 Then [Cell_Data_Slice] Else Null End)) As [Discount],
+	Max((Case When [Partitioned_Order] = 13 Then [Cell_Data_Slice] Else Null End)) As [LocalMargin],
+	Max((Case When [Partitioned_Order] = 14 Then [Cell_Data_Slice] Else Null End)) As [NetMargin],
+	Max((Case When [Partitioned_Order] = 15 Then [Cell_Data_Slice] Else Null End)) As [UnitPrice],
+	Max((Case When [Partitioned_Order] = 16 Then [Cell_Data_Slice] Else Null End)) As [PositionType]
+	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
+From @Cell_Slice_Table
+Group By [Partition]
+--Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
 
 
 --...
