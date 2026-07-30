@@ -544,10 +544,16 @@ Select
 	--Max((Case When [Partitioned_Order] = 16 Then [Cell_Data_Slice] Else Null End)) As [PositionType]
 	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
 From @Cell_Slice_Table
-Where ([Partition] % 2) = 0 --That's is, where row indexes are even...
+Where
+[Partition] >= 3
+And [Partition] <= 6
+--That's is, where row indexes are between 3 and 6, both inclusive...
 Group By [Partition]
 --Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
 
 
 --SUPER-DUPER-FAST PARALLEL IN-MEMORY-TABLES PLEASE SATYA... BY EOY!!!
 --I'll let your excellent team, work out the specifics of the 'Grid-To-String' Output algorithm, for column and row PROJECTIONS (slices)...
+
+
+--FINALLY: Obviously if you want to index columns, and therefore use index values for projection slicing, then you're going to have to go via the system tables... But my life is too short to implement this for you, without a paid mandate!
