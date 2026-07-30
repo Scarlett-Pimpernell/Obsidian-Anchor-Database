@@ -31,6 +31,7 @@ Lineposition    AdditionalPosition  PositionView    MaterialNumber  Description 
 --ALL THE ASSOCIATED SOLUTIONS AND EXTRAS
 
 
+/*
 --Serial String-To-Grid (SMALL DATA 'UNOPTIMISED!!!!!!') --> Trying, but failing to mimmick general programming language, array index-based operations, in T-SQL here... Fail!
 --SUPPOSEDLY OLD SCHOOL AND SLOW, SERIAL LOOP SOLUTION, FOR BENCHMARKING PURPOSES NOT, I REPEAT, NOT ONLY (IT WILL BE USEFUL FOR SMALL DATA USECASES {SAY LESS THAN 100,000 ROWS and LESS THAN 10 COLUMNS}, WHERE NESTED LOOPS OUTPERFORM PARALLEL COMPUTE JOINS)... THE FAST PARALLEL SOLUTIONS COME LATER ON IN THIS T-SQL SOURCECODE SCRIPT (ALTHOUGH I HAVE DONE NO LOAD TESTING, SO NO GUARANTEES, AND IT WILL ALSO DEPEND MASSIVELY ON THE COMPUTE SPECIFICATIONS OF THE HARDWARE YOU EXECUTE THE ALGORITHM ON!!!!!!!!)...
 --Benchmark Prep
@@ -306,6 +307,7 @@ Select
 	*
 From @Benchmark_Grid
 --Order By [Row_Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+*/
 
 
 --Parallel String-To-Grid (BIG DATA OPTIMISED?????????)
@@ -330,7 +332,7 @@ Declare @Cell_Delimiter_String_Pattern_Length As Bigint
 Set @Cell_Delimiter_String_Pattern_Length = Len(@Cell_Delimiter_String_Pattern)
 
 Declare @Column_Count As Bigint
-Set @Column_Count = (Sqrt((((@Benchmark_Input_String_Length - (Len(Replace(@Benchmark_Input_String, @Benchmark_Cell_Delimiter_String_Pattern, '')) - 1)) / @Benchmark_Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
+Set @Column_Count = (Sqrt((((@Input_String_Length - (Len(Replace(@Input_String, @Cell_Delimiter_String_Pattern, '')) - 1)) / @Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
 
 Declare @Row_Count As Bigint
 Set @Row_Count = (((@Input_String_Length - (Len(Replace(@Input_String, @Row_Delimiter_String_Pattern, '')) - 1)) / @Row_Delimiter_String_Pattern_Length) - 1)
@@ -461,3 +463,90 @@ Declare @Optimised_Output_String As Varchar(Max)
 Set @Optimised_Output_String = (@Optimised_Header + (Select String_Agg(([Lineposition] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [AdditionalPosition] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [PositionView] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [MaterialNumber] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Description] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Quantity] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtUnitCost] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtUnitPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [TransferPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtNetPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [ExtNetPriceFC] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [Discount] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [LocalMargin] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [NetMargin] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [UnitPrice] + @Optimised_Grid_To_String_Cell_Delimiter_String_Pattern + [PositionType] + @Optimised_Grid_To_String_Row_Delimiter_String_Pattern), '') Within Group (Order By [Order] Asc) As [Output_String] From @Optimised_Input_Table))
 
 Select @Optimised_Output_String
+
+
+--What is more... I believe that this new structured data Compound Object string format is so much superior to existing approaches, because it is very simple to use, and yet very fast to compute, due to massive parallelism that is leveraged while interacting with it...
+--For example, if you instead of returning all the data from the Compound String Object, just want to bring back one row, or one column, this can also be done in parallel...
+--Likewise, you can retrieve combinations of specific rows and columns in super fast parallel as well, which is probably the most powerful aspect of this whole approach...
+--(If this Obisidan Compound Object String Wrapper Unwrapper paradigm, isn't better than Apache Arrow, then I don't know what is!!!)
+
+
+--PROJECTION 0001. Slicing Out A Single Column In Parallel...
+--Parallel 'String-To-Grid' Output
+Select
+	/*
+	Max((Case When [Partitioned_Order] = 1 Then [Cell_Data_Slice] Else Null End)) As [Lineposition],
+	Max((Case When [Partitioned_Order] = 2 Then [Cell_Data_Slice] Else Null End)) As [AdditionalPosition],
+	Max((Case When [Partitioned_Order] = 3 Then [Cell_Data_Slice] Else Null End)) As [PositionView],
+	Max((Case When [Partitioned_Order] = 4 Then [Cell_Data_Slice] Else Null End)) As [MaterialNumber],
+	*/
+	Max((Case When [Partitioned_Order] = 5 Then [Cell_Data_Slice] Else Null End)) As [Description]/*,
+	Max((Case When [Partitioned_Order] = 6 Then [Cell_Data_Slice] Else Null End)) As [Quantity],
+	Max((Case When [Partitioned_Order] = 7 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitCost],
+	Max((Case When [Partitioned_Order] = 8 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitPrice],
+	Max((Case When [Partitioned_Order] = 9 Then [Cell_Data_Slice] Else Null End)) As [TransferPrice],
+	Max((Case When [Partitioned_Order] = 10 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPrice],
+	Max((Case When [Partitioned_Order] = 11 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPriceFC],
+	Max((Case When [Partitioned_Order] = 12 Then [Cell_Data_Slice] Else Null End)) As [Discount],
+	Max((Case When [Partitioned_Order] = 13 Then [Cell_Data_Slice] Else Null End)) As [LocalMargin],
+	Max((Case When [Partitioned_Order] = 14 Then [Cell_Data_Slice] Else Null End)) As [NetMargin],
+	Max((Case When [Partitioned_Order] = 15 Then [Cell_Data_Slice] Else Null End)) As [UnitPrice],
+	Max((Case When [Partitioned_Order] = 16 Then [Cell_Data_Slice] Else Null End)) As [PositionType]
+	*/
+	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
+From @Cell_Slice_Table
+Group By [Partition]
+--Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+
+--PROJECTION 0002. Slicing Out A Single Row In Parallel...
+--Parallel 'String-To-Grid' Output
+Select
+	Max((Case When [Partitioned_Order] = 1 Then [Cell_Data_Slice] Else Null End)) As [Lineposition],
+	Max((Case When [Partitioned_Order] = 2 Then [Cell_Data_Slice] Else Null End)) As [AdditionalPosition],
+	Max((Case When [Partitioned_Order] = 3 Then [Cell_Data_Slice] Else Null End)) As [PositionView],
+	Max((Case When [Partitioned_Order] = 4 Then [Cell_Data_Slice] Else Null End)) As [MaterialNumber],
+	Max((Case When [Partitioned_Order] = 5 Then [Cell_Data_Slice] Else Null End)) As [Description],
+	Max((Case When [Partitioned_Order] = 6 Then [Cell_Data_Slice] Else Null End)) As [Quantity],
+	Max((Case When [Partitioned_Order] = 7 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitCost],
+	Max((Case When [Partitioned_Order] = 8 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitPrice],
+	Max((Case When [Partitioned_Order] = 9 Then [Cell_Data_Slice] Else Null End)) As [TransferPrice],
+	Max((Case When [Partitioned_Order] = 10 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPrice],
+	Max((Case When [Partitioned_Order] = 11 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPriceFC],
+	Max((Case When [Partitioned_Order] = 12 Then [Cell_Data_Slice] Else Null End)) As [Discount],
+	Max((Case When [Partitioned_Order] = 13 Then [Cell_Data_Slice] Else Null End)) As [LocalMargin],
+	Max((Case When [Partitioned_Order] = 14 Then [Cell_Data_Slice] Else Null End)) As [NetMargin],
+	Max((Case When [Partitioned_Order] = 15 Then [Cell_Data_Slice] Else Null End)) As [UnitPrice],
+	Max((Case When [Partitioned_Order] = 16 Then [Cell_Data_Slice] Else Null End)) As [PositionType]
+	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
+From @Cell_Slice_Table
+Where [Partition] = 8 --That's row index 8...
+Group By [Partition]
+--Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+
+--PROJECTION 0003. Slicing Out A Few Specific Rows and Columns In Parallel...
+--Parallel 'String-To-Grid' Output
+Select
+	--Max((Case When [Partitioned_Order] = 1 Then [Cell_Data_Slice] Else Null End)) As [Lineposition],
+	Max((Case When [Partitioned_Order] = 2 Then [Cell_Data_Slice] Else Null End)) As [AdditionalPosition],
+	Max((Case When [Partitioned_Order] = 3 Then [Cell_Data_Slice] Else Null End)) As [PositionView],
+	--Max((Case When [Partitioned_Order] = 4 Then [Cell_Data_Slice] Else Null End)) As [MaterialNumber],
+	Max((Case When [Partitioned_Order] = 5 Then [Cell_Data_Slice] Else Null End)) As [Description],
+	Max((Case When [Partitioned_Order] = 6 Then [Cell_Data_Slice] Else Null End)) As [Quantity],
+	--Max((Case When [Partitioned_Order] = 7 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitCost],
+	--Max((Case When [Partitioned_Order] = 8 Then [Cell_Data_Slice] Else Null End)) As [ExtUnitPrice],
+	--Max((Case When [Partitioned_Order] = 9 Then [Cell_Data_Slice] Else Null End)) As [TransferPrice],
+	--Max((Case When [Partitioned_Order] = 10 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPrice],
+	--Max((Case When [Partitioned_Order] = 11 Then [Cell_Data_Slice] Else Null End)) As [ExtNetPriceFC],
+	Max((Case When [Partitioned_Order] = 12 Then [Cell_Data_Slice] Else Null End)) As [Discount],
+	Max((Case When [Partitioned_Order] = 13 Then [Cell_Data_Slice] Else Null End)) As [LocalMargin],
+	Max((Case When [Partitioned_Order] = 14 Then [Cell_Data_Slice] Else Null End)) As [NetMargin]--,
+	--Max((Case When [Partitioned_Order] = 15 Then [Cell_Data_Slice] Else Null End)) As [UnitPrice],
+	--Max((Case When [Partitioned_Order] = 16 Then [Cell_Data_Slice] Else Null End)) As [PositionType]
+	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
+From @Cell_Slice_Table
+Group By [Partition]
+--Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
+
+
+--SUPER-DUPER-FAST PARALLEL IN-MEMORY-TABLES PLEASE SATYA... BY EOY!!!
+--I'll let your excellent team, work out the specifics of the 'Grid-To-String' Output algorithm, for column and row PROJECTIONS (slices)...
