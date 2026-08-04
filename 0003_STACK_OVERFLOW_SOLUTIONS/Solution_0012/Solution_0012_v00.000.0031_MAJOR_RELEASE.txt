@@ -4,7 +4,7 @@
 --Before feeding data into the following algorithms, you must make sure that it does not contain row or column/cell delimiter string patterns, within the actual data values of interest (that is, within useable data values that are not intended for metadata structural purposes)...
 --If you need customisable column headers, simply turn the algorithms into stored procedures, and feed in whatever is necessary, as well as a table containing the column header label order indexes in the first column, and in the second column the actual text labels of the column headers..
 --If you need to have dynamic numbers of columns, you can take the existing T-SQL sourcecode, and manually amend as per requirements, or you can get real fancy and use dynamic T-SQL execution to implement a mechanism to specify a variable number of columns... If you don't know how to do this, please feel free to get in touch, and I will implement it for you, for almost-free!!!
---You're probably also going to want to add validation to make sure that every row has the same number of cells (@...Cell_Delimiter_String_Patterns)...
+--You're probably also going to want to add validation to make sure that every row has the same number of cells (@...Cell_Delimiter_String_Patterns)... UPDATE --> I have now implemented a version of this validation step. Please see within the sourcecode below, for the parallel version of the algorithm...
 --Also, I have not been able to load test at large data volumes, because my laptop is simply incapable of handling them... I'm also currently using a restricted free version of SQL Server as well... You may have better luck on a 'Big Beast Rig'... As as result of all this, please do not necessarily expect the Parallel String-To-Grid algorithm to be necessarily quicker than the Serial String-To-Grid, under any data volume size contexts... Just saying...
 --Please only use these algorithms, if you have tight control over the cell data 'payloads' and actual metadata structure 'launch vehicles', because they are all susceptible to low-threshold data corruption, if handled carelessly. If you don't have either direct or trustworthy oversight of data provenance, then I recommend you avoid these approaches altogether!
 --If your database has appropriate functions and features, you could even add another delimiter string pattern tag (other than <COL> and <ROW>... For example [TAB]), in order to group data from multiple tables into the same string, and back again to the multiple tables within the same or another database (Now I think of it, this could be very useful for things like backing up partial parts of a given database, in a simple and efficient format).
@@ -34,6 +34,7 @@ Lineposition    AdditionalPosition  PositionView    MaterialNumber  Description 
 
 
 /*
+--This particular serial version of the Obsidian Compound Object String (OCOS) unwrapping algorithm has been commented out, because it lacks executional integrity, and so should never be used in production... It can though be used in order to design a version of the algorithm which has executional integrity, where exploding system behaviour, in this case the need to filter more and more rows of data for every loop iteration, can be eliminated... You would need to use something akin to the general programming feature for direct array index-based operations, that immediately seek to the exact location in memory where any particular call datapoint is stored... I think that this is impossible to do in SQL Server at the moment!... But I have heard of some SQL databases that include row index ID features, that may be useable here, in order to implement the same algorithm with executional integrity, if only you could simply increment the row index ID by exactly one position for each loop iteration... Anyways, I recommend you just use the parallel version, which is included after/below this commented out version...
 --Serial String-To-Grid (SMALL DATA 'UNOPTIMISED!!!!!!') --> Trying, but failing to mimmick general programming language, array index-based operations, in T-SQL here... Fail!
 --SUPPOSEDLY OLD SCHOOL AND SLOW, SERIAL LOOP SOLUTION, FOR BENCHMARKING PURPOSES NOT, I REPEAT, NOT ONLY (IT WILL BE USEFUL FOR SMALL DATA USECASES {SAY LESS THAN 100,000 ROWS and LESS THAN 10 COLUMNS}, WHERE NESTED LOOPS OUTPERFORM PARALLEL COMPUTE JOINS)... THE FAST PARALLEL SOLUTIONS COME LATER ON IN THIS T-SQL SOURCECODE SCRIPT (ALTHOUGH I HAVE DONE NO LOAD TESTING, SO NO GUARANTEES, AND IT WILL ALSO DEPEND MASSIVELY ON THE COMPUTE SPECIFICATIONS OF THE HARDWARE YOU EXECUTE THE ALGORITHM ON!!!!!!!!)...
 --Benchmark Prep
@@ -385,6 +386,21 @@ From @Obsidian_Index_Scaffold_Input_String
 Where
 Substring(@Input_String_Cell_Payload, [Index], @Row_Delimiter_String_Pattern_Length) = @Row_Delimiter_String_Pattern
 Or Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern_Length) = @Cell_Delimiter_String_Pattern
+
+
+--VALIDATION STAGE
+--VALIDATION STAGE
+--VALIDATION STAGE
+--We check here, to make sure that all rows from the OCOS have the same number of columns... This may not be how you want to design your OCOS payload, so amend as desired, as it is still necessary to somehow validate any unwrapped data before using it, no matter the intended metadata structure of rows and columns......
+If (Select Sum((([Order] + (@Column_Count - 1)) % @Column_Count)) From @Delimiter_Indexes Where [Delimiter_Type] = 0) > 0
+	Begin
+		Select 'The metadata structure of the submitted Obsidian Compound Object String (OCOS) is in some way likely corrupt... The algorithm execution engine has detected mismatching column counts, across different rows!... As a result, execution is now terminating early...'
+		Return
+	End
+--VALIDATION STAGE
+--VALIDATION STAGE
+--VALIDATION STAGE
+
 
 Declare @Delimiter_Indexes_Partitioned Table ([Partition] Bigint, [Order] Bigint, [Delimiter_Type] Bigint, [Slice_Start_Index] Bigint,[Slice_End_Index] Bigint)
 Insert Into @Delimiter_Indexes_Partitioned ([Partition], [Order], [Delimiter_Type], [Slice_Start_Index],[Slice_End_Index])
