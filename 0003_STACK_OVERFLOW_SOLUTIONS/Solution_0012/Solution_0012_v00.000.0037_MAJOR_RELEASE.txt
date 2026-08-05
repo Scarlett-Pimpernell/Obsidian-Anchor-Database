@@ -11,6 +11,7 @@
 --I haven't bothered doing this, as I deem it to be eminently already doable for other people, and also I would get no new intellectual stimulus from the effort... But, I would recommend that at some point, someone should imporove the Paralell String-To-Grid-To-String approaches used here, by fusing in the use of already uploaded Obsidian Partition Map algorithmic technology from my GitHub website (At least to check if you can even further speed up computation execution, or increase compatible data volume size limits... If you are successful here, please make sure you do the clever thing, and only store one copy of any common stem string pattern for each partition, and then you would simply store this in a variable which could be joined to all rows on a partition by parition basis, in parallel, when unwrapping from string to grid. I think I would call this the Obsidian Parquet format (On a related topic, also, there are other things for each partition that could be stored, such as basic statistics {although this may be unpalatable for purists who simply want quickest performance}).
 --Please be aware, I suppose, that you could store a header row for other useful associated data, such as column data types, or maybe even basic things like business logic variables etc_...
 --BTW, this data storage and transmission OCOS format, is almost certainly always going to be more size and speed efficient than the same data stored in JSON data format... The main reason, is that with OCOS, we don't keep adding unnecessary labels for each data field, but simply state each column name, once at the left of the payload string, in one of the  headers (obviously this is expecting symmetric data value structure, which should nearly always be the case when working with table data in a SQL-engine or similar, for example python data frames in Pandas or NumPy).
+--I feel it pertinent for me to draw your attention to the following here... That it would be right to prefer to use a genric data type like Varchar(Max) for column definitions during all wrap and unwrap transformations, because it means that you can simply ingest most if not any data, even after underlying data model changes in other integrated systems and apps, which could othereise cause clashing data types which would be incompatible with your database and therefore cause a pipeline errors. With Varchar(Max) this problem should be eliminated (almost entirely), as it cam store any combnstion of ASCII characters, which should cover even most custom data types... Please simply remember like I have said, to Cast() or Convert() before using in critical downstream transformations after unwrapping...
 --Finally, I would say that the ideal uses for these compound data format algorithms, are: 1. Long term storage; 2. Infrequently accessed storage; 3. Transfer of data between apps or systems; and 4. Transfer of data across private local networks, all the way up to public global networks.
 --(Just as a lesser note, I have replaced all instances of the Stackoverflow question <Header> string pattern with <HEADER>, all instances of the Stackoverflow question <TAB> string pattern with <COL>, and all instances of the Stackoverflow question <RET> string pattern with <ROW>...)
 --(As another lesser note, wherever you see the use of Row_Number() functions in this T-SQL script, please instead use the Obsidian sort algorithm, where possible...
@@ -335,17 +336,53 @@ Set @Row_Delimiter_String_Pattern_Length = Len(@Row_Delimiter_String_Pattern)
 Declare @Cell_Delimiter_String_Pattern_Length As Bigint
 Set @Cell_Delimiter_String_Pattern_Length = Len(@Cell_Delimiter_String_Pattern)
 
-Declare @Column_Count As Bigint
-Set @Column_Count = (Sqrt((((@Input_String_Length - (Len(Replace(@Input_String, @Cell_Delimiter_String_Pattern, '')) - 1)) / @Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
-
-Declare @Row_Count As Bigint
-Set @Row_Count = (((@Input_String_Length - (Len(Replace(@Input_String, @Row_Delimiter_String_Pattern, '')) - 1)) / @Row_Delimiter_String_Pattern_Length) - 1)
-
 Declare @Input_String_Cell_Payload As Varchar(Max)
 Set @Input_String_Cell_Payload = Substring(@Input_String, Patindex(('%' + @Row_Delimiter_String_Pattern + '%'), @Input_String), ((Len(@Input_String) - Patindex(('%' + @Row_Delimiter_String_Pattern + '%'), @Input_String)) + 1))
 
 Declare @Input_String_Cell_Payload_Length As Bigint
 Set @Input_String_Cell_Payload_Length = Len(@Input_String_Cell_Payload)
+
+
+--VALIDATION STAGE
+--VALIDATION STAGE
+--VALIDATION STAGE
+
+--0001: Catching empty or null data payloads
+If @Input_String_Length < 1
+	Begin
+		Select 'The parquet input string is empty or null!... As a result, execution is now terminating early...'
+		Return
+	End
+If Patindex(('%' + @Row_Delimiter_String_Pattern + '%'), @Input_String) < 1
+	Begin
+		Select 'The parquet input string data payload is empty or null!... As a result, execution is now terminating early...'
+		Return
+	End
+
+--0002: Validate that the correct rows metadata structure exists...
+--Less than two row delimiter patterns in the raw input string
+If (@Input_String_Cell_Payload_Length - Len(Replace(@Input_String_Cell_Payload, @Row_Delimiter_String_Pattern, ''))) <= @Row_Delimiter_String_Pattern_Length
+	Begin
+		Select 'The table data payload of your parquet string is does not have the minimum required number of row delimiter string patterns in it! That is without the curved brackets --> ( ' + @Row_Delimiter_String_Pattern + ' )... As a result, execution is now terminating early...'
+		Return
+	End
+--Non row delimiter termination pattern
+If Right(@Input_String_Cell_Payload, @Row_Delimiter_String_Pattern_Length) <> @Row_Delimiter_String_Pattern
+	Begin
+		Select 'The table data payload of your parquet string does not end with a suffix which is the requried row delimiter string pattern! That is without the curved brackets --> ( ' + @Row_Delimiter_String_Pattern + ' )... As a result, execution is now terminating early...'
+		Return
+	End
+
+--VALIDATION STAGE
+--VALIDATION STAGE
+--VALIDATION STAGE
+
+	
+Declare @Column_Count As Bigint
+Set @Column_Count = (Sqrt((((@Input_String_Length - (Len(Replace(@Input_String, @Cell_Delimiter_String_Pattern, '')) - 1)) / @Cell_Delimiter_String_Pattern_Length) - 1)) + 4)
+
+Declare @Row_Count As Bigint
+Set @Row_Count = (((@Input_String_Length - (Len(Replace(@Input_String, @Row_Delimiter_String_Pattern, '')) - 1)) / @Row_Delimiter_String_Pattern_Length) - 1)
 
 
 --The Critical Transformations
@@ -392,18 +429,23 @@ Or Substring(@Input_String_Cell_Payload, [Index], @Cell_Delimiter_String_Pattern
 --VALIDATION STAGE
 --VALIDATION STAGE
 --VALIDATION STAGE
+
+
+--0001: Validate that the correct column metadata structure exists...
 --We check here, to make sure that all rows from the OCOS have the same number of columns... This may not be how you want to design your OCOS payload, so amend as desired, as it is still necessary to somehow validate any unwrapped data before using it, no matter the intended metadata structure of rows and columns......
-If (Select Sum((([Order] + (@Column_Count - 1)) % @Column_Count)) From @Delimiter_Indexes Where [Delimiter_Type] = 0) > 0
+--We simultaneously check for multiple length (column count) rows... So if the number of columns should be 16, then we need to detect when there are multiples of that number of columns in a given row, as this is a clear data structure corruption, if working with typical SQL tables, which are by nature almost always symmetric in structure (that is, every row has a cell for every column etc_)...
+If 
+(
+Select
+	Count(1)
+From @Delimiter_Indexes A
+Inner Join @Delimiter_Indexes B
+On (A.[Delimiter_Type] = 0 And B.[Delimiter_Type] = 1 And B.[Order] = (A.[Order] + @Column_Count))
+) > 0
 	Begin
 		Select 'The metadata structure of the submitted Obsidian Compound Object String (OCOS) is in some way likely corrupt... The algorithm execution engine has detected mismatching column counts, across different rows!... As a result, execution is now terminating early...'
 		Return
 	End
-
---ALSO NEED TO CATCH:
---Zero length payload string
---Less than two row delimiter patterns in the raw input string
---Non row delimiter termination pattern
---Multiple length (column count) rows... So if the number of columns should be 16, then we need to detect when there are multiples of that number of columns in a given row, as this is a clear data structure corruption, if working with typical SQL tables, which are by nature almost always symmetric in structure (that is, every row has a cell for every column etc_)...
 
 --VALIDATION STAGE
 --VALIDATION STAGE
@@ -497,7 +539,6 @@ Select @Optimised_Output_String
 --Likewise, you can retrieve combinations of specific rows and columns in super fast parallel as well, which is probably the most powerful aspect of this whole approach...
 --(If this Obisidan Compound Object String Wrapper Unwrapper paradigm, isn't better than Apache Arrow, then I don't know what is!!!)
 
-
 --PROJECTION 0001. Slicing Out A Single Column In Parallel...
 --Parallel 'String-To-Grid' Output
 Select
@@ -548,7 +589,7 @@ Select
 	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
 	--If implementing these Group By column reduce Max() aggregate functions in a general programming language, then please use array index-based operations, instead of this set-based Max() aggregate function approach... I say this, because the array index-based operations, should be mich quicker to compute, it's just that we don't have access to them in T-SQL at the moment... The reason I believe this compute speed differential, is because with array index-based operations, you should be able to directly return the one value you need per column, from the underlying input table (@Cell_Slice_Table) data, without executing any sorting algorithm, which is necessary for Max() aggregate functions...
 From @Cell_Slice_Table
-Where [Partition] = 8 --That's row index 8...
+Where [Partition] = 8 --That's row index 8... IF YOU ARE IMPLEMENTING THE MORE COMPUTE EFFICIENT AND SPEEDY SHREDDING APPROACH, SIMPLY DELETE THIS LINE OF SOURCECODE, AS THE FILTERING SHOULD BE HANDLED BEFORE THIS TRANSFORMATION, IN THE ACTUAL UPSTREAM SOURCE TABLES... IF YOU DON'T DELETE THIS LINE OF SOURCECODE WHEN IMPLEMENTING SHREDDING INSTEAD OF PROJECTION, THEN THERE WILL BE A CLASH WHERE THE PROJECTIONS AND SHREDS DON'T ALIGN AND SO YOU WILL LIKELY GET UNWANTED RESULTS BEHAVIOUR FROM YOUR ALGORITHM...
 Group By [Partition]
 --Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
 
@@ -574,16 +615,32 @@ Select
 	--Nota Bene... I have simply set all column data types to Varchar(Max)... It is up to you to change them as you particularly require... You may also therefore need to add some Cast() or Convert() functions to the subsequent column value assignations...
 	--If implementing these Group By column reduce Max() aggregate functions in a general programming language, then please use array index-based operations, instead of this set-based Max() aggregate function approach... I say this, because the array index-based operations, should be mich quicker to compute, it's just that we don't have access to them in T-SQL at the moment... The reason I believe this compute speed differential, is because with array index-based operations, you should be able to directly return the one value you need per column, from the underlying input table (@Cell_Slice_Table) data, without executing any sorting algorithm, which is necessary for Max() aggregate functions...
 From @Cell_Slice_Table
-Where
-[Partition] >= 3
-And [Partition] <= 6
+Where -- IF YOU ARE IMPLEMENTING THE MORE COMPUTE EFFICIENT AND SPEEDY SHREDDING APPROACH, SIMPLY DELETE THIS LINE OF SOURCECODE, AS THE FILTERING SHOULD BE HANDLED BEFORE THIS TRANSFORMATION, IN THE ACTUAL UPSTREAM SOURCE TABLES... IF YOU DON'T DELETE THIS LINE OF SOURCECODE WHEN IMPLEMENTING SHREDDING INSTEAD OF PROJECTION, THEN THERE WILL BE A CLASH WHERE THE PROJECTIONS AND SHREDS DON'T ALIGN AND SO YOU WILL LIKELY GET UNWANTED RESULTS BEHAVIOUR FROM YOUR ALGORITHM...
+[Partition] >= 3 --IF YOU ARE IMPLEMENTING THE MORE COMPUTE EFFICIENT AND SPEEDY SHREDDING APPROACH, SIMPLY DELETE THIS LINE OF SOURCECODE, AS THE FILTERING SHOULD BE HANDLED BEFORE THIS TRANSFORMATION, IN THE ACTUAL UPSTREAM SOURCE TABLES... IF YOU DON'T DELETE THIS LINE OF SOURCECODE WHEN IMPLEMENTING SHREDDING INSTEAD OF PROJECTION, THEN THERE WILL BE A CLASH WHERE THE PROJECTIONS AND SHREDS DON'T ALIGN AND SO YOU WILL LIKELY GET UNWANTED RESULTS BEHAVIOUR FROM YOUR ALGORITHM...
+And [Partition] <= 6 -- IF YOU ARE IMPLEMENTING THE MORE COMPUTE EFFICIENT AND SPEEDY SHREDDING APPROACH, SIMPLY DELETE THIS LINE OF SOURCECODE, AS THE FILTERING SHOULD BE HANDLED BEFORE THIS TRANSFORMATION, IN THE ACTUAL UPSTREAM SOURCE TABLES... IF YOU DON'T DELETE THIS LINE OF SOURCECODE WHEN IMPLEMENTING SHREDDING INSTEAD OF PROJECTION, THEN THERE WILL BE A CLASH WHERE THE PROJECTIONS AND SHREDS DON'T ALIGN AND SO YOU WILL LIKELY GET UNWANTED RESULTS BEHAVIOUR FROM YOUR ALGORITHM...
 --That's is, where row indexes are between 3 and 6, both inclusive...
 Group By [Partition]
 --Order By [Partition] Asc, [Order] Asc --Unnecessary Order By clause... But useful for testing purposes...
 
 
+--FINAL NOTES:
 --SUPER-DUPER-FAST PARALLEL IN-MEMORY-TABLES PLEASE SATYA... BY EOY!!!
 --I'll let your excellent team, work out the specifics of the 'Grid-To-String' Output algorithm, for column and row PROJECTIONS (slices)...
-
-
 --FINALLY: Obviously if you want to index columns, and therefore use index values for projection slicing, then you're going to have to join the system table (Which contains a mapping from column name to column index), and ask Microsoft for some new functionality, which allows you to filter table outputs by column index, as per the join mentioned here... But my life is too short to implement this for you, without a paid mandate!
+
+--Pssst... You can actually significantly improve algorithm execution speed, by instead of using projections in order to carry out filtering, using 'Shredding' techniques directly on your upstream data... Please see the below sourcecode... It can be readily be used in place of the existing standard table transformation already in the sourcecode above if you like... You would just have to replace the particular codeblock, and change maybe at least one table object reference in the following sourcecode after it, to the new table name...
+/*
+Declare @Delimiter_Indexes_Partitioned_and_Row_Shredded Table ([Partition] Bigint, [Order] Bigint, [Delimiter_Type] Bigint, [Slice_Start_Index] Bigint,[Slice_End_Index] Bigint)
+Insert Into @Delimiter_Indexes_Partitioned_and_Row_Shredded ([Partition], [Order], [Delimiter_Type], [Slice_Start_Index],[Slice_End_Index])
+Select
+	C.[Index] As [Partition],
+	A.[Order] As [Order],
+	A.[Delimiter_Type] As [Delimiter_Type],
+	(A.[Delimiter_String_Pattern_Index] + (Case When A.[Delimiter_Type] = 0 Then @Row_Delimiter_String_Pattern_Length Else @Cell_Delimiter_String_Pattern_Length End)) As [Slice_Start_Index],
+	B.[Delimiter_String_Pattern_Index] As [Slice_End_Index]
+From @Delimiter_Indexes A
+Inner Join @Delimiter_Indexes B
+	On (/*Place all you shredding commands here... For example, to shred the input string for only rows 3 to 5 of your input data in OCOS parquet format, you would use this pair of predicates (Indeed you could actually use any predicate logic in order to shred your rows, but this seems the simplest example here) --> A.[Order] > ((/*Edit this Bigint value for the lower row index bound-->>*/3/*<<--*/ - 1) * @Column_Count) And A.[Order] <= (/*Edit this Bigint value for the upper row index bound-->>*/5/*<<--*/ * @Column_Count) And --> You need to do this shredding in the join in order to achieve maximum speed gains!!!... A subsequent Where clause will also work, but will technically be much slower...*/ B.[Order] = (A.[Order] + 1)) --By the way, this is quite advanced T-SQL at this point, so don't worry if you can't get it to work properly... Just ask someone with more experience. It shouldn't be the case that this algorithm and shredding transformation is so complex, that no one in your organisation will be able to implement it properly... Hopefully the Microsoft team will bake into the core product eventually, because from what I hear, the combination of Obsidian Compound Object String (OCOS) format and Shredding techniques, has comparable performance to native structured SQL Server table features, when implemented properly, plus you get far more simplicity to use, and flexibility to customise... All in all a very big win IMO!
+Inner Join @Obsidian_Index_Scaffold_Row_Count C
+	On (A.[Order] >= (((C.[Index] * @Column_Count) - @Column_Count) + 1) And A.[Order] <= (((C.[Index] * @Column_Count) - @Column_Count) + @Column_Count))
+*/
