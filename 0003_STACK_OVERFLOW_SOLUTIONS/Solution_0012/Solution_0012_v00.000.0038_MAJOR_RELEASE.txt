@@ -626,7 +626,7 @@ Group By [Partition]
 --FINAL NOTES:
 --SUPER-DUPER-FAST PARALLEL IN-MEMORY-TABLES PLEASE SATYA... BY EOY!!!
 --I'll let your excellent team, work out the specifics of the 'Grid-To-String' Output algorithm, for column and row PROJECTIONS (slices)...
---FINALLY: Obviously if you want to index columns, and therefore use index values for projection slicing, then you're going to have to join the system table (Which contains a mapping from column name to column index), and ask Microsoft for some new functionality, which allows you to filter table outputs by column index, as per the join mentioned here... But my life is too short to implement this for you, without a paid mandate!
+--FINALLY???: Obviously if you want to index columns, and therefore use index values for projection slicing, then you're going to have to join the system table (Which contains a mapping from column name to column index), and ask Microsoft for some new functionality, which allows you to filter table outputs by column index, as per the join mentioned here... But my life is too short to implement this for you, without a paid mandate!
 
 --Pssst... You can actually significantly improve algorithm execution speed, by instead of using projections in order to carry out filtering, using 'Shredding' techniques directly on your upstream data... Please see the below sourcecode... It can be readily be used in place of the existing standard table transformation already in the sourcecode above if you like... You would just have to replace the particular codeblock, and change maybe at least one table object reference in the following sourcecode after it, to the new table name...
 /*
@@ -644,3 +644,8 @@ Inner Join @Delimiter_Indexes B
 Inner Join @Obsidian_Index_Scaffold_Row_Count C
 	On (A.[Order] >= (((C.[Index] * @Column_Count) - @Column_Count) + 1) And A.[Order] <= (((C.[Index] * @Column_Count) - @Column_Count) + @Column_Count))
 */
+
+
+--NO SERIOUSLY, AND VERY IMPORTANTLY... FINALLY, FINALLY!!!
+--SOME HIGH SCIENCE INDEED... ONLY REALLY FOR THE MASTERS OF SQL...
+--If you want to retrieve multiple shreds of unwrapped data from an Obsidian (Parquet) Compound Object String, then simply Union All to append as many shred ranges as you need... I call this 'The Shredder'... But beware that there is a trade-off involved. At some point, as you increase: 1. Shred Count; and, 2. Row Coverage Percentage; within The Shredder, via multiple Union Alls, you believe you will start to get diminishing returns, in comparison to simply using a single projection, with multiple where clauses applied to all the data at once. At some point, it is likely that shred count will get so high, that it causes a detriment, and therefore it would be better to simply use a projection. This threshold may be as low as when more than 50% of data in the overall Obsidian parquet string is being accessed, with more than merely 'a handful' of shreds... Obviously you would need to do some automated analysis, in order to optimise for the 'sweet spot' between these two metrics, and whether for a particular execution, the SQL engine should automatically choose Shred or choose Project, as the utilised approach to read data from storage (which will hopefully have been transferred from hard drive into RAM by this point {which BTW, will also likely affect whether the SQL engine should Shred or Project, given the coverage % and shred count metrics})... Please do let me know how progress goes in achieving this level of SQL Mastery, with reliability and efficiency... I'm intrigued!
