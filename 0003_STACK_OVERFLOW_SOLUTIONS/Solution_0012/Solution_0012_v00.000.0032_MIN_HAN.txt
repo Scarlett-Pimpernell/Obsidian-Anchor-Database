@@ -1,4 +1,4 @@
---Summary Comment: This T-SQL script contains algorithms that can be used to design a very efficient storage space, and network transmission, string data format, for table/matrix/grid data structures... The Obsidian Compound Object String data format, is ultimately, a very size efficient storage option. The downside is that it would typically lead to more compute demand when later used (due to the need to unwrap the string into a grid), and as a direct consequence, is less suited to latency sensitive usecases... Obviously wrapping would also carry compute-latency penalties.
+--Summary Comment: This T-SQL script contains algorithms that can be used to design a very efficient storage space, and network transmission, string data format, for table/matrix/grid data structures... The Obsidian Compound Object String (OCOS) data format, is ultimately, a very size efficient storage option. The downside is that it would typically lead to more compute demand when later used (due to the need to unwrap the string into a grid), and as a direct consequence, is less suited to latency sensitive usecases... Obviously wrapping would also carry compute-latency penalties.
 
 --Nota Benes:
 --Before feeding data into the following algorithms, you must make sure that it does not contain row or column/cell delimiter string patterns, within the actual data values of interest (that is, within useable data values that are not intended for metadata structural purposes)...
@@ -10,6 +10,7 @@
 --If your database has appropriate functions and features, you could even add another delimiter string pattern tag (other than <COL> and <ROW>... For example [TAB]), in order to group data from multiple tables into the same string, and back again to the multiple tables within the same or another database (Now I think of it, this could be very useful for things like backing up partial parts of a given database, in a simple and efficient format).
 --I haven't bothered doing this, as I deem it to be eminently already doable for other people, and also I would get no new intellectual stimulus from the effort... But, I would recommend that at some point, someone should imporove the Paralell String-To-Grid-To-String approaches used here, by fusing in the use of already uploaded Obsidian Partition Map algorithmic technology from my GitHub website (At least to check if you can even further speed up computation execution, or increase compatible data volume size limits... If you are successful here, please make sure you do the clever thing, and only store one copy of any common stem string pattern for each partition, and then you would simply store this in a variable which could be joined to all rows on a partition by parition basis, in parallel, when unwrapping from string to grid. I think I would call this the Obsidian Parquet format (On a related topic, also, there are other things for each partition that could be stored, such as basic statistics {although this may be unpalatable for purists who simply want quickest performance}).
 --Please be aware, I suppose, that you could store a header row for other useful associated data, such as column data types, or maybe even basic things like business logic variables etc_...
+--BTW, this data storage and transmission OCOS format, is almost certainly always going to be more size and speed efficient than the same data stored in JSON data format... The main reason, is that with OCOS, we don't keep adding unnecessary labels for each data field, but simply state each column name, once at the left of the payload string, in one of the  headers (obviously this is expecting symmetric data value structure, which should nearly always be the case when working with table data in a SQL-engine or similar, for example python data frames in Pandas or NumPy).
 --Finally, I would say that the ideal uses for these compound data format algorithms, are: 1. Long term storage; 2. Infrequently accessed storage; 3. Transfer of data between apps or systems; and 4. Transfer of data across private local networks, all the way up to public global networks.
 --(Just as a lesser note, I have replaced all instances of the Stackoverflow question <Header> string pattern with <HEADER>, all instances of the Stackoverflow question <TAB> string pattern with <COL>, and all instances of the Stackoverflow question <RET> string pattern with <ROW>...)
 --(As another lesser note, wherever you see the use of Row_Number() functions in this T-SQL script, please instead use the Obsidian sort algorithm, where possible...
@@ -397,6 +398,12 @@ If (Select Sum((([Order] + (@Column_Count - 1)) % @Column_Count)) From @Delimite
 		Select 'The metadata structure of the submitted Obsidian Compound Object String (OCOS) is in some way likely corrupt... The algorithm execution engine has detected mismatching column counts, across different rows!... As a result, execution is now terminating early...'
 		Return
 	End
+
+--ALSO NEED TO CATCH:
+--Non zero length string
+--Non row delimiter termination pattern
+--Multiple length (column count) rows
+
 --VALIDATION STAGE
 --VALIDATION STAGE
 --VALIDATION STAGE
