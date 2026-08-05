@@ -400,9 +400,10 @@ If (Select Sum((([Order] + (@Column_Count - 1)) % @Column_Count)) From @Delimite
 	End
 
 --ALSO NEED TO CATCH:
---Non zero length string
+--Zero length payload string
+--Less than two row delimiter patterns in the raw input string
 --Non row delimiter termination pattern
---Multiple length (column count) rows
+--Multiple length (column count) rows... So if the number of columns should be 16, then we need to detect when there are multiples of that number of columns in a given row, as this is a clear data structure corruption, if working with typical SQL tables, which are by nature almost always symmetric in structure (that is, every row has a cell for every column etc_)...
 
 --VALIDATION STAGE
 --VALIDATION STAGE
