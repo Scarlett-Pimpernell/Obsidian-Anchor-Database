@@ -171,6 +171,7 @@ Select
 	Null As [Email_Reply_ID],
 	A.[Subject] As [Subject]
 From @tblEmail_Asymmetric_Interleaving_Chain_Discovery A
+Where A.[Conversation_ID] = @Conversation_ID_Seed
 Union All
 Select
 	C.[Conversation_ID] As [Conversation_ID],
