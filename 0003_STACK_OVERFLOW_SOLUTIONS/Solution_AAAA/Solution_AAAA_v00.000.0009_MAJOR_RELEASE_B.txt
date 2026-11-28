@@ -1,0 +1,143 @@
+--Is this simply a design anti-pattern? --> Well yes, when thinking in terms of optimal compute speed, but no, when thinking of ease-of-engineering speed...
+--Is this even a worthwhile usecase? --> Well, I certainly enjoyed implementing it, and I'm sure that some few others will enjoy utilising it...
+--Is the comparative performance to native syntax, a runaway disaster, as data volumes expand? --> Not sure really, as I haven't tested this myself... Can someone else in a role of authority, please do the honours here, with regards to this...
+--Is there anything else that people need to be aware of, with regards to matters more technical? --> Well yes, there is... Because we are approaching filtering of table at runtime only, via dynamic T-SQL execution, there are a few major drawbacks... 1. Caching is incompatible, both for query execution plans, and for output results; 2. Table variables massively restrict functionality to a mere few million rows, and so you will need to adjust this yourself, if you wish to use this algorithm and its design pattern for larger volumes of data, by swapping in temp tables or standard tables, wherever table variables are currently used here in query; 3. Please bare in mind, that no matter what you do - because any table must be fed into the Execute sp_executesql command as a duplicate - this will always lead to unecessary compute speed and storage penalties... Microsoft could implement dynamic SQL execution in such a way that this problem could be avoided, but good luck convincing them!!!
+
+
+--Stack Overflow Question - Nov 17th 2026AD
+--How can I build a dynamic WHERE clause efficiently?
+
+
+--Global Variables...
+
+
+--Data Extract...
+Declare @Data_Table Data_Table
+Insert Into @Data_Table Values
+(1, 1, '2026/11/28 06:54:30.8888888', 'A1', CheckSum(Crypt_Gen_Random(12))),
+(2, 2, '2026/11/28 06:54:30.8888888', 'A2', CheckSum(Crypt_Gen_Random(12))),
+(3, 3, '2026/11/28 06:54:30.8888888', 'B1', CheckSum(Crypt_Gen_Random(12))),
+(4, 1, '2026/11/28 06:54:30.8888888', 'B2', CheckSum(Crypt_Gen_Random(12))),
+(5, 2, '2026/11/28 06:54:30.8888888', 'B3', CheckSum(Crypt_Gen_Random(12))),
+(6, 3, '2026/11/28 06:54:30.8888888', 'C1', CheckSum(Crypt_Gen_Random(12))),
+(7, 1, '2026/11/28 06:54:30.8888888', 'C2', CheckSum(Crypt_Gen_Random(12))),
+(8, 2, '2026/11/28 06:54:30.8888888', 'C3', CheckSum(Crypt_Gen_Random(12))),
+(9, 3, '2026/11/28 06:54:30.8888888', 'C4', CheckSum(Crypt_Gen_Random(12))),
+(10, 1, '2026/11/28 06:54:30.8888888', 'D1', CheckSum(Crypt_Gen_Random(12))),
+(11, 2, '2026/11/28 06:54:30.8888888', 'D2', CheckSum(Crypt_Gen_Random(12))),
+(12, 3, '2026/11/28 06:54:30.8888888', 'D3', CheckSum(Crypt_Gen_Random(12))),
+(13, 1, '2026/11/28 06:54:30.8888888', 'D4', CheckSum(Crypt_Gen_Random(12))),
+(14, 2, '2026/11/28 06:54:30.8888888', 'D5', CheckSum(Crypt_Gen_Random(12))),
+(15, 3, '2026/11/28 06:54:30.8888888', 'E1', CheckSum(Crypt_Gen_Random(12))),
+(16, 1, '2026/11/28 06:54:30.8888888', 'E2', CheckSum(Crypt_Gen_Random(12))),
+(17, 2, '2026/11/28 06:54:30.8888888', 'E3', CheckSum(Crypt_Gen_Random(12))),
+(18, 3, '2026/11/28 06:54:30.8888888', 'E4', CheckSum(Crypt_Gen_Random(12))),
+(19, 1, '2026/11/28 06:54:30.8888888', 'E5', CheckSum(Crypt_Gen_Random(12))),
+(20, 2, '2026/11/28 06:54:30.8888888', 'E6', CheckSum(Crypt_Gen_Random(12)))
+
+Declare @Predicate_Table Predicate_Table
+Insert Into @Predicate_Table Values
+--Please remember to use single quote pairs, wherever you want part of the predicate command string to persist a single quote during dynamic execution (For an example here, please see row [Order] = 2, which implements a string Patindex() operator, that can check for a string pattern within another string)...
+--Also, if you are using multiple predicate commands via one Predicate_Group_ID, you will need to separate them, using an appropriate logical operator (As seen here as an example, in rows with [Order] = 3,4, and 5)... When you intend to use a logical operator, instead of a comparative operator, please remember to set [Alpha_Predicate] and [Beta_Predicate] columns to empty (''), within the same predicate command row as you have set a logical operator in (The example here, being row with [Order] = 4)...
+--Finally here, I think I should remind you, that this is a pretty comlpex and powerful use of T-SQL... Don't be upset if you can't get your head around it... You have options: 1. Ask a chatengine; 2. Ask a colleague; 3. Ask God or an Angel or a Saint; and 4. Just laugh it off, and take a break (preferably with a nibble and a beer?)...
+(1, 1, '[Data_Group_ID]', '=', '3'),
+(2, 2, 'Patindex((''%'' + ''A'' + ''%''), [String_Value])', '>', '0'),
+(3, 3, '[Number_Value]', '>', '0'),
+(4, 3, '', 'And', ''),
+(5, 3, '[Number_Value]', '<=', '999999999999')
+
+--Validation...
+--Please implement this yourself, according to your own specific requirements...
+
+
+--Transformation...
+
+
+--Load...
+--Dynamic filter instance 0001...
+Declare @Predicate_Group_ID_0001 As Bigint
+Set @Predicate_Group_ID_0001 = 2
+
+Declare @Dynamic_SQL_Command_0001 As Nvarchar(Max)
+Set @Dynamic_SQL_Command_0001 =
+N'
+Select
+	[Order] As [Order],
+	[Data_Group_ID] As [Data_Group_ID],
+	[Date_Value] As [Date_Value],
+	[String_Value] As [String_Value],
+	[Number_Value] As [Number_Value]
+From @Data_Table
+Where '
+	+
+	(Select String_Agg(([Alpha_Predicate] + [Predicate_Logical_Or_Comparison_Operator] + [Beta_Predicate]), ' ') Within Group (Order By [Order] Asc) From @Predicate_Table Where [Predicate_Group_ID] = @Predicate_Group_ID_0001)
+
+Execute sp_executesql @Dynamic_SQL_Command_0001,
+N'
+@Data_Table [dbo].[Data_Table] Readonly,
+@Predicate_Table [dbo].[Predicate_Table] Readonly,
+@Predicate_Group_ID Bigint
+',
+@Data_Table = @Data_Table,
+@Predicate_Table = @Predicate_Table,
+@Predicate_Group_ID = @Predicate_Group_ID_0001 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+
+--Dynamic filter instance 0002...
+Declare @Predicate_Group_ID_0002 As Bigint
+Set @Predicate_Group_ID_0002 = 3
+
+Declare @Dynamic_SQL_Command_0002 As Nvarchar(Max)
+Set @Dynamic_SQL_Command_0002 =
+N'
+Select
+	[Order] As [Order],
+	[Data_Group_ID] As [Data_Group_ID],
+	[Date_Value] As [Date_Value],
+	[String_Value] As [String_Value],
+	[Number_Value] As [Number_Value]
+From @Data_Table
+Where '
+	+
+	(Select String_Agg(([Alpha_Predicate] + [Predicate_Logical_Or_Comparison_Operator] + [Beta_Predicate]), ' ') Within Group (Order By [Order] Asc) From @Predicate_Table Where [Predicate_Group_ID] = @Predicate_Group_ID_0002)
+
+Execute sp_executesql @Dynamic_SQL_Command_0002,
+N'
+@Data_Table [dbo].[Data_Table] Readonly,
+@Predicate_Table [dbo].[Predicate_Table] Readonly,
+@Predicate_Group_ID Bigint
+',
+@Data_Table = @Data_Table,
+@Predicate_Table = @Predicate_Table,
+@Predicate_Group_ID = @Predicate_Group_ID_0002 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+
+--Dynamic filter instance 0003...
+Declare @Predicate_Group_ID_0003 As Bigint
+Set @Predicate_Group_ID_0003 = 1
+
+Declare @Dynamic_SQL_Command_0003 As Nvarchar(Max)
+Set @Dynamic_SQL_Command_0003 =
+N'
+Select
+	[Order] As [Order],
+	[Data_Group_ID] As [Data_Group_ID],
+	[Date_Value] As [Date_Value],
+	[String_Value] As [String_Value],
+	[Number_Value] As [Number_Value]
+From @Data_Table
+Where '
+	+
+	(Select String_Agg(([Alpha_Predicate] + [Predicate_Logical_Or_Comparison_Operator] + [Beta_Predicate]), ' ') Within Group (Order By [Order] Asc) From @Predicate_Table Where [Predicate_Group_ID] = @Predicate_Group_ID_0003)
+
+Execute sp_executesql @Dynamic_SQL_Command_0003,
+N'
+@Data_Table [dbo].[Data_Table] Readonly,
+@Predicate_Table [dbo].[Predicate_Table] Readonly,
+@Predicate_Group_ID Bigint
+',
+@Data_Table = @Data_Table,
+@Predicate_Table = @Predicate_Table,
+@Predicate_Group_ID = @Predicate_Group_ID_0003 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+
+
+--Party Message...
+Select 'A blessed Advent 05NC anticipation to you all!'

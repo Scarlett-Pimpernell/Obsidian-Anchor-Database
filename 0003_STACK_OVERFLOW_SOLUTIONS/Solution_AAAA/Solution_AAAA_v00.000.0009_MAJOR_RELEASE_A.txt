@@ -1,0 +1,8 @@
+If Not Exists (Select * From sys.types Where name = N'Data_Table' And is_table_type = 1)
+	Begin
+		Create Type [dbo].[Data_Table] As Table ([Order] Bigint, [Data_Group_ID] Bigint, [Date_Value] DateTime2, [String_Value] Varchar(Max), [Number_Value] Bigint)
+	End
+If Not Exists (Select * From sys.types Where name = N'Predicate_Table' And is_table_type = 1)
+	Begin
+		Create Type [dbo].[Predicate_Table] As Table ([Order] Bigint, [Predicate_Group_ID] Bigint, [Alpha_Predicate] Nvarchar(Max), [Predicate_Logical_Or_Comparison_Operator] Nvarchar(Max), [Beta_Predicate] Nvarchar(Max))
+	End
