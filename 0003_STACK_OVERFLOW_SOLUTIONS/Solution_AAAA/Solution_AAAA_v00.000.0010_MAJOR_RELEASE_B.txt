@@ -56,7 +56,7 @@ Insert Into @Predicate_Table Values
 --Load...
 --Dynamic filter instance 0001...
 Declare @Predicate_Group_ID_0001 As Bigint
-Set @Predicate_Group_ID_0001 = 2
+Set @Predicate_Group_ID_0001 = 2 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
 
 Declare @Dynamic_SQL_Command_0001 As Nvarchar(Max)
 Set @Dynamic_SQL_Command_0001 =
@@ -80,11 +80,11 @@ N'
 ',
 @Data_Table = @Data_Table,
 @Predicate_Table = @Predicate_Table,
-@Predicate_Group_ID = @Predicate_Group_ID_0001 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+@Predicate_Group_ID = @Predicate_Group_ID_0001
 
 --Dynamic filter instance 0002...
 Declare @Predicate_Group_ID_0002 As Bigint
-Set @Predicate_Group_ID_0002 = 3
+Set @Predicate_Group_ID_0002 = 3 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
 
 Declare @Dynamic_SQL_Command_0002 As Nvarchar(Max)
 Set @Dynamic_SQL_Command_0002 =
@@ -108,11 +108,11 @@ N'
 ',
 @Data_Table = @Data_Table,
 @Predicate_Table = @Predicate_Table,
-@Predicate_Group_ID = @Predicate_Group_ID_0002 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+@Predicate_Group_ID = @Predicate_Group_ID_0002
 
 --Dynamic filter instance 0003...
 Declare @Predicate_Group_ID_0003 As Bigint
-Set @Predicate_Group_ID_0003 = 1
+Set @Predicate_Group_ID_0003 = 1 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
 
 Declare @Dynamic_SQL_Command_0003 As Nvarchar(Max)
 Set @Dynamic_SQL_Command_0003 =
@@ -136,7 +136,7 @@ N'
 ',
 @Data_Table = @Data_Table,
 @Predicate_Table = @Predicate_Table,
-@Predicate_Group_ID = @Predicate_Group_ID_0003 --Please use this variable assignation wisely... It corresponds to the set or group predicates that you want to apply to a given dynamic filter instance... It is very powerful in shaping the usage of the overall algorithm... Essentially, you use it to map different predicate sets, to different instances of use of dynamic predicates on various tables within the query... Further up in the sourcecode, you populate your super table of all or as many filter predicates that are of use to you in the current query... Each predicate command row, comes with a Bigint Predicate_Group_ID value in the [Predicate_Group_ID] column, and so it allows you to very quickly and easily assign different predicate sets or groups to different instances of the application of this dynamic filter predicates design pattern, on different tables within the same query, without having to duplicate effort... You simply use one superset of predicates, and filter it, using this assigned variable @Predicate_Group_ID, which then subsequently dynamically applies different predicate sets to the different tables of interest, at different points throughout the query... A little wordy, but were dealing with a complex feature here... Please feel free to play around and therefore understand how to use it properly...
+@Predicate_Group_ID = @Predicate_Group_ID_0003
 
 
 --Party Message...
